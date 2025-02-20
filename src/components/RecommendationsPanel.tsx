@@ -578,6 +578,12 @@ const OccurrenceNav = styled.div`
   margin-bottom: 0.5rem;
 `
 
+const OccurrenceLimitNote = styled.p`
+  font-size: 0.6875rem;
+  color: ${p => p.theme.colors.text.muted};
+  margin-top: 0.25rem;
+`
+
 const MetricLabel = styled.span`
   font-weight: 500;
 `
@@ -1343,17 +1349,24 @@ const IssueCard = observer(({ issue, onNavigateToRec, actionableRecIds }: { issu
 
       {/* Occurrence navigator */}
       {hasMultiple && (
-        <OccurrenceNav>
-          <NavButton onClick={handlePrev} disabled={occIdx === 0}>
-            &lt;
-          </NavButton>
-          <NavLabel>
-            {occIdx + 1}/{occurrences.length}
-          </NavLabel>
-          <NavButton onClick={handleNext} disabled={occIdx === occurrences.length - 1}>
-            &gt;
-          </NavButton>
-        </OccurrenceNav>
+        <>
+          <OccurrenceNav>
+            <NavButton onClick={handlePrev} disabled={occIdx === 0}>
+              &lt;
+            </NavButton>
+            <NavLabel>
+              {occIdx + 1}/{occurrences.length}
+            </NavLabel>
+            <NavButton onClick={handleNext} disabled={occIdx === occurrences.length - 1}>
+              &gt;
+            </NavButton>
+          </OccurrenceNav>
+          {issue.totalOccurrences != null && issue.totalOccurrences > occurrences.length && (
+            <OccurrenceLimitNote>
+              Showing {occurrences.length} most confident of {issue.totalOccurrences} detected
+            </OccurrenceLimitNote>
+          )}
+        </>
       )}
 
       <IssueMetrics>

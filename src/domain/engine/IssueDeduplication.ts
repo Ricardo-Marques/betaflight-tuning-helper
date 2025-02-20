@@ -9,6 +9,9 @@ export function maxSeverity(a: Severity, b: Severity): Severity {
   return severityRank[a] >= severityRank[b] ? a : b
 }
 
+/** Maximum occurrences displayed per collapsed issue */
+export const MAX_DISPLAYED_OCCURRENCES = 5
+
 /**
  * Deduplicate similar issues.
  * Pass 1: merge temporally overlapping/close issues (within 100ms) of the same type+axis.
@@ -111,6 +114,14 @@ export function deduplicateIssues(issues: DetectedIssue[]): DetectedIssue[] {
     // Prepend occurrence count to the description
     const description = `${representative.description} (×${count})`
 
+    // Limit displayed occurrences to the most confident detections
+    const displayed = count > MAX_DISPLAYED_OCCURRENCES
+      ? [...group]
+          .sort((a, b) => b.confidence - a.confidence)
+          .slice(0, MAX_DISPLAYED_OCCURRENCES)
+          .sort((a, b) => a.timeRange[0] - b.timeRange[0])
+      : group
+
     deduplicated.push({
       ...representative,
       severity: highestSeverity,
@@ -118,8 +129,9 @@ export function deduplicateIssues(issues: DetectedIssue[]): DetectedIssue[] {
       timeRange: [timeStart, timeEnd],
       description,
       metrics: worstMetrics,
-      occurrences: group.map(i => i.timeRange),
-      peakTimes: group.map(i => i.metrics.peakTime ?? (i.timeRange[0] + i.timeRange[1]) / 2),
+      occurrences: displayed.map(i => i.timeRange),
+      peakTimes: displayed.map(i => i.metrics.peakTime ?? (i.timeRange[0] + i.timeRange[1]) / 2),
+      ...(count > MAX_DISPLAYED_OCCURRENCES ? { totalOccurrences: count } : {}),
     })
   }
 

@@ -62,6 +62,7 @@ export interface DetectedIssue {
   confidence: number // 0-1
   occurrences?: [number, number][] // individual timeRanges before collapse
   peakTimes?: number[] // per-occurrence peak timestamps (µs), parallel to occurrences
+  totalOccurrences?: number // total before limiting; undefined = no limiting applied
 }
 
 export type IssueType =
