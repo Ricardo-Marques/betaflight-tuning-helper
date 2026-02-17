@@ -1,0 +1,114 @@
+import { test, expect } from '@playwright/test'
+import { uploadAndAnalyze } from './helpers'
+
+test.describe('Navigation', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/')
+    await uploadAndAnalyze(page)
+  })
+
+  test('flight segments appear with multiple buttons', async ({ page }) => {
+    const segments = page.getByTestId('flight-segments')
+    await expect(segments).toBeVisible()
+    const buttons = segments.locator('button')
+    const count = await buttons.count()
+    expect(count).toBeGreaterThan(1)
+  })
+
+  test('segment shows phase name', async ({ page }) => {
+    const firstSegment = page.locator('[data-testid^="segment-"]').first()
+    const text = await firstSegment.textContent()
+    const phases = ['arm', 'takeoff', 'cruise', 'acro', 'hover', 'landing', 'disarm', 'idle', 'recovery', 'flip', 'freestyle']
+    const hasPhase = phases.some(p => text!.toLowerCase().includes(p))
+    expect(hasPhase).toBe(true)
+  })
+
+  test('clicking segment changes zoom', async ({ page }) => {
+    const durBefore = parseFloat(await page.getByTestId('zoom-duration-slider').inputValue())
+    expect(durBefore).toBe(100)
+
+    const segment = page.locator('[data-testid^="segment-"]').first()
+    await segment.click()
+    await page.waitForTimeout(500)
+
+    const durAfter = parseFloat(await page.getByTestId('zoom-duration-slider').inputValue())
+    expect(durAfter).toBeLessThan(100)
+  })
+
+  test('clicked segment has selected state', async ({ page }) => {
+    const segment = page.locator('[data-testid^="segment-"]').first()
+    await segment.click()
+    await page.waitForTimeout(300)
+    await expect(segment).toHaveClass(/bg-blue-100/)
+  })
+
+  test('clicking issue card zooms chart and highlights card', async ({ page }) => {
+    const issueCard = page.locator('[data-issue-id]').first()
+    await expect(issueCard).toBeVisible()
+
+    // Scroll the issue into view and click
+    await issueCard.scrollIntoViewIfNeeded()
+    await issueCard.click()
+    await page.waitForTimeout(500)
+
+    // Card should be highlighted
+    await expect(issueCard).toHaveClass(/ring-2/)
+  })
+
+  test('issue occurrence nav updates zoom position', async ({ page }) => {
+    // Find a multi-occurrence issue
+    const multiOccCard = page.locator('[data-issue-id]').filter({
+      has: page.locator('text=/\\d+\\/\\d+/'),
+    }).first()
+
+    const count = await multiOccCard.count()
+    if (count === 0) {
+      test.skip()
+      return
+    }
+
+    // Click issue first to zoom to it
+    await multiOccCard.scrollIntoViewIfNeeded()
+    await multiOccCard.click()
+    await page.waitForTimeout(500)
+    const startBefore = parseFloat(await page.getByTestId('zoom-start-slider').inputValue())
+
+    // Click next occurrence
+    const nextBtn = multiOccCard.locator('button').filter({ hasText: '>' })
+    await nextBtn.click()
+    await page.waitForTimeout(500)
+    const startAfter = parseFloat(await page.getByTestId('zoom-start-slider').inputValue())
+
+    // Zoom position should have changed
+    expect(startAfter).not.toBe(startBefore)
+  })
+
+  test('toggle left panel hides and shows it', async ({ page }) => {
+    const leftPanel = page.getByTestId('left-panel')
+    await expect(leftPanel).toBeVisible()
+
+    await page.getByTestId('toggle-left-panel').click()
+    await expect(leftPanel).not.toBeVisible()
+
+    await page.getByTestId('toggle-left-panel').click()
+    await expect(leftPanel).toBeVisible()
+  })
+
+  test('toggle right panel hides and shows it', async ({ page }) => {
+    const rightPanel = page.getByTestId('right-panel')
+    await expect(rightPanel).toBeVisible()
+
+    await page.getByTestId('toggle-right-panel').click()
+    await expect(rightPanel).not.toBeVisible()
+
+    await page.getByTestId('toggle-right-panel').click()
+    await expect(rightPanel).toBeVisible()
+  })
+
+  test('header and footer are visible', async ({ page }) => {
+    await expect(page.getByTestId('app-header')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Betaflight Tuning Helper' })).toBeVisible()
+    await expect(page.locator('footer')).toBeVisible()
+    await expect(page.locator('footer')).toContainText('Client-side')
+  })
+})

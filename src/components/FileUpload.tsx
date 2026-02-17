@@ -42,6 +42,7 @@ export const FileUpload = observer(() => {
   return (
     <div className="p-4">
       <div
+        data-testid="file-dropzone"
         className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
           isDragging
             ? 'border-blue-500 bg-blue-50'
@@ -96,10 +97,10 @@ export const FileUpload = observer(() => {
             <div className="mb-4">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
             </div>
-            <p className="text-lg font-medium text-gray-700 mb-2">
+            <p data-testid="parse-status-text" className="text-lg font-medium text-gray-700 mb-2">
               Parsing log...
             </p>
-            <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
+            <div data-testid="parse-progress-bar" className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
               <div
                 className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
                 style={{ width: `${logStore.parseProgress}%` }}
@@ -126,10 +127,10 @@ export const FileUpload = observer(() => {
                 />
               </svg>
             </div>
-            <p className="text-lg font-medium text-gray-700 mb-2">
+            <p data-testid="parse-success-text" className="text-lg font-medium text-gray-700 mb-2">
               Log loaded successfully!
             </p>
-            <div className="text-sm text-gray-600 space-y-1">
+            <div data-testid="parse-metadata" className="text-sm text-gray-600 space-y-1">
               <p>
                 <span className="font-medium">Frames:</span>{' '}
                 {logStore.metadata.frameCount.toLocaleString()}
@@ -150,6 +151,7 @@ export const FileUpload = observer(() => {
               )}
             </div>
             <button
+              data-testid="upload-different-file"
               onClick={() => logStore.reset()}
               className="mt-4 text-sm text-blue-600 hover:text-blue-800"
             >
@@ -175,7 +177,7 @@ export const FileUpload = observer(() => {
                 />
               </svg>
             </div>
-            <p className="text-lg font-medium text-red-700 mb-2">Parse failed</p>
+            <p data-testid="parse-error-text" className="text-lg font-medium text-red-700 mb-2">Parse failed</p>
             <p className="text-sm text-red-600">{logStore.parseError}</p>
             <button
               onClick={() => logStore.reset()}

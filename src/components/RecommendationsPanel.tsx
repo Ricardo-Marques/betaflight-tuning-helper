@@ -60,7 +60,7 @@ export const RecommendationsPanel = observer(() => {
 
   if (!analysisStore.isComplete) {
     return (
-      <div className="p-4 text-center text-gray-500">
+      <div data-testid="recommendations-empty" className="p-4 text-center text-gray-500">
         <p>Run analysis to see recommendations</p>
       </div>
     )
@@ -83,12 +83,13 @@ export const RecommendationsPanel = observer(() => {
   return (
     <div ref={scrollRef} className="h-full overflow-y-auto">
       {/* Summary */}
-      <div className="p-4 border-b bg-gray-50">
+      <div data-testid="analysis-summary" className="p-4 border-b bg-gray-50">
         <h2 className="text-lg font-bold mb-2">Analysis Summary</h2>
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">Overall Health:</span>
             <span
+              data-testid="overall-health-badge"
               className={`px-2 py-1 rounded text-xs font-medium ${
                 summary.overallHealth === 'excellent'
                   ? 'bg-green-100 text-green-800'
@@ -112,7 +113,7 @@ export const RecommendationsPanel = observer(() => {
 
       {/* Top Priorities */}
       {summary.topPriorities.length > 0 && (
-        <div className="p-4 border-b bg-blue-50">
+        <div data-testid="top-priorities" className="p-4 border-b bg-blue-50">
           <h3 className="text-sm font-bold mb-2 text-blue-900">
             Top Priorities:
           </h3>
@@ -126,12 +127,13 @@ export const RecommendationsPanel = observer(() => {
 
       {/* CLI Commands */}
       {cliCommands && (
-        <div className="p-4 border-b bg-indigo-50">
+        <div data-testid="cli-commands-section" className="p-4 border-b bg-indigo-50">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-bold text-indigo-900">
               CLI Commands
             </h3>
             <button
+              data-testid="copy-cli-button"
               onClick={handleCopy}
               className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                 copied
@@ -158,7 +160,7 @@ export const RecommendationsPanel = observer(() => {
         const issues = issuesBySeverity[sev]
         if (!issues || issues.length === 0) return null
         return (
-          <div key={sev} className="p-4 border-b">
+          <div key={sev} data-testid={`severity-group-${sev}`} className="p-4 border-b">
             <h3 className={`text-md font-bold mb-3 ${severityColors[sev]}`}>
               {severityLabels[sev]}
             </h3>
@@ -172,7 +174,7 @@ export const RecommendationsPanel = observer(() => {
       })}
 
       {/* Recommendations */}
-      <div className="p-4">
+      <div data-testid="recommendations-section" className="p-4">
         <h3 className="text-md font-bold mb-3">Recommendations</h3>
         <div className="space-y-4">
           {analysisStore.recommendations.map(rec => (

@@ -10,7 +10,7 @@ export const App = observer(() => {
   return (
     <div className="h-screen flex flex-col bg-gray-100">
       {/* Header */}
-      <header className="bg-blue-600 text-white p-4 shadow-lg">
+      <header data-testid="app-header" className="bg-blue-600 text-white p-4 shadow-lg">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Betaflight Tuning Helper</h1>
@@ -20,6 +20,7 @@ export const App = observer(() => {
           </div>
           <div className="flex items-center gap-2">
             <button
+              data-testid="toggle-left-panel"
               onClick={uiStore.toggleLeftPanel}
               className="p-2 rounded hover:bg-blue-700 transition-colors"
               title="Toggle left panel"
@@ -39,6 +40,7 @@ export const App = observer(() => {
               </svg>
             </button>
             <button
+              data-testid="toggle-right-panel"
               onClick={uiStore.toggleRightPanel}
               className="p-2 rounded hover:bg-blue-700 transition-colors"
               title="Toggle right panel"
@@ -65,7 +67,7 @@ export const App = observer(() => {
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel */}
         {uiStore.leftPanelOpen && (
-          <div className="w-80 flex-shrink-0">
+          <div data-testid="left-panel" className="w-80 flex-shrink-0">
             <LeftPanel />
           </div>
         )}
@@ -77,7 +79,7 @@ export const App = observer(() => {
 
         {/* Right Panel: Recommendations */}
         {uiStore.rightPanelOpen && (
-          <div className="w-[480px] flex-shrink-0 bg-white border-l">
+          <div data-testid="right-panel" className="w-[480px] flex-shrink-0 bg-white border-l">
             <RecommendationsPanel />
           </div>
         )}

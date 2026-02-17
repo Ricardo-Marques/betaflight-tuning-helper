@@ -273,7 +273,7 @@ export const LogChart = observer(() => {
 
   if (!logStore.isLoaded) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-500">
+      <div data-testid="chart-empty-state" className="flex items-center justify-center h-full text-gray-500">
         <p>Upload a log file to view data</p>
       </div>
     )
@@ -289,11 +289,12 @@ export const LogChart = observer(() => {
   return (
     <div className="h-full flex flex-col">
       {/* Axis selector */}
-      <div className="flex items-center gap-4 p-4 border-b">
+      <div data-testid="axis-selector" className="flex items-center gap-4 p-4 border-b">
         <span className="text-sm font-medium text-gray-700">Axis:</span>
         {(['roll', 'pitch', 'yaw'] as const).map(axis => (
           <button
             key={axis}
+            data-testid={`axis-button-${axis}`}
             onClick={() => uiStore.setAxis(axis)}
             className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
               uiStore.selectedAxis === axis
@@ -308,6 +309,7 @@ export const LogChart = observer(() => {
         <div className="ml-auto flex items-center gap-2">
           <label className="flex items-center gap-2 text-sm">
             <input
+              data-testid="toggle-gyro"
               type="checkbox"
               checked={uiStore.showGyro}
               onChange={uiStore.toggleGyro}
@@ -317,6 +319,7 @@ export const LogChart = observer(() => {
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input
+              data-testid="toggle-setpoint"
               type="checkbox"
               checked={uiStore.showSetpoint}
               onChange={uiStore.toggleSetpoint}
@@ -326,6 +329,7 @@ export const LogChart = observer(() => {
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input
+              data-testid="toggle-dterm"
               type="checkbox"
               checked={uiStore.showPidD}
               onChange={uiStore.togglePidD}
@@ -335,6 +339,7 @@ export const LogChart = observer(() => {
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input
+              data-testid="toggle-motors"
               type="checkbox"
               checked={uiStore.showMotors}
               onChange={uiStore.toggleMotors}
@@ -346,7 +351,7 @@ export const LogChart = observer(() => {
       </div>
 
       {/* Chart */}
-      <div ref={chartContainerRef} className={`flex-1 p-4 relative${dragStart != null ? ' select-none' : ''}`}>
+      <div data-testid="chart-container" ref={chartContainerRef} className={`flex-1 p-4 relative${dragStart != null ? ' select-none' : ''}`}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={chartData}
@@ -558,6 +563,7 @@ export const LogChart = observer(() => {
               </span>
             </div>
             <input
+              data-testid="zoom-start-slider"
               type="range"
               min="0"
               max={100 - zoomDuration}
@@ -574,6 +580,7 @@ export const LogChart = observer(() => {
               </span>
             </div>
             <input
+              data-testid="zoom-duration-slider"
               type="range"
               min="1"
               max="100"
@@ -584,6 +591,7 @@ export const LogChart = observer(() => {
             />
           </div>
           <button
+            data-testid="zoom-reset-button"
             onClick={() => uiStore.setZoom(0, 100)}
             className="text-sm text-blue-600 hover:text-blue-800 shrink-0"
           >

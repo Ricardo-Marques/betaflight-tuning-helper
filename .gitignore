@@ -27,3 +27,7 @@ dist-ssr
 *.bbl
 *.txt
 test_logs/
+
+# Playwright
+/test-results/
+/playwright-report/

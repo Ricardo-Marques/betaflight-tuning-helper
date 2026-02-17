@@ -33,6 +33,7 @@ export const LeftPanel = observer(() => {
 
           {analysisStore.isComplete && (
             <button
+              data-testid="reanalyze-button"
               onClick={() => analysisStore.analyze()}
               className="w-full px-4 py-2 rounded-lg font-medium transition-colors bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm"
             >
@@ -49,10 +50,11 @@ export const LeftPanel = observer(() => {
             <h3 className="text-sm font-bold text-gray-700 mb-3">
               Flight Segments
             </h3>
-            <div className="space-y-2">
+            <div data-testid="flight-segments" className="space-y-2">
               {analysisStore.segments.map(segment => (
                 <button
                   key={segment.id}
+                  data-testid={`segment-${segment.id}`}
                   onClick={() => {
                     analysisStore.selectSegment(segment.id)
                     if (logStore.frames.length > 0) {
@@ -92,7 +94,7 @@ export const LeftPanel = observer(() => {
 
       {/* Log Info */}
       {logStore.isLoaded && logStore.metadata && (
-        <div className="p-4 border-t bg-gray-50">
+        <div data-testid="log-info" className="p-4 border-t bg-gray-50">
           <h3 className="text-xs font-bold text-gray-700 mb-2">Log Info</h3>
           <div className="text-xs text-gray-600 space-y-1">
             <p>
