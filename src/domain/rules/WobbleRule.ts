@@ -46,9 +46,9 @@ export const WobbleRule: TuningRule = {
 
     // Classify severity based on amplitude
     // Amplitude > 25 deg/s = visible wobble in DVR
-    let severity: 'low' | 'medium' | 'high' | 'critical'
+    let severity: 'low' | 'medium' | 'high'
     if (metrics.amplitude > 35) {
-      severity = 'critical'
+      severity = 'high'
     } else if (metrics.amplitude > 25) {
       severity = 'high'
     } else if (metrics.amplitude > 15) {

@@ -43,9 +43,9 @@ export const BouncebackRule: TuningRule = {
 
     // Classify severity based on overshoot and settling time
     // Well-tuned quads have < 10 deg/s overshoot
-    let severity: 'low' | 'medium' | 'high' | 'critical'
+    let severity: 'low' | 'medium' | 'high'
     if (metrics.overshoot > 40 || metrics.settlingTime > 150) {
-      severity = 'critical'
+      severity = 'high'
     } else if (metrics.overshoot > 25 || metrics.settlingTime > 100) {
       severity = 'high'
     } else if (metrics.overshoot > 15 || metrics.settlingTime > 75) {

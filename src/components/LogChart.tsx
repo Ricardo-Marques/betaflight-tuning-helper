@@ -1,6 +1,6 @@
 import { observer } from 'mobx-react-lite'
 import { useLogStore, useUIStore, useAnalysisStore } from '../stores/RootStore'
-import { useMemo, useState, useCallback } from 'react'
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react'
 import {
   LineChart,
   Line,
@@ -11,6 +11,7 @@ import {
   Legend,
   ResponsiveContainer,
   ReferenceLine,
+  ReferenceArea,
 } from 'recharts'
 import { DetectedIssue } from '../domain/types/Analysis'
 
@@ -25,6 +26,9 @@ export const LogChart = observer(() => {
   const uiStore = useUIStore()
   const analysisStore = useAnalysisStore()
   const [hoveredIssue, setHoveredIssue] = useState<HoveredIssue | null>(null)
+  const [dragStart, setDragStart] = useState<number | null>(null)
+  const [dragEnd, setDragEnd] = useState<number | null>(null)
+  const isDragging = useRef(false)
 
   // Derive start and duration from zoomStart/zoomEnd
   const zoomStart = uiStore.zoomStart
@@ -73,10 +77,21 @@ export const LogChart = observer(() => {
     return analysisStore.getIssuesInTimeRange(startTime, endTime)
   }, [analysisStore.isComplete, visibleFrames, analysisStore.issues])
 
-  // Handle chart mouse move for issue hover detection
+  // Handle chart mouse move for issue hover detection + drag tracking
   const handleChartMouseMove = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (state: any, event: React.MouseEvent) => {
+      // Update drag selection
+      if (isDragging.current && state?.activeLabel != null) {
+        setDragEnd(state.activeLabel as number)
+      }
+
+      // Suppress hover popover while dragging
+      if (isDragging.current) {
+        setHoveredIssue(null)
+        return
+      }
+
       if (!state?.activeLabel || visibleIssues.length === 0) {
         setHoveredIssue(null)
         return
@@ -93,11 +108,14 @@ export const LogChart = observer(() => {
       let closestDist = Infinity
 
       for (const issue of visibleIssues) {
-        const issueTime = issue.timeRange[0] / 1000000
-        const dist = Math.abs(issueTime - cursorTime)
-        if (dist < threshold && dist < closestDist) {
-          closest = issue
-          closestDist = dist
+        const times = issue.occurrences ?? [issue.timeRange]
+        for (const tr of times) {
+          const occTime = tr[0] / 1000000
+          const dist = Math.abs(occTime - cursorTime)
+          if (dist < threshold && dist < closestDist) {
+            closest = issue
+            closestDist = dist
+          }
         }
       }
 
@@ -116,7 +134,82 @@ export const LogChart = observer(() => {
 
   const handleChartMouseLeave = useCallback(() => {
     setHoveredIssue(null)
+    // Cancel drag if cursor leaves chart
+    if (isDragging.current) {
+      isDragging.current = false
+      setDragStart(null)
+      setDragEnd(null)
+    }
   }, [])
+
+  // Drag-to-zoom handlers
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleChartMouseDown = useCallback((state: any) => {
+    if (state?.activeLabel != null) {
+      isDragging.current = true
+      setDragStart(state.activeLabel as number)
+      setDragEnd(state.activeLabel as number)
+    }
+  }, [])
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleChartMouseUp = useCallback((state: any) => {
+    if (!isDragging.current || dragStart == null) {
+      isDragging.current = false
+      return
+    }
+    isDragging.current = false
+
+    const endTime = state?.activeLabel != null ? (state.activeLabel as number) : dragEnd
+    if (endTime == null) {
+      setDragStart(null)
+      setDragEnd(null)
+      return
+    }
+
+    const selStart = Math.min(dragStart, endTime)
+    const selEnd = Math.max(dragStart, endTime)
+
+    // Only zoom if selection spans a meaningful range (> 1% of visible window)
+    const visibleTimeRange = chartData.length > 1
+      ? chartData[chartData.length - 1].time - chartData[0].time
+      : 1
+    if (selEnd - selStart > visibleTimeRange * 0.01 && logStore.frames.length > 0) {
+      const firstTime = logStore.frames[0].time
+      const totalDuration = logStore.frames[logStore.frames.length - 1].time - firstTime
+      if (totalDuration > 0) {
+        // Convert seconds back to microseconds then to percentage
+        const startPct = Math.max(0, ((selStart * 1_000_000 - firstTime) / totalDuration) * 100)
+        const endPct = Math.min(100, ((selEnd * 1_000_000 - firstTime) / totalDuration) * 100)
+        uiStore.setZoom(startPct, endPct)
+      }
+    } else {
+      // Click (not drag) — select nearest issue
+      const clickTime = (selStart + selEnd) / 2
+      const threshold = visibleTimeRange * 0.015
+      let closest: DetectedIssue | null = null
+      let closestDist = Infinity
+
+      for (const issue of visibleIssues) {
+        const times = issue.occurrences ?? [issue.timeRange]
+        for (const tr of times) {
+          const occTime = tr[0] / 1000000
+          const dist = Math.abs(occTime - clickTime)
+          if (dist < threshold && dist < closestDist) {
+            closest = issue
+            closestDist = dist
+          }
+        }
+      }
+
+      if (closest) {
+        analysisStore.selectIssue(closest.id)
+      }
+    }
+
+    setDragStart(null)
+    setDragEnd(null)
+  }, [dragStart, dragEnd, chartData, logStore.frames, uiStore, visibleIssues, analysisStore])
 
   // Zoom slider handlers
   const handleStartChange = useCallback(
@@ -129,11 +222,49 @@ export const LogChart = observer(() => {
 
   const handleDurationChange = useCallback(
     (newDuration: number) => {
-      const clampedDuration = Math.min(newDuration, 100 - zoomStart)
-      uiStore.setZoom(zoomStart, zoomStart + clampedDuration)
+      const center = (uiStore.zoomStart + uiStore.zoomEnd) / 2
+      const halfDur = newDuration / 2
+      let newStart = center - halfDur
+      let newEnd = center + halfDur
+      if (newStart < 0) { newEnd -= newStart; newStart = 0 }
+      if (newEnd > 100) { newStart -= newEnd - 100; newEnd = 100 }
+      newStart = Math.max(0, newStart)
+      newEnd = Math.min(100, newEnd)
+      uiStore.setZoom(newStart, newEnd)
     },
-    [uiStore, zoomStart]
+    [uiStore]
   )
+
+  // Scroll-to-zoom: wheel up zooms in, wheel down zooms out
+  const chartContainerRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = chartContainerRef.current
+    if (!el) return
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const zs = uiStore.zoomStart
+      const ze = uiStore.zoomEnd
+      const dur = ze - zs
+      // Zoom factor per scroll tick — shrink or grow the window by 15%
+      const factor = e.deltaY < 0 ? 0.85 : 1 / 0.85
+      const newDur = Math.min(100, Math.max(1, dur * factor))
+
+      // Zoom centered on cursor position within the chart
+      const rect = el.getBoundingClientRect()
+      const cursorRatio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+      const center = zs + dur * cursorRatio
+      let newStart = center - newDur * cursorRatio
+      let newEnd = center + newDur * (1 - cursorRatio)
+      // Clamp to [0, 100]
+      if (newStart < 0) { newEnd -= newStart; newStart = 0 }
+      if (newEnd > 100) { newStart -= newEnd - 100; newEnd = 100 }
+      newStart = Math.max(0, newStart)
+      newEnd = Math.min(100, newEnd)
+      uiStore.setZoom(newStart, newEnd)
+    }
+    el.addEventListener('wheel', handleWheel, { passive: false })
+    return () => el.removeEventListener('wheel', handleWheel)
+  }, [uiStore, logStore.isLoaded])
 
   // Compute time labels
   const totalDuration = logStore.duration
@@ -149,9 +280,9 @@ export const LogChart = observer(() => {
   }
 
   const severityColor = (severity: string) =>
-    severity === 'critical'
+    severity === 'high'
       ? '#dc2626'
-      : severity === 'high'
+      : severity === 'medium'
       ? '#f59e0b'
       : '#3b82f6'
 
@@ -215,18 +346,22 @@ export const LogChart = observer(() => {
       </div>
 
       {/* Chart */}
-      <div className="flex-1 p-4 relative">
+      <div ref={chartContainerRef} className={`flex-1 p-4 relative${dragStart != null ? ' select-none' : ''}`}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={chartData}
+            onMouseDown={handleChartMouseDown}
             onMouseMove={handleChartMouseMove}
+            onMouseUp={handleChartMouseUp}
             onMouseLeave={handleChartMouseLeave}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis
               dataKey="time"
-              label={{ value: 'Time (s)', position: 'insideBottom', offset: -5 }}
+              height={50}
+              label={{ value: 'Time (s)', position: 'insideBottom', offset: -2 }}
               stroke="#6b7280"
+              tick={{ dy: 4 }}
               tickFormatter={(value: number) => value.toFixed(1)}
             />
             <YAxis
@@ -234,32 +369,36 @@ export const LogChart = observer(() => {
               stroke="#6b7280"
             />
             <Tooltip
+              active={hoveredIssue ? false : undefined}
               contentStyle={{
                 backgroundColor: 'rgba(255, 255, 255, 0.95)',
                 border: '1px solid #e5e7eb',
                 borderRadius: '6px',
               }}
             />
-            <Legend />
+            <Legend wrapperStyle={{ paddingTop: 8 }} />
 
-            {/* Issue markers */}
-            {visibleIssues.map(issue => {
-              const issueTime = issue.timeRange[0] / 1000000
+            {/* Issue markers — one line per occurrence */}
+            {visibleIssues.flatMap(issue => {
+              const times = issue.occurrences ?? [issue.timeRange]
               const isSelected = issue.id === analysisStore.selectedIssueId
-              return (
-                <ReferenceLine
-                  key={issue.id}
-                  x={issueTime}
-                  stroke={severityColor(issue.severity)}
-                  strokeDasharray={isSelected ? undefined : '3 3'}
-                  strokeWidth={isSelected ? 3 : 1}
-                  label={{
-                    value: issue.type,
-                    position: 'top',
-                    fontSize: 10,
-                  }}
-                />
-              )
+              return times.map((tr, idx) => {
+                const occTime = tr[0] / 1000000
+                return (
+                  <ReferenceLine
+                    key={`${issue.id}-${idx}`}
+                    x={occTime}
+                    stroke={severityColor(issue.severity)}
+                    strokeDasharray={isSelected ? undefined : '3 3'}
+                    strokeWidth={isSelected ? 3 : 1}
+                    label={{
+                      value: issue.type,
+                      position: 'top',
+                      fontSize: 10,
+                    }}
+                  />
+                )
+              })
             })}
 
             {uiStore.showGyro && (
@@ -343,6 +482,18 @@ export const LogChart = observer(() => {
                 />
               </>
             )}
+
+            {/* Drag-to-zoom selection overlay */}
+            {dragStart != null && dragEnd != null && dragStart !== dragEnd && (
+              <ReferenceArea
+                x1={Math.min(dragStart, dragEnd)}
+                x2={Math.max(dragStart, dragEnd)}
+                fill="#3b82f6"
+                fillOpacity={0.15}
+                stroke="#3b82f6"
+                strokeOpacity={0.4}
+              />
+            )}
           </LineChart>
         </ResponsiveContainer>
 
@@ -361,16 +512,16 @@ export const LogChart = observer(() => {
                 className="px-1.5 py-0.5 rounded text-xs font-medium shrink-0"
                 style={{
                   backgroundColor:
-                    hoveredIssue.issue.severity === 'critical'
+                    hoveredIssue.issue.severity === 'high'
                       ? '#fecaca'
-                      : hoveredIssue.issue.severity === 'high'
-                      ? '#fed7aa'
+                      : hoveredIssue.issue.severity === 'medium'
+                      ? '#fef3c7'
                       : '#bfdbfe',
                   color:
-                    hoveredIssue.issue.severity === 'critical'
+                    hoveredIssue.issue.severity === 'high'
                       ? '#991b1b'
-                      : hoveredIssue.issue.severity === 'high'
-                      ? '#9a3412'
+                      : hoveredIssue.issue.severity === 'medium'
+                      ? '#92400e'
                       : '#1e40af',
                 }}
               >

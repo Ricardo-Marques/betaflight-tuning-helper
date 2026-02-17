@@ -38,9 +38,9 @@ export const MotorSaturationRule: TuningRule = {
     }
 
     // Classify severity based on saturation percentage
-    let severity: 'low' | 'medium' | 'high' | 'critical'
+    let severity: 'low' | 'medium' | 'high'
     if (metrics.saturationPercentage > 30) {
-      severity = 'critical'
+      severity = 'high'
     } else if (metrics.saturationPercentage > 15) {
       severity = 'high'
     } else if (metrics.saturationPercentage > 8) {

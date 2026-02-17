@@ -55,9 +55,9 @@ export const DTermNoiseRule: TuningRule = {
     }
 
     // Classify severity based on D-to-gyro ratio
-    let severity: 'low' | 'medium' | 'high' | 'critical'
+    let severity: 'low' | 'medium' | 'high'
     if (dToGyroRatio > 2.0) {
-      severity = 'critical'
+      severity = 'high'
     } else if (dToGyroRatio > 1.0) {
       severity = 'high'
     } else {

@@ -54,9 +54,9 @@ export const GyroNoiseRule: TuningRule = {
     }
 
     // Classify severity based on gyroRMS
-    let severity: 'low' | 'medium' | 'high' | 'critical'
+    let severity: 'low' | 'medium' | 'high'
     if (gyroRMS > 15) {
-      severity = 'critical'
+      severity = 'high'
     } else if (gyroRMS > 10) {
       severity = 'high'
     } else if (gyroRMS > 5) {

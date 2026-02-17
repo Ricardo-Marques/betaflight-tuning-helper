@@ -51,9 +51,9 @@ export const PropwashRule: TuningRule = {
 
     // Classify severity based on amplitude and duration
     // Well-tuned quads target < 15 deg/s propwash
-    let severity: 'low' | 'medium' | 'high' | 'critical'
+    let severity: 'low' | 'medium' | 'high'
     if (metrics.amplitude > 50 || metrics.duration > 120) {
-      severity = 'critical'
+      severity = 'high'
     } else if (metrics.amplitude > 30 || metrics.duration > 80) {
       severity = 'high'
     } else if (metrics.amplitude > 18) {
@@ -194,7 +194,7 @@ export const PropwashRule: TuningRule = {
       }
 
       // Additional recommendation for master multiplier if widespread
-      if (severity === 'critical' || severity === 'high') {
+      if (severity === 'high') {
         recommendations.push({
           id: generateId(),
           issueId: issue.id,
@@ -234,5 +234,5 @@ function generateId(): string {
   })
 }
 
-type Severity = 'low' | 'medium' | 'high' | 'critical'
+type Severity = 'low' | 'medium' | 'high'
 const severity: Severity = 'low' // Just to satisfy type checking

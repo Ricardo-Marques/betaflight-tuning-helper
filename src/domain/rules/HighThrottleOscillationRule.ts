@@ -53,9 +53,9 @@ export const HighThrottleOscillationRule: TuningRule = {
     const amplitude = Math.max(...error.map(Math.abs)) * 2
 
     // Classify severity based on amplitude
-    let severity: 'low' | 'medium' | 'high' | 'critical'
+    let severity: 'low' | 'medium' | 'high'
     if (amplitude > 50) {
-      severity = 'critical'
+      severity = 'high'
     } else if (amplitude > 30) {
       severity = 'high'
     } else if (amplitude > 18) {

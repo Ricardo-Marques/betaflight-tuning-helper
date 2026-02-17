@@ -92,9 +92,9 @@ export const TrackingQualityRule: TuningRule = {
     }
 
     // Determine severity based on normalized error
-    let severity: 'low' | 'medium' | 'high' | 'critical'
+    let severity: 'low' | 'medium' | 'high'
     if (normalizedError > 60) {
-      severity = 'critical' // Quad barely responding
+      severity = 'high' // Quad barely responding
     } else if (normalizedError > 40) {
       severity = 'high' // Significantly delayed
     } else if (normalizedError > 25) {
@@ -166,7 +166,7 @@ export const TrackingQualityRule: TuningRule = {
     // Generate recommendations for each axis
     for (const [axis, axisIssues] of issuesByAxis) {
       // Find the most severe issue
-      const severityOrder = { critical: 4, high: 3, medium: 2, low: 1 }
+      const severityOrder = { high: 3, medium: 2, low: 1 }
       const worstIssue = axisIssues.reduce((worst, current) =>
         severityOrder[current.severity] > severityOrder[worst.severity] ? current : worst
       )
@@ -265,7 +265,7 @@ export const TrackingQualityRule: TuningRule = {
     const highErrorAxes = Array.from(issuesByAxis.values()).filter(axisIssues =>
       axisIssues.some(
         issue =>
-          (issue.severity === 'high' || issue.severity === 'critical') &&
+          issue.severity === 'high' &&
           (issue.metrics.normalizedError || 0) > 35
       )
     )
@@ -276,8 +276,7 @@ export const TrackingQualityRule: TuningRule = {
         .flat()
         .filter(
           issue =>
-            issue.severity === 'high' ||
-            (issue.severity === 'critical' && (issue.metrics.normalizedError || 0) > 35)
+            issue.severity === 'high'
         )
       const worstGlobalIssue = allHighIssues[0]
 
