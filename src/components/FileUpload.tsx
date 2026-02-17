@@ -74,7 +74,7 @@ export const FileUpload = observer(() => {
             <p className="text-sm text-gray-500 mb-4">or click to browse</p>
             <input
               type="file"
-              accept=".bbl,.txt,.csv"
+              accept=".bbl,.bfl,.txt,.csv"
               onChange={handleFileInput}
               className="hidden"
               id="file-upload"
@@ -86,7 +86,7 @@ export const FileUpload = observer(() => {
               Select File
             </label>
             <p className="text-xs text-gray-400 mt-4">
-              Supports .bbl, .txt, .csv (Betaflight Blackbox)
+              Supports .bbl, .bfl, .txt, .csv (Betaflight Blackbox)
             </p>
           </>
         )}

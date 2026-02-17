@@ -69,10 +69,10 @@ export class LogStore {
   uploadFile = async (file: File): Promise<void> => {
     // Determine file type
     const extension = file.name.split('.').pop()?.toLowerCase()
-    if (!extension || !['bbl', 'txt', 'csv'].includes(extension)) {
+    if (!extension || !['bbl', 'bfl', 'txt', 'csv'].includes(extension)) {
       runInAction(() => {
         this.parseStatus = 'error'
-        this.parseError = 'Unsupported file type. Please upload a .bbl or .txt file.'
+        this.parseError = 'Unsupported file type. Please upload a .bbl, .bfl, .txt, or .csv file.'
       })
       return
     }
@@ -140,7 +140,7 @@ export class LogStore {
     // Start parsing
     this.worker.postMessage({
       file,
-      fileType: extension === 'txt' || extension === 'csv' ? 'txt' : extension,
+      fileType: extension === 'txt' || extension === 'csv' ? 'txt' : 'bbl',
     })
   }
 

@@ -6,7 +6,7 @@ Client-side web app that analyzes Betaflight Blackbox logs and generates actiona
 
 ## Features
 
-**Log parsing** — Upload `.txt` or `.csv` files exported from Blackbox Explorer. Parsed in a Web Worker so the UI stays responsive. Handles 10MB+ logs.
+**Log parsing** — Upload `.bbl` files directly from your flight controller, or `.txt`/`.csv` exports from Blackbox Explorer. Binary BBL parsing uses the `blackbox-log` WASM package. Parsed in a Web Worker so the UI stays responsive. Handles 10MB+ logs.
 
 **8 detection rules** — The rule engine analyzes overlapping time windows across roll, pitch, and yaw:
 
@@ -40,8 +40,7 @@ npm run dev        # http://localhost:5173
 
 ### Usage
 
-1. Export a blackbox log as `.txt` from Blackbox Explorer
-2. Drag and drop the file into the app
+1. Drag and drop a `.bbl` file from your flight controller (or a `.txt`/`.csv` export from Blackbox Explorer)
 3. Click **Analyze Log**
 4. Review detected issues and recommendations
 5. Apply changes in Betaflight Configurator
@@ -100,7 +99,7 @@ export const MyRule: TuningRule = {
 
 ## Known Limitations
 
-- Binary `.bbl` files not supported — export as `.txt` from Blackbox Explorer
+- Multi-log BBL files: only the first log is parsed (most common case)
 - Files > 50MB may slow the browser
 - Simplified FFT (sufficient for tuning, not research-grade)
 - Cannot extract current PID values from the log itself

@@ -26,7 +26,7 @@ No test framework is set up yet.
   - `UIStore` — Axis selection, zoom, chart toggles
   - `RootStore` — Composes all stores, provides React context
 - **Components** (`src/components/`) — React 18 with `observer()` from mobx-react-lite
-- **Workers** (`src/workers/logParser.worker.ts`) — Parses .txt/.csv in background thread
+- **Workers** (`src/workers/logParser.worker.ts`) — Parses .bbl (via `blackbox-log` WASM), .txt/.csv in background thread
 
 ## Key Patterns
 

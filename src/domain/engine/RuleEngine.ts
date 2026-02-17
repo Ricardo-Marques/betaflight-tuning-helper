@@ -454,12 +454,18 @@ export class RuleEngine {
       const last = mergedSegments[mergedSegments.length - 1]
       if (last && last.phase === seg.phase) {
         last.endTime = seg.endTime
-        last.issueCount += seg.issueCount
         const dur = (last.endTime - last.startTime) / 1_000_000
         last.description = `${last.phase.charAt(0).toUpperCase() + last.phase.slice(1)} (${dur.toFixed(1)}s)`
       } else {
         mergedSegments.push({ ...seg })
       }
+    }
+
+    // Recount issues against merged time ranges instead of summing sub-segment counts
+    for (const seg of mergedSegments) {
+      seg.issueCount = issues.filter(
+        issue => issue.timeRange[0] <= seg.endTime && issue.timeRange[1] >= seg.startTime
+      ).length
     }
 
     return mergedSegments

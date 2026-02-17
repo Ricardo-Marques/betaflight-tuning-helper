@@ -1,4 +1,5 @@
 import { LogFrame, LogMetadata } from '../domain/types/LogFrame'
+import { Parser, getWasm, ParserEventKind, type LogFile } from 'blackbox-log'
 
 /**
  * Web Worker for parsing Betaflight blackbox logs
@@ -280,8 +281,16 @@ async function parseTxtLog(file: File): Promise<void> {
     }
   }
 
+  // Zero-base timestamps so chart starts at 0
   if (frames.length > 0) {
-    metadata.duration = (frames[frames.length - 1].time - frames[0].time) / 1000000 // Convert to seconds
+    const timeOffset = frames[0].time
+    for (const frame of frames) {
+      frame.time -= timeOffset
+    }
+  }
+
+  if (frames.length > 0) {
+    metadata.duration = frames[frames.length - 1].time / 1_000_000 // Already zero-based
   }
 
   postProgress(95, 'Finalizing...')
@@ -297,16 +306,171 @@ async function parseTxtLog(file: File): Promise<void> {
 }
 
 /**
- * Parse binary Betaflight blackbox log (.bbl)
- * Note: This is a simplified parser. Full BBL parsing is complex.
+ * Parse binary Betaflight blackbox log (.bbl / .bfl)
+ * Uses the blackbox-log WASM package for decoding.
  */
-async function parseBblLog(_file: File): Promise<void> {
-  postProgress(0, 'Binary log parsing not fully implemented')
+async function parseBblLog(file: File): Promise<void> {
+  postProgress(0, 'Reading binary file...')
+  const buffer = await file.arrayBuffer()
 
-  // For now, throw error - BBL parsing requires complex binary decoding
-  throw new Error(
-    'Binary .bbl parsing not yet implemented. Please export log as .txt/.csv from Blackbox Explorer.'
-  )
+  postProgress(5, 'Initializing BBL parser...')
+  let logFile: LogFile | null = null
+
+  try {
+    const parser = await Parser.init(await getWasm())
+
+    postProgress(10, 'Loading log file...')
+    logFile = parser.loadFile(buffer)
+    const logCount = logFile.logCount
+
+    if (logCount === 0) {
+      throw new Error('No valid logs found in BBL file')
+    }
+
+    if (logCount > 1) {
+      console.log(`BBL file contains ${logCount} logs. Parsing first log only.`)
+    }
+
+    postProgress(15, 'Parsing headers...')
+    const headers = logFile.parseHeaders(0)
+    if (!headers) {
+      throw new Error('Failed to parse log headers')
+    }
+
+    // Collect available field names from frame definition
+    const fieldNames: string[] = []
+    for (const [name] of headers.mainFrameDef) {
+      fieldNames.push(name)
+    }
+
+    // Extract looptime from unknown headers (raw header values)
+    const unknownHeaders = headers.unknown
+    const looptimeStr = unknownHeaders?.get('looptime') ?? '125'
+    const looptime = parseInt(looptimeStr) || 125
+    const frameIntervalPDenom = parseInt(unknownHeaders?.get('frameIntervalPDenom') ?? '1') || 1
+    const effectiveLooptime = looptime * frameIntervalPDenom
+
+    // Build metadata
+    const metadata: LogMetadata = {
+      firmwareVersion: headers.firmwareVersion?.toString() ?? 'Unknown',
+      firmwareType: headers.firmwareKind ?? 'Betaflight',
+      looptime: 1000000 / effectiveLooptime,
+      gyroRate: 1000000 / looptime,
+      motorCount: fieldNames.filter(f => f.startsWith('motor[')).length || 4,
+      fieldNames,
+      craftName: headers.craftName ?? undefined,
+      debugMode: headers.debugMode ?? undefined,
+      frameCount: 0,
+      duration: 0,
+    }
+
+    // Parse frames
+    postProgress(20, 'Decoding frames...')
+    const dataParser = headers.getDataParser()
+    const frames: LogFrame[] = []
+
+    for (const event of dataParser) {
+      if (event.kind === ParserEventKind.MainFrame) {
+        const fields = event.data.fields
+        const time = event.data.time * 1_000_000 // seconds → microseconds
+
+        frames.push({
+          time,
+          loopIteration: fields.get('loopIteration') ?? frames.length,
+
+          gyroADC: {
+            roll:  fields.get('gyroADC[0]') ?? 0,
+            pitch: fields.get('gyroADC[1]') ?? 0,
+            yaw:   fields.get('gyroADC[2]') ?? 0,
+          },
+
+          setpoint: {
+            roll:  fields.get('setpoint[0]') ?? 0,
+            pitch: fields.get('setpoint[1]') ?? 0,
+            yaw:   fields.get('setpoint[2]') ?? 0,
+          },
+
+          pidP: {
+            roll:  fields.get('axisP[0]') ?? 0,
+            pitch: fields.get('axisP[1]') ?? 0,
+            yaw:   fields.get('axisP[2]') ?? 0,
+          },
+
+          pidI: {
+            roll:  fields.get('axisI[0]') ?? 0,
+            pitch: fields.get('axisI[1]') ?? 0,
+            yaw:   fields.get('axisI[2]') ?? 0,
+          },
+
+          pidD: {
+            roll:  fields.get('axisD[0]') ?? 0,
+            pitch: fields.get('axisD[1]') ?? 0,
+            yaw:   fields.get('axisD[2]') ?? 0,
+          },
+
+          pidSum: {
+            roll:  (fields.get('axisP[0]') ?? 0) + (fields.get('axisI[0]') ?? 0) + (fields.get('axisD[0]') ?? 0),
+            pitch: (fields.get('axisP[1]') ?? 0) + (fields.get('axisI[1]') ?? 0) + (fields.get('axisD[1]') ?? 0),
+            yaw:   (fields.get('axisP[2]') ?? 0) + (fields.get('axisI[2]') ?? 0) + (fields.get('axisD[2]') ?? 0),
+          },
+
+          motor: [
+            fields.get('motor[0]') ?? 1000,
+            fields.get('motor[1]') ?? 1000,
+            fields.get('motor[2]') ?? 1000,
+            fields.get('motor[3]') ?? 1000,
+          ],
+
+          rcCommand: {
+            roll:     fields.get('rcCommand[0]') ?? 0,
+            pitch:    fields.get('rcCommand[1]') ?? 0,
+            yaw:      fields.get('rcCommand[2]') ?? 0,
+            throttle: fields.get('rcCommand[3]') ?? 1000,
+          },
+
+          throttle: fields.get('rcCommand[3]') ?? 1000,
+        })
+
+        if (frames.length % 5000 === 0) {
+          const stats = dataParser.stats()
+          const progress = 20 + Math.floor(stats.progress * 70)
+          postProgress(progress, `Decoded ${frames.length} frames...`)
+        }
+      }
+    }
+
+    dataParser.free()
+
+    if (frames.length === 0) {
+      throw new Error('No frames found in BBL log')
+    }
+
+    // Zero-base timestamps (BBL contains absolute time since FC power-on)
+    const timeOffset = frames[0].time
+    for (const frame of frames) {
+      frame.time -= timeOffset
+    }
+
+    // Finalize metadata
+    metadata.frameCount = frames.length
+    metadata.duration = frames[frames.length - 1].time / 1_000_000
+
+    postProgress(95, 'Finalizing...')
+
+    const completeMessage: ParseCompleteMessage = {
+      type: 'complete',
+      frames,
+      metadata,
+    }
+
+    postProgress(100, 'Complete!')
+    self.postMessage(completeMessage)
+  } catch (error) {
+    if (error instanceof Error) throw error
+    throw new Error('Failed to parse BBL file: ' + String(error))
+  } finally {
+    logFile?.free()
+  }
 }
 
 /**
