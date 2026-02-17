@@ -1,5 +1,5 @@
 import { LogFrame, LogMetadata } from '../domain/types/LogFrame'
-import { Parser, getWasm, ParserEventKind, type LogFile } from 'blackbox-log'
+import { parseBblBuffer } from '../domain/blackbox/index.ts'
 
 /**
  * Web Worker for parsing Betaflight blackbox logs
@@ -290,16 +290,7 @@ async function parseTxtLog(file: File): Promise<void> {
   // Update metadata with actual frame count and duration
   metadata.frameCount = frames.length
 
-  // Detect and normalize time units
-  const timeMultiplier = detectTimeUnit(frames, metadata.looptime)
-
-  // Normalize all frame times to microseconds
-  if (timeMultiplier !== 1) {
-    console.log(`Detected time unit: ${timeMultiplier === 1000 ? 'milliseconds' : timeMultiplier === 1000000 ? 'seconds' : 'microseconds'} (multiplier: ${timeMultiplier})`)
-    for (const frame of frames) {
-      frame.time *= timeMultiplier
-    }
-  }
+  // Betaflight CSV exports always store time in microseconds — no conversion needed.
 
   // Zero-base timestamps so chart starts at 0
   if (frames.length > 0) {
@@ -327,180 +318,27 @@ async function parseTxtLog(file: File): Promise<void> {
 
 /**
  * Parse binary Betaflight blackbox log (.bbl / .bfl)
- * Uses the blackbox-log WASM package for decoding.
+ * Uses native TypeScript parser (no WASM dependency).
  */
 async function parseBblLog(file: File): Promise<void> {
   postProgress(0, 'Reading binary file...')
   const buffer = await file.arrayBuffer()
+  const data = new Uint8Array(buffer)
 
-  postProgress(5, 'Initializing BBL parser...')
-  let logFile: LogFile | null = null
+  const { frames, metadata } = parseBblBuffer(data, (progress, message) => {
+    postProgress(progress, message)
+  })
 
-  try {
-    const parser = await Parser.init(await getWasm())
+  postProgress(95, 'Finalizing...')
 
-    postProgress(10, 'Loading log file...')
-    logFile = parser.loadFile(buffer)
-    const logCount = logFile.logCount
-
-    if (logCount === 0) {
-      throw new Error('No valid logs found in BBL file')
-    }
-
-    if (logCount > 1) {
-      console.log(`BBL file contains ${logCount} logs. Parsing first log only.`)
-    }
-
-    postProgress(15, 'Parsing headers...')
-    const headers = logFile.parseHeaders(0)
-    if (!headers) {
-      throw new Error('Failed to parse log headers')
-    }
-
-    // Collect available field names from frame definition
-    const fieldNames: string[] = []
-    for (const [name] of headers.mainFrameDef) {
-      fieldNames.push(name)
-    }
-
-    // Extract looptime from unknown headers (raw header values)
-    const unknownHeaders = headers.unknown
-    const looptimeStr = unknownHeaders?.get('looptime') ?? '125'
-    const looptime = parseInt(looptimeStr) || 125
-    const frameIntervalPDenom = parseInt(unknownHeaders?.get('frameIntervalPDenom') ?? '1') || 1
-    const effectiveLooptime = looptime * frameIntervalPDenom
-
-    // Build metadata
-    const metadata: LogMetadata = {
-      firmwareVersion: headers.firmwareVersion?.toString() ?? 'Unknown',
-      firmwareType: headers.firmwareKind ?? 'Betaflight',
-      looptime: 1000000 / effectiveLooptime,
-      gyroRate: 1000000 / looptime,
-      motorCount: fieldNames.filter(f => f.startsWith('motor[')).length || 4,
-      fieldNames,
-      craftName: headers.craftName ?? undefined,
-      debugMode: headers.debugMode ?? undefined,
-      frameCount: 0,
-      duration: 0,
-    }
-
-    // Parse frames
-    postProgress(20, 'Decoding frames...')
-    const dataParser = headers.getDataParser()
-    const frames: LogFrame[] = []
-
-    for (const event of dataParser) {
-      if (event.kind === ParserEventKind.MainFrame) {
-        const fields = event.data.fields
-        const time = event.data.time * 1_000_000 // seconds → microseconds
-
-        frames.push({
-          time,
-          loopIteration: fields.get('loopIteration') ?? frames.length,
-
-          gyroADC: {
-            roll:  fields.get('gyroADC[0]') ?? 0,
-            pitch: fields.get('gyroADC[1]') ?? 0,
-            yaw:   fields.get('gyroADC[2]') ?? 0,
-          },
-
-          setpoint: {
-            roll:  fields.get('setpoint[0]') ?? 0,
-            pitch: fields.get('setpoint[1]') ?? 0,
-            yaw:   fields.get('setpoint[2]') ?? 0,
-          },
-
-          pidP: {
-            roll:  fields.get('axisP[0]') ?? 0,
-            pitch: fields.get('axisP[1]') ?? 0,
-            yaw:   fields.get('axisP[2]') ?? 0,
-          },
-
-          pidI: {
-            roll:  fields.get('axisI[0]') ?? 0,
-            pitch: fields.get('axisI[1]') ?? 0,
-            yaw:   fields.get('axisI[2]') ?? 0,
-          },
-
-          pidD: {
-            roll:  fields.get('axisD[0]') ?? 0,
-            pitch: fields.get('axisD[1]') ?? 0,
-            yaw:   fields.get('axisD[2]') ?? 0,
-          },
-
-          pidSum: {
-            roll:  (fields.get('axisP[0]') ?? 0) + (fields.get('axisI[0]') ?? 0) + (fields.get('axisD[0]') ?? 0),
-            pitch: (fields.get('axisP[1]') ?? 0) + (fields.get('axisI[1]') ?? 0) + (fields.get('axisD[1]') ?? 0),
-            yaw:   (fields.get('axisP[2]') ?? 0) + (fields.get('axisI[2]') ?? 0) + (fields.get('axisD[2]') ?? 0),
-          },
-
-          motor: [
-            fields.get('motor[0]') ?? 1000,
-            fields.get('motor[1]') ?? 1000,
-            fields.get('motor[2]') ?? 1000,
-            fields.get('motor[3]') ?? 1000,
-          ],
-
-          rcCommand: {
-            roll:     fields.get('rcCommand[0]') ?? 0,
-            pitch:    fields.get('rcCommand[1]') ?? 0,
-            yaw:      fields.get('rcCommand[2]') ?? 0,
-            throttle: fields.get('rcCommand[3]') ?? 1000,
-          },
-
-          throttle: fields.get('rcCommand[3]') ?? 1000,
-        })
-
-        if (frames.length % 5000 === 0) {
-          const stats = dataParser.stats()
-          const progress = 20 + Math.floor(stats.progress * 70)
-          postProgress(progress, `Decoded ${frames.length} frames...`)
-        }
-      }
-    }
-
-    dataParser.free()
-
-    if (frames.length === 0) {
-      throw new Error('No frames found in BBL log')
-    }
-
-    // Zero-base timestamps (BBL contains absolute time since FC power-on)
-    const timeOffset = frames[0].time
-    for (const frame of frames) {
-      frame.time -= timeOffset
-    }
-
-    // Finalize metadata
-    metadata.frameCount = frames.length
-    metadata.duration = frames[frames.length - 1].time / 1_000_000
-
-    postProgress(95, 'Finalizing...')
-
-    const completeMessage: ParseCompleteMessage = {
-      type: 'complete',
-      frames,
-      metadata,
-    }
-
-    postProgress(100, 'Complete!')
-    self.postMessage(completeMessage)
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error)
-    // The blackbox-log WASM library doesn't support newer Betaflight versions (4.5+).
-    // Detect this and provide a helpful workaround message.
-    if (/not supported/i.test(msg)) {
-      throw new Error(
-        msg +
-        '. As a workaround, open the .bbl file in Betaflight Blackbox Explorer, ' +
-        'export it as CSV, then upload the .csv file here instead.'
-      )
-    }
-    if (error instanceof Error) throw error
-    throw new Error('Failed to parse BBL file: ' + msg)
-  } finally {
-    logFile?.free()
+  const completeMessage: ParseCompleteMessage = {
+    type: 'complete',
+    frames,
+    metadata,
   }
+
+  postProgress(100, 'Complete!')
+  self.postMessage(completeMessage)
 }
 
 /**
@@ -545,35 +383,6 @@ function extractMetadata(
     frameCount: 0, // Will be updated after parsing
     duration: 0, // Will be updated after parsing
   }
-}
-
-/**
- * Detect time units from actual time values
- * Returns multiplier to convert to microseconds
- */
-function detectTimeUnit(frames: LogFrame[], looptime: number): number {
-  if (frames.length < 2) return 1000 // Default to milliseconds
-
-  const timeDiff = frames[frames.length - 1].time - frames[0].time
-  const expectedFrames = frames.length
-
-  // Expected time per frame in microseconds (from looptime which is in Hz)
-  const looptimeMicroseconds = 1000000 / looptime
-  const expectedDiffMicroseconds = expectedFrames * looptimeMicroseconds
-
-  // Check which multiplier gets us closest to expected
-  const ratioIfMicroseconds = timeDiff / expectedDiffMicroseconds
-  const ratioIfMilliseconds = (timeDiff * 1000) / expectedDiffMicroseconds
-  const ratioIfSeconds = (timeDiff * 1000000) / expectedDiffMicroseconds
-
-  // Return multiplier that gets us closest to 1.0 ratio
-  if (Math.abs(ratioIfMicroseconds - 1) < 0.5) return 1 // Already microseconds
-  if (Math.abs(ratioIfMilliseconds - 1) < 0.5) return 1000 // Milliseconds
-  if (Math.abs(ratioIfSeconds - 1) < 0.5) return 1000000 // Seconds
-
-  // Default to milliseconds for custom logs
-  console.warn(`Time unit detection ambiguous. Defaulting to milliseconds.`)
-  return 1000
 }
 
 /**

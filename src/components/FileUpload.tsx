@@ -1,9 +1,9 @@
 import { observer } from 'mobx-react-lite'
-import { useLogStore } from '../stores/RootStore'
+import { useStores } from '../stores/RootStore'
 import { useState, useCallback } from 'react'
 
 export const FileUpload = observer(() => {
-  const logStore = useLogStore()
+  const { logStore, uiStore, analysisStore } = useStores()
   const [isDragging, setIsDragging] = useState(false)
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -23,20 +23,22 @@ export const FileUpload = observer(() => {
 
       const files = Array.from(e.dataTransfer.files)
       if (files.length > 0) {
+        uiStore.setZoom(0, 100)
         logStore.uploadFile(files[0])
       }
     },
-    [logStore]
+    [logStore, uiStore]
   )
 
   const handleFileInput = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files
       if (files && files.length > 0) {
+        uiStore.setZoom(0, 100)
         logStore.uploadFile(files[0])
       }
     },
-    [logStore]
+    [logStore, uiStore]
   )
 
   return (
@@ -152,7 +154,7 @@ export const FileUpload = observer(() => {
             </div>
             <button
               data-testid="upload-different-file"
-              onClick={() => logStore.reset()}
+              onClick={() => { logStore.reset(); analysisStore.reset(); uiStore.reset() }}
               className="mt-4 text-sm text-blue-600 hover:text-blue-800"
             >
               Upload different file
@@ -180,7 +182,7 @@ export const FileUpload = observer(() => {
             <p data-testid="parse-error-text" className="text-lg font-medium text-red-700 mb-2">Parse failed</p>
             <p className="text-sm text-red-600">{logStore.parseError}</p>
             <button
-              onClick={() => logStore.reset()}
+              onClick={() => { logStore.reset(); analysisStore.reset(); uiStore.reset() }}
               className="mt-4 text-sm text-blue-600 hover:text-blue-800"
             >
               Try again
