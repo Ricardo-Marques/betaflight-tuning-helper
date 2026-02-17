@@ -1,4 +1,3 @@
-import { AxisData } from './LogFrame'
 
 /**
  * Time window of frames for analysis
@@ -105,6 +104,15 @@ export interface IssueMetrics {
 
   /** Dominant frequency band */
   dominantBand?: FrequencyBand
+
+  /** Normalized tracking error (percentage of setpoint) */
+  normalizedError?: number
+
+  /** Amplitude ratio: gyro RMS / setpoint RMS (percentage) */
+  amplitudeRatio?: number
+
+  /** Signal-to-noise ratio */
+  signalToNoise?: number
 }
 
 export type FrequencyBand = 'low' | 'mid' | 'high'

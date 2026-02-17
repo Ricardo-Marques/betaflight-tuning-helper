@@ -3,7 +3,6 @@ import { AnalysisWindow, DetectedIssue, Recommendation } from '../types/Analysis
 import { LogFrame } from '../types/LogFrame'
 import { calculateRMS, calculateError, calculateStdDev } from '../utils/FrequencyAnalysis'
 import { extractAxisData } from '../utils/SignalAnalysis'
-import { v4 as uuidv4 } from 'uuid'
 
 /**
  * Detects poor tracking quality during active flight maneuvers
@@ -17,7 +16,7 @@ export const TrackingQualityRule: TuningRule = {
   issueTypes: ['underdamped', 'overdamped', 'lowFrequencyOscillation'],
   applicableAxes: ['roll', 'pitch'],
 
-  condition: (window: AnalysisWindow, frames: LogFrame[]): boolean => {
+  condition: (window: AnalysisWindow, _frames: LogFrame[]): boolean => {
     // Analyze active flight maneuvers - the gap other rules don't cover
     // Use RMS setpoint instead of hasStickInput flag to catch smaller movements
     return (
@@ -145,7 +144,7 @@ export const TrackingQualityRule: TuningRule = {
     return issues
   },
 
-  recommend: (issues: DetectedIssue[], frames: LogFrame[]): Recommendation[] => {
+  recommend: (issues: DetectedIssue[], _frames: LogFrame[]): Recommendation[] => {
     const recommendations: Recommendation[] = []
 
     // Group issues by axis to detect widespread problems

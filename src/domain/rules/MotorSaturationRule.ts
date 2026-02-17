@@ -22,7 +22,7 @@ export const MotorSaturationRule: TuningRule = {
   issueTypes: ['motorSaturation'],
   applicableAxes: ['roll'], // Global issue, use roll only to avoid 3x duplicates
 
-  condition: (window: AnalysisWindow, frames: LogFrame[]): boolean => {
+  condition: (window: AnalysisWindow, _frames: LogFrame[]): boolean => {
     // Only analyze windows with active flight (throttle above idle)
     return window.metadata.avgThrottle > 1300
   },
@@ -68,7 +68,7 @@ export const MotorSaturationRule: TuningRule = {
     return issues
   },
 
-  recommend: (issues: DetectedIssue[], frames: LogFrame[]): Recommendation[] => {
+  recommend: (issues: DetectedIssue[], _frames: LogFrame[]): Recommendation[] => {
     const recommendations: Recommendation[] = []
 
     for (const issue of issues) {

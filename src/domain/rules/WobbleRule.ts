@@ -14,7 +14,7 @@ export const WobbleRule: TuningRule = {
   issueTypes: ['lowFrequencyOscillation', 'midThrottleWobble', 'highFrequencyNoise'],
   applicableAxes: ['roll', 'pitch'],
 
-  condition: (window: AnalysisWindow, frames: LogFrame[]): boolean => {
+  condition: (window: AnalysisWindow, _frames: LogFrame[]): boolean => {
     // Only analyze mid-throttle cruise without stick input
     return (
       window.metadata.avgThrottle >= 1200 &&
@@ -85,11 +85,10 @@ export const WobbleRule: TuningRule = {
     return issues
   },
 
-  recommend: (issues: DetectedIssue[], frames: LogFrame[]): Recommendation[] => {
+  recommend: (issues: DetectedIssue[], _frames: LogFrame[]): Recommendation[] => {
     const recommendations: Recommendation[] = []
 
     for (const issue of issues) {
-      const frequency = issue.metrics.frequency || 0
       const amplitude = issue.metrics.amplitude || 0
       const band = issue.metrics.dominantBand
 

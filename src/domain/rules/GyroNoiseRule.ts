@@ -23,7 +23,7 @@ export const GyroNoiseRule: TuningRule = {
   issueTypes: ['gyroNoise'],
   applicableAxes: ['roll', 'pitch', 'yaw'],
 
-  condition: (window: AnalysisWindow, frames: LogFrame[]): boolean => {
+  condition: (window: AnalysisWindow, _frames: LogFrame[]): boolean => {
     // Hover/low cruise without stick input
     return (
       !window.metadata.hasStickInput &&
@@ -84,7 +84,7 @@ export const GyroNoiseRule: TuningRule = {
     return issues
   },
 
-  recommend: (issues: DetectedIssue[], frames: LogFrame[]): Recommendation[] => {
+  recommend: (issues: DetectedIssue[], _frames: LogFrame[]): Recommendation[] => {
     const recommendations: Recommendation[] = []
 
     for (const issue of issues) {

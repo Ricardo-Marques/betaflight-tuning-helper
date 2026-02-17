@@ -14,7 +14,7 @@ export const PropwashRule: TuningRule = {
   issueTypes: ['propwash'],
   applicableAxes: ['roll', 'pitch'],
 
-  condition: (window: AnalysisWindow, frames: LogFrame[]): boolean => {
+  condition: (window: AnalysisWindow, _frames: LogFrame[]): boolean => {
     // Look for windows with throttle drops and low stick input
     return (
       window.metadata.avgThrottle < 1500 &&
@@ -84,7 +84,7 @@ export const PropwashRule: TuningRule = {
     return issues
   },
 
-  recommend: (issues: DetectedIssue[], frames: LogFrame[]): Recommendation[] => {
+  recommend: (issues: DetectedIssue[], _frames: LogFrame[]): Recommendation[] => {
     const recommendations: Recommendation[] = []
 
     for (const issue of issues) {

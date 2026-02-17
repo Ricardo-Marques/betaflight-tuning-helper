@@ -2,7 +2,6 @@ import { TuningRule } from '../types/TuningRule'
 import { AnalysisWindow, DetectedIssue, Recommendation } from '../types/Analysis'
 import { LogFrame } from '../types/LogFrame'
 import { detectBounceback, extractAxisData, deriveSampleRate } from '../utils/SignalAnalysis'
-import { v4 as uuidv4 } from 'uuid'
 
 /**
  * Detects bounceback after rapid stick movements and recommends D/P adjustments
@@ -15,7 +14,7 @@ export const BouncebackRule: TuningRule = {
   issueTypes: ['bounceback'],
   applicableAxes: ['roll', 'pitch'],
 
-  condition: (window: AnalysisWindow, frames: LogFrame[]): boolean => {
+  condition: (window: AnalysisWindow, _frames: LogFrame[]): boolean => {
     // Only analyze windows with significant stick input followed by release
     // 50 deg/s is a meaningful deliberate stick movement (200 was unrealistically high)
     return window.metadata.maxSetpoint > 50 && window.metadata.hasStickInput
@@ -57,7 +56,7 @@ export const BouncebackRule: TuningRule = {
 
     // Calculate confidence based on signal quality
     const gyro = extractAxisData(windowFrames, 'gyroADC', window.axis)
-    const setpoint = extractAxisData(windowFrames, 'setpoint', window.axis)
+    extractAxisData(windowFrames, 'setpoint', window.axis)
     const signalToNoise = Math.abs(metrics.overshoot) / (calculateStdDev(gyro) + 1)
     const confidence = Math.min(0.95, 0.6 + signalToNoise * 0.1)
 
@@ -79,7 +78,7 @@ export const BouncebackRule: TuningRule = {
     return issues
   },
 
-  recommend: (issues: DetectedIssue[], frames: LogFrame[]): Recommendation[] => {
+  recommend: (issues: DetectedIssue[], _frames: LogFrame[]): Recommendation[] => {
     const recommendations: Recommendation[] = []
 
     for (const issue of issues) {

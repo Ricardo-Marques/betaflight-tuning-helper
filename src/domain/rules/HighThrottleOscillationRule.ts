@@ -23,7 +23,7 @@ export const HighThrottleOscillationRule: TuningRule = {
   issueTypes: ['highThrottleOscillation'],
   applicableAxes: ['roll', 'pitch'],
 
-  condition: (window: AnalysisWindow, frames: LogFrame[]): boolean => {
+  condition: (window: AnalysisWindow, _frames: LogFrame[]): boolean => {
     // Only analyze high-throttle windows
     return window.metadata.avgThrottle > 1600
   },
@@ -84,7 +84,7 @@ export const HighThrottleOscillationRule: TuningRule = {
     return issues
   },
 
-  recommend: (issues: DetectedIssue[], frames: LogFrame[]): Recommendation[] => {
+  recommend: (issues: DetectedIssue[], _frames: LogFrame[]): Recommendation[] => {
     const recommendations: Recommendation[] = []
 
     for (const issue of issues) {

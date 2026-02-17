@@ -23,7 +23,7 @@ export const DTermNoiseRule: TuningRule = {
   issueTypes: ['dtermNoise'],
   applicableAxes: ['roll', 'pitch'],
 
-  condition: (window: AnalysisWindow, frames: LogFrame[]): boolean => {
+  condition: (window: AnalysisWindow, _frames: LogFrame[]): boolean => {
     // Noise visible during calm flight with throttle above idle
     return window.metadata.avgThrottle > 1100 && !window.metadata.hasStickInput
   },
@@ -84,7 +84,7 @@ export const DTermNoiseRule: TuningRule = {
     return issues
   },
 
-  recommend: (issues: DetectedIssue[], frames: LogFrame[]): Recommendation[] => {
+  recommend: (issues: DetectedIssue[], _frames: LogFrame[]): Recommendation[] => {
     const recommendations: Recommendation[] = []
 
     for (const issue of issues) {

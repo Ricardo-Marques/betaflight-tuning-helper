@@ -1,4 +1,4 @@
-import { LogFrame, LogMetadata, AxisData, RcCommand } from '../domain/types/LogFrame'
+import { LogFrame, LogMetadata } from '../domain/types/LogFrame'
 
 /**
  * Web Worker for parsing Betaflight blackbox logs
@@ -22,7 +22,8 @@ interface ParseErrorMessage {
   error: string
 }
 
-type WorkerMessage = ParseProgressMessage | ParseCompleteMessage | ParseErrorMessage
+// Union of all worker message types
+export type WorkerMessage = ParseProgressMessage | ParseCompleteMessage | ParseErrorMessage
 
 self.onmessage = async (e: MessageEvent) => {
   const { file, fileType } = e.data
@@ -299,7 +300,7 @@ async function parseTxtLog(file: File): Promise<void> {
  * Parse binary Betaflight blackbox log (.bbl)
  * Note: This is a simplified parser. Full BBL parsing is complex.
  */
-async function parseBblLog(file: File): Promise<void> {
+async function parseBblLog(_file: File): Promise<void> {
   postProgress(0, 'Binary log parsing not fully implemented')
 
   // For now, throw error - BBL parsing requires complex binary decoding

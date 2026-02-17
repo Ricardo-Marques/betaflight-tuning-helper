@@ -148,9 +148,6 @@ export function detectPropwash(
   sampleRate: number
 ): PropwashMetrics {
   const throttle = frames.map(f => f.throttle)
-  const gyro = frames.map(f => getAxisValue(f.gyroADC, axis))
-  const setpoint = frames.map(f => getAxisValue(f.setpoint, axis))
-  const dterm = frames.map(f => getAxisValue(f.pidD, axis))
 
   // Detect rapid throttle drops - scale lookback window by sample rate
   let dropStartIndex = -1
@@ -252,7 +249,7 @@ export interface WobbleMetrics {
 export function detectMidThrottleWobble(
   frames: LogFrame[],
   axis: Axis,
-  sampleRate: number
+  _sampleRate: number
 ): WobbleMetrics {
   const throttle = frames.map(f => f.throttle)
   const gyro = frames.map(f => getAxisValue(f.gyroADC, axis))

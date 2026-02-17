@@ -118,7 +118,7 @@ export class RuleEngine {
 
     // Generate recommendations for each issue type
     for (const rule of this.rules) {
-      for (const [type, typeIssues] of issuesByType) {
+      for (const [, typeIssues] of issuesByType) {
         // Find issues this rule can address
         const relevantIssues = typeIssues.filter(issue => rule.issueTypes.includes(issue.type))
 
