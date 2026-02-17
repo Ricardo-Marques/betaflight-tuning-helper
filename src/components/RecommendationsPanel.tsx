@@ -175,7 +175,7 @@ export const RecommendationsPanel = observer(() => {
       <div className="p-4">
         <h3 className="text-md font-bold mb-3">Recommendations</h3>
         <div className="space-y-4">
-          {analysisStore.highPriorityRecommendations.map(rec => (
+          {analysisStore.recommendations.map(rec => (
             <RecommendationCard key={rec.id} recommendation={rec} />
           ))}
         </div>

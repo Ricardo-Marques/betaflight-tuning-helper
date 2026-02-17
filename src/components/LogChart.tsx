@@ -358,6 +358,8 @@ export const LogChart = observer(() => {
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis
               dataKey="time"
+              type="number"
+              domain={['dataMin', 'dataMax']}
               height={50}
               label={{ value: 'Time (s)', position: 'insideBottom', offset: -2 }}
               stroke="#6b7280"
