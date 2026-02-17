@@ -184,6 +184,15 @@ async function parseTxtLog(file: File): Promise<void> {
   // Throttle
   const throttleIdx = fieldIndex.get('throttle') ?? rcCommandThrottleIdx
 
+  // Validate essential fields exist
+  const hasTime = timeIdx >= 0 || loopIterationIdx >= 0
+  const hasGyro = gyroRollIdx >= 0
+  if (!hasTime || !hasGyro) {
+    throw new Error(
+      "This doesn't appear to be a Betaflight blackbox log. Expected fields like 'time', 'gyroADC[0]' were not found. Please upload a .bbl file from your flight controller or a .txt/.csv export from Blackbox Explorer."
+    )
+  }
+
   postProgress(30, 'Parsing frames...')
 
   // Parse data frames
@@ -265,6 +274,17 @@ async function parseTxtLog(file: File): Promise<void> {
       const progress = 30 + Math.floor(((i - dataStartIndex) / (lines.length - dataStartIndex)) * 60)
       postProgress(progress, `Parsed ${frames.length} frames...`)
     }
+  }
+
+  // Validate parsed frames
+  if (frames.length === 0) {
+    throw new Error(
+      'No data frames found in file. The file may be empty or corrupted.'
+    )
+  }
+
+  if (frames.length < 100) {
+    console.warn(`Only ${frames.length} frames found — log may be too short for meaningful analysis.`)
   }
 
   // Update metadata with actual frame count and duration

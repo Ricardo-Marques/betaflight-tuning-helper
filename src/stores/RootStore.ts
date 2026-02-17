@@ -15,6 +15,9 @@ export class RootStore {
     this.logStore = new LogStore()
     this.analysisStore = new AnalysisStore(this.logStore)
     this.uiStore = new UIStore()
+
+    // Wire auto-analyze: when parse completes, trigger analysis automatically
+    this.logStore.setAutoAnalyzer(this.analysisStore)
   }
 
   /**

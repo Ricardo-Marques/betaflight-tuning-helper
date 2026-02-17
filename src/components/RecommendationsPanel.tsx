@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { observer } from 'mobx-react-lite'
-import { useAnalysisStore, useLogStore } from '../stores/RootStore'
+import { useAnalysisStore, useLogStore, useUIStore } from '../stores/RootStore'
 import { Recommendation, DetectedIssue } from '../domain/types/Analysis'
 import { generateCliCommands } from '../domain/utils/CliExport'
 
@@ -138,15 +138,46 @@ export const RecommendationsPanel = observer(() => {
 })
 
 const IssueCard = observer(({ issue }: { issue: DetectedIssue }) => {
+  const analysisStore = useAnalysisStore()
+  const uiStore = useUIStore()
+  const logStore = useLogStore()
+
+  const handleClick = useCallback(() => {
+    analysisStore.selectIssue(issue.id)
+
+    // Zoom chart to center on this issue with ~2x padding
+    if (logStore.frames.length > 0) {
+      const firstTime = logStore.frames[0].time
+      const totalDuration =
+        logStore.frames[logStore.frames.length - 1].time - firstTime
+      if (totalDuration > 0) {
+        const issueSpan = issue.timeRange[1] - issue.timeRange[0]
+        const padding = Math.max(issueSpan, totalDuration * 0.02) // At least 2% of total
+        const startPct = Math.max(
+          0,
+          ((issue.timeRange[0] - padding - firstTime) / totalDuration) * 100
+        )
+        const endPct = Math.min(
+          100,
+          ((issue.timeRange[1] + padding - firstTime) / totalDuration) * 100
+        )
+        uiStore.setZoom(startPct, endPct)
+      }
+    }
+  }, [analysisStore, uiStore, logStore, issue])
+
+  const isSelected = analysisStore.selectedIssueId === issue.id
+
   return (
     <div
-      className={`p-3 rounded-lg border-l-4 ${
+      onClick={handleClick}
+      className={`p-3 rounded-lg border-l-4 cursor-pointer transition-shadow hover:shadow-md ${
         issue.severity === 'critical'
           ? 'bg-red-50 border-red-500'
           : issue.severity === 'high'
           ? 'bg-orange-50 border-orange-500'
           : 'bg-yellow-50 border-yellow-500'
-      }`}
+      } ${isSelected ? 'ring-2 ring-blue-500' : ''}`}
     >
       <div className="flex items-start justify-between mb-2">
         <h4 className="font-medium text-sm">{issue.description}</h4>

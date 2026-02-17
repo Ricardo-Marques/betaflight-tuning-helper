@@ -3,6 +3,11 @@ import { LogFrame, LogMetadata } from '../domain/types/LogFrame'
 
 export type ParseStatus = 'idle' | 'parsing' | 'success' | 'error'
 
+interface AutoAnalyzer {
+  analyze(): Promise<void>
+  reset(): void
+}
+
 /**
  * Store for log data and parsing state
  */
@@ -17,6 +22,13 @@ export class LogStore {
 
   // Worker reference
   private worker: Worker | null = null
+
+  // Auto-analyze reference (set after construction)
+  private autoAnalyzer: AutoAnalyzer | null = null
+
+  setAutoAnalyzer(analyzer: AutoAnalyzer): void {
+    this.autoAnalyzer = analyzer
+  }
 
   constructor() {
     makeObservable(this, {
@@ -113,6 +125,11 @@ export class LogStore {
         // Terminate worker
         this.worker?.terminate()
         this.worker = null
+
+        // Auto-analyze after successful parse
+        if (this.autoAnalyzer) {
+          this.autoAnalyzer.analyze()
+        }
       } else if (message.type === 'error') {
         runInAction(() => {
           this.parseStatus = 'error'

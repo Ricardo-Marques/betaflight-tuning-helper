@@ -14,27 +14,11 @@ export const LeftPanel = observer(() => {
         <FileUpload />
       </div>
 
-      {/* Analysis Button */}
+      {/* Analysis Status / Re-analyze */}
       {logStore.isLoaded && (
         <div className="p-4 border-b">
-          <button
-            onClick={() => analysisStore.analyze()}
-            disabled={analysisStore.analysisStatus === 'analyzing'}
-            className={`w-full px-4 py-2 rounded-lg font-medium transition-colors ${
-              analysisStore.analysisStatus === 'analyzing'
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
-            }`}
-          >
-            {analysisStore.analysisStatus === 'analyzing'
-              ? 'Analyzing...'
-              : analysisStore.isComplete
-              ? 'Re-analyze'
-              : 'Analyze Log'}
-          </button>
-
           {analysisStore.analysisStatus === 'analyzing' && (
-            <div className="mt-2">
+            <div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
                   className="bg-blue-600 h-2 rounded-full transition-all duration-300"
@@ -45,6 +29,15 @@ export const LeftPanel = observer(() => {
                 {analysisStore.analysisMessage}
               </p>
             </div>
+          )}
+
+          {analysisStore.isComplete && (
+            <button
+              onClick={() => analysisStore.analyze()}
+              className="w-full px-4 py-2 rounded-lg font-medium transition-colors bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm"
+            >
+              Re-analyze
+            </button>
           )}
         </div>
       )}

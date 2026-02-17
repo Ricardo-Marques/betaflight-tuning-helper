@@ -1,6 +1,6 @@
 import { observer } from 'mobx-react-lite'
 import { useLogStore, useUIStore, useAnalysisStore } from '../stores/RootStore'
-import { useMemo } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import {
   LineChart,
   Line,
@@ -12,11 +12,23 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts'
+import { DetectedIssue } from '../domain/types/Analysis'
+
+interface HoveredIssue {
+  issue: DetectedIssue
+  x: number
+  y: number
+}
 
 export const LogChart = observer(() => {
   const logStore = useLogStore()
   const uiStore = useUIStore()
   const analysisStore = useAnalysisStore()
+  const [hoveredIssue, setHoveredIssue] = useState<HoveredIssue | null>(null)
+
+  // Derive start and duration from zoomStart/zoomEnd
+  const zoomStart = uiStore.zoomStart
+  const zoomDuration = uiStore.zoomEnd - uiStore.zoomStart
 
   // Calculate visible frame range based on zoom
   const visibleFrames = useMemo(() => {
@@ -61,6 +73,73 @@ export const LogChart = observer(() => {
     return analysisStore.getIssuesInTimeRange(startTime, endTime)
   }, [analysisStore.isComplete, visibleFrames, analysisStore.issues])
 
+  // Handle chart mouse move for issue hover detection
+  const handleChartMouseMove = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (state: any, event: React.MouseEvent) => {
+      if (!state?.activeLabel || visibleIssues.length === 0) {
+        setHoveredIssue(null)
+        return
+      }
+
+      const cursorTime = state.activeLabel as number
+      const visibleTimeRange =
+        chartData.length > 1
+          ? chartData[chartData.length - 1].time - chartData[0].time
+          : 1
+      const threshold = visibleTimeRange * 0.015
+
+      let closest: DetectedIssue | null = null
+      let closestDist = Infinity
+
+      for (const issue of visibleIssues) {
+        const issueTime = issue.timeRange[0] / 1000000
+        const dist = Math.abs(issueTime - cursorTime)
+        if (dist < threshold && dist < closestDist) {
+          closest = issue
+          closestDist = dist
+        }
+      }
+
+      if (closest) {
+        setHoveredIssue({
+          issue: closest,
+          x: event.clientX,
+          y: event.clientY,
+        })
+      } else {
+        setHoveredIssue(null)
+      }
+    },
+    [visibleIssues, chartData]
+  )
+
+  const handleChartMouseLeave = useCallback(() => {
+    setHoveredIssue(null)
+  }, [])
+
+  // Zoom slider handlers
+  const handleStartChange = useCallback(
+    (newStart: number) => {
+      const clampedStart = Math.min(newStart, 100 - zoomDuration)
+      uiStore.setZoom(clampedStart, clampedStart + zoomDuration)
+    },
+    [uiStore, zoomDuration]
+  )
+
+  const handleDurationChange = useCallback(
+    (newDuration: number) => {
+      const clampedDuration = Math.min(newDuration, 100 - zoomStart)
+      uiStore.setZoom(zoomStart, zoomStart + clampedDuration)
+    },
+    [uiStore, zoomStart]
+  )
+
+  // Compute time labels
+  const totalDuration = logStore.duration
+  const startTimeSec = (zoomStart / 100) * totalDuration
+  const windowSec = (zoomDuration / 100) * totalDuration
+
   if (!logStore.isLoaded) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500">
@@ -68,6 +147,13 @@ export const LogChart = observer(() => {
       </div>
     )
   }
+
+  const severityColor = (severity: string) =>
+    severity === 'critical'
+      ? '#dc2626'
+      : severity === 'high'
+      ? '#f59e0b'
+      : '#3b82f6'
 
   return (
     <div className="h-full flex flex-col">
@@ -129,9 +215,13 @@ export const LogChart = observer(() => {
       </div>
 
       {/* Chart */}
-      <div className="flex-1 p-4">
+      <div className="flex-1 p-4 relative">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData}>
+          <LineChart
+            data={chartData}
+            onMouseMove={handleChartMouseMove}
+            onMouseLeave={handleChartMouseLeave}
+          >
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis
               dataKey="time"
@@ -155,18 +245,14 @@ export const LogChart = observer(() => {
             {/* Issue markers */}
             {visibleIssues.map(issue => {
               const issueTime = issue.timeRange[0] / 1000000
+              const isSelected = issue.id === analysisStore.selectedIssueId
               return (
                 <ReferenceLine
                   key={issue.id}
                   x={issueTime}
-                  stroke={
-                    issue.severity === 'critical'
-                      ? '#dc2626'
-                      : issue.severity === 'high'
-                      ? '#f59e0b'
-                      : '#3b82f6'
-                  }
-                  strokeDasharray="3 3"
+                  stroke={severityColor(issue.severity)}
+                  strokeDasharray={isSelected ? undefined : '3 3'}
+                  strokeWidth={isSelected ? 3 : 1}
                   label={{
                     value: issue.type,
                     position: 'top',
@@ -259,35 +345,94 @@ export const LogChart = observer(() => {
             )}
           </LineChart>
         </ResponsiveContainer>
+
+        {/* Issue hover popover */}
+        {hoveredIssue && (
+          <div
+            className="fixed z-50 pointer-events-none bg-white border border-gray-300 rounded-lg shadow-lg p-3 max-w-xs"
+            style={{
+              left: hoveredIssue.x + 12,
+              top: hoveredIssue.y - 10,
+            }}
+          >
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <p className="text-sm font-medium">{hoveredIssue.issue.description}</p>
+              <span
+                className="px-1.5 py-0.5 rounded text-xs font-medium shrink-0"
+                style={{
+                  backgroundColor:
+                    hoveredIssue.issue.severity === 'critical'
+                      ? '#fecaca'
+                      : hoveredIssue.issue.severity === 'high'
+                      ? '#fed7aa'
+                      : '#bfdbfe',
+                  color:
+                    hoveredIssue.issue.severity === 'critical'
+                      ? '#991b1b'
+                      : hoveredIssue.issue.severity === 'high'
+                      ? '#9a3412'
+                      : '#1e40af',
+                }}
+              >
+                {hoveredIssue.issue.severity.toUpperCase()}
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 mb-1">
+              Axis: {hoveredIssue.issue.axis}
+            </p>
+            <div className="text-xs text-gray-600 space-y-0.5">
+              {hoveredIssue.issue.metrics.overshoot !== undefined && (
+                <p>Overshoot: {hoveredIssue.issue.metrics.overshoot.toFixed(1)}</p>
+              )}
+              {hoveredIssue.issue.metrics.frequency !== undefined && (
+                <p>Frequency: {hoveredIssue.issue.metrics.frequency.toFixed(1)} Hz</p>
+              )}
+              {hoveredIssue.issue.metrics.amplitude !== undefined && (
+                <p>Amplitude: {hoveredIssue.issue.metrics.amplitude.toFixed(1)} deg/s</p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Zoom slider */}
-      <div className="p-4 border-t">
+      {/* Zoom controls: Start + Duration */}
+      <div className="px-4 py-3 border-t">
         <div className="flex items-center gap-4">
-          <span className="text-sm font-medium text-gray-700">Zoom:</span>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={uiStore.zoomStart}
-            onChange={e =>
-              uiStore.setZoom(parseFloat(e.target.value), uiStore.zoomEnd)
-            }
-            className="flex-1"
-          />
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={uiStore.zoomEnd}
-            onChange={e =>
-              uiStore.setZoom(uiStore.zoomStart, parseFloat(e.target.value))
-            }
-            className="flex-1"
-          />
+          <div className="flex-1">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-medium text-gray-600">
+                Start: {startTimeSec.toFixed(1)}s
+              </span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max={100 - zoomDuration}
+              step="0.1"
+              value={zoomStart}
+              onChange={e => handleStartChange(parseFloat(e.target.value))}
+              className="w-full"
+            />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-medium text-gray-600">
+                Window: {windowSec.toFixed(1)}s
+              </span>
+            </div>
+            <input
+              type="range"
+              min="1"
+              max="100"
+              step="0.1"
+              value={zoomDuration}
+              onChange={e => handleDurationChange(parseFloat(e.target.value))}
+              className="w-full"
+            />
+          </div>
           <button
             onClick={() => uiStore.setZoom(0, 100)}
-            className="text-sm text-blue-600 hover:text-blue-800"
+            className="text-sm text-blue-600 hover:text-blue-800 shrink-0"
           >
             Reset
           </button>
