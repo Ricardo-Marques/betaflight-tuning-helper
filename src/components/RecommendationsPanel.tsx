@@ -214,7 +214,7 @@ const IssueCard = observer(({ issue, onScrollToRec }: { issue: DetectedIssue; on
             100,
             ((tr[1] + padding - firstTime) / totalDuration) * 100
           )
-          uiStore.setZoom(startPct, endPct)
+          uiStore.animateZoom(startPct, endPct)
         }
       }
     },

@@ -22,6 +22,9 @@ export class UIStore {
   leftPanelOpen: boolean = true
   rightPanelOpen: boolean = true
 
+  // Zoom animation
+  private _animationFrameId: number | null = null
+
   constructor() {
     makeObservable(this, {
       selectedAxis: observable,
@@ -141,6 +144,40 @@ export class UIStore {
    */
   toggleRightPanel = (): void => {
     this.rightPanelOpen = !this.rightPanelOpen
+  }
+
+  /**
+   * Animate zoom to target range with ease-out cubic easing
+   */
+  animateZoom = (targetStart: number, targetEnd: number, duration: number = 300): void => {
+    if (this._animationFrameId !== null) {
+      cancelAnimationFrame(this._animationFrameId)
+      this._animationFrameId = null
+    }
+
+    const fromStart = this.zoomStart
+    const fromEnd = this.zoomEnd
+    const startTime = performance.now()
+
+    const step = (now: number) => {
+      const elapsed = now - startTime
+      const t = Math.min(elapsed / duration, 1)
+      // Ease-out cubic: 1 - (1 - t)^3
+      const eased = 1 - Math.pow(1 - t, 3)
+
+      this.setZoom(
+        fromStart + (targetStart - fromStart) * eased,
+        fromEnd + (targetEnd - fromEnd) * eased
+      )
+
+      if (t < 1) {
+        this._animationFrameId = requestAnimationFrame(step)
+      } else {
+        this._animationFrameId = null
+      }
+    }
+
+    this._animationFrameId = requestAnimationFrame(step)
   }
 
   /**

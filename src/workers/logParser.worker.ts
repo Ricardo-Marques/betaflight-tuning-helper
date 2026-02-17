@@ -486,8 +486,18 @@ async function parseBblLog(file: File): Promise<void> {
     postProgress(100, 'Complete!')
     self.postMessage(completeMessage)
   } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
+    // The blackbox-log WASM library doesn't support newer Betaflight versions (4.5+).
+    // Detect this and provide a helpful workaround message.
+    if (/not supported/i.test(msg)) {
+      throw new Error(
+        msg +
+        '. As a workaround, open the .bbl file in Betaflight Blackbox Explorer, ' +
+        'export it as CSV, then upload the .csv file here instead.'
+      )
+    }
     if (error instanceof Error) throw error
-    throw new Error('Failed to parse BBL file: ' + String(error))
+    throw new Error('Failed to parse BBL file: ' + msg)
   } finally {
     logFile?.free()
   }
