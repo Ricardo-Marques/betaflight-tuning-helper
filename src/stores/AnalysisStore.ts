@@ -16,6 +16,7 @@ export class AnalysisStore {
   result: AnalysisResult | null = null
   selectedSegmentId: string | null = null
   selectedIssueId: string | null = null
+  selectedRecommendationId: string | null = null
 
   // Dependencies
   private logStore: LogStore
@@ -32,6 +33,7 @@ export class AnalysisStore {
       result: observable,
       selectedSegmentId: observable,
       selectedIssueId: observable,
+      selectedRecommendationId: observable,
       isComplete: computed,
       issues: computed,
       recommendations: computed,
@@ -44,6 +46,7 @@ export class AnalysisStore {
       reset: action,
       selectSegment: action,
       selectIssue: action,
+      selectRecommendation: action,
     })
   }
 
@@ -95,7 +98,7 @@ export class AnalysisStore {
    * Computed: Critical issues only
    */
   get criticalIssues(): DetectedIssue[] {
-    return this.issues.filter(i => i.severity === 'critical' || i.severity === 'high')
+    return this.issues.filter(i => i.severity === 'high')
   }
 
   /**
@@ -185,6 +188,7 @@ export class AnalysisStore {
     this.result = null
     this.selectedSegmentId = null
     this.selectedIssueId = null
+    this.selectedRecommendationId = null
   }
 
   /**
@@ -202,10 +206,19 @@ export class AnalysisStore {
   }
 
   /**
+   * Select a recommendation (for scroll-highlight)
+   */
+  selectRecommendation = (recId: string | null): void => {
+    this.selectedRecommendationId = recId
+  }
+
+  /**
    * Get recommendations for a specific issue
    */
   getRecommendationsForIssue(issueId: string): Recommendation[] {
-    return this.recommendations.filter(r => r.issueId === issueId)
+    return this.recommendations.filter(
+      r => r.issueId === issueId || r.relatedIssueIds?.includes(issueId)
+    )
   }
 
   /**

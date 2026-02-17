@@ -145,7 +145,27 @@ export class RuleEngine {
       const existing = byKey.get(key)
       if (!existing || rec.priority > existing.priority ||
           (rec.priority === existing.priority && rec.confidence > existing.confidence)) {
-        byKey.set(key, rec)
+        if (existing) {
+          // Losing recommendation's issueId gets merged into the winner's relatedIssueIds
+          const merged = new Set(rec.relatedIssueIds ?? [])
+          merged.add(existing.issueId)
+          if (existing.relatedIssueIds) {
+            for (const id of existing.relatedIssueIds) merged.add(id)
+          }
+          merged.delete(rec.issueId) // Don't duplicate the primary issueId
+          byKey.set(key, { ...rec, relatedIssueIds: Array.from(merged) })
+        } else {
+          byKey.set(key, rec)
+        }
+      } else {
+        // Current rec loses — merge its issueId into the existing winner's relatedIssueIds
+        const merged = new Set(existing.relatedIssueIds ?? [])
+        merged.add(rec.issueId)
+        if (rec.relatedIssueIds) {
+          for (const id of rec.relatedIssueIds) merged.add(id)
+        }
+        merged.delete(existing.issueId) // Don't duplicate the primary issueId
+        byKey.set(key, { ...existing, relatedIssueIds: Array.from(merged) })
       }
     }
     return Array.from(byKey.values())
@@ -358,6 +378,7 @@ export class RuleEngine {
         timeRange: [timeStart, timeEnd],
         description,
         metrics: worstMetrics,
+        occurrences: group.map(i => i.timeRange),
       })
     }
 
@@ -368,7 +389,7 @@ export class RuleEngine {
    * Return the higher of two severity levels
    */
   private maxSeverity(a: DetectedIssue['severity'], b: DetectedIssue['severity']): DetectedIssue['severity'] {
-    const order: Record<string, number> = { low: 0, medium: 1, high: 2, critical: 3 }
+    const order: Record<string, number> = { low: 0, medium: 1, high: 2 }
     return order[a] >= order[b] ? a : b
   }
 
@@ -379,13 +400,12 @@ export class RuleEngine {
     issues: DetectedIssue[],
     recommendations: Recommendation[]
   ): any {
-    const criticalCount = issues.filter(i => i.severity === 'critical').length
     const highCount = issues.filter(i => i.severity === 'high').length
     const mediumCount = issues.filter(i => i.severity === 'medium').length
     const lowCount = issues.filter(i => i.severity === 'low').length
 
     let overallHealth: 'excellent' | 'good' | 'needsWork' | 'poor'
-    if (criticalCount > 0 || highCount > 3) {
+    if (highCount > 3) {
       overallHealth = 'poor'
     } else if (highCount > 0 || mediumCount > 5) {
       overallHealth = 'needsWork'
@@ -400,8 +420,8 @@ export class RuleEngine {
 
     return {
       overallHealth,
-      criticalIssueCount: criticalCount,
-      majorIssueCount: highCount,
+      criticalIssueCount: highCount,
+      majorIssueCount: mediumCount,
       minorIssueCount: mediumCount + lowCount,
       topPriorities,
     }
@@ -461,11 +481,12 @@ export class RuleEngine {
       }
     }
 
-    // Recount issues against merged time ranges instead of summing sub-segment counts
+    // Recount issues against merged time ranges, expanding collapsed occurrences
     for (const seg of mergedSegments) {
-      seg.issueCount = issues.filter(
-        issue => issue.timeRange[0] <= seg.endTime && issue.timeRange[1] >= seg.startTime
-      ).length
+      seg.issueCount = issues.reduce((count, issue) => {
+        const occ = issue.occurrences ?? [issue.timeRange]
+        return count + occ.filter(tr => tr[0] <= seg.endTime && tr[1] >= seg.startTime).length
+      }, 0)
     }
 
     return mergedSegments

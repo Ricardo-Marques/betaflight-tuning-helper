@@ -60,6 +60,7 @@ export interface DetectedIssue {
   description: string
   metrics: IssueMetrics
   confidence: number // 0-1
+  occurrences?: [number, number][] // individual timeRanges before collapse
 }
 
 export type IssueType =
@@ -75,7 +76,7 @@ export type IssueType =
   | 'underdamped'
   | 'overdamped'
 
-export type Severity = 'low' | 'medium' | 'high' | 'critical'
+export type Severity = 'low' | 'medium' | 'high'
 
 export interface IssueMetrics {
   /** Overshoot ratio (gyro / setpoint peak) */
@@ -138,6 +139,9 @@ export interface Recommendation {
 
   // Expected outcome
   expectedImprovement: string
+
+  // Additional issue IDs linked during recommendation dedup
+  relatedIssueIds?: string[]
 }
 
 export type RecommendationType =
