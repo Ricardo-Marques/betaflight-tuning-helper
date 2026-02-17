@@ -1,5 +1,7 @@
 # Betaflight Tuning Helper
 
+**[Try it live](https://ricardo-marques.github.io/betaflight-tuning-helper/)**
+
 Client-side web app that analyzes Betaflight Blackbox logs and generates actionable tuning recommendations. No backend — everything runs in your browser.
 
 ## Features
