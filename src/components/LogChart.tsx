@@ -112,6 +112,8 @@ const IssueDot = styled.span`
 
 const ChartContainer = styled.div`
   flex: 1;
+  min-height: 0;
+  overflow: hidden;
   padding: 1rem;
   position: relative;
   cursor: grab;
@@ -172,7 +174,8 @@ const PopoverMetrics = styled.div`
 `
 
 const ZoomControls = styled.div`
-  padding: 0.75rem 1rem;
+  flex-shrink: 0;
+  padding: 1rem;
   border-top: 1px solid ${p => p.theme.colors.border.main};
 `
 

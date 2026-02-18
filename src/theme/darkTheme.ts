@@ -6,7 +6,7 @@ export const darkTheme: Theme = {
       app: '#111827',       // gray-900
       panel: '#1f2937',     // gray-800
       section: '#1a2332',
-      header: '#1e40af',    // blue-800
+      header: '#172554',    // blue-950
       footer: '#0f172a',    // slate-900
       input: '#374151',     // gray-700
       hover: '#374151',     // gray-700

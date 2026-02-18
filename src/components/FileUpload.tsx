@@ -93,7 +93,7 @@ const StatusSubtext = styled.p`
 `
 
 const SuccessIcon = styled.svg`
-  margin: 0 auto 1rem;
+  margin: 1rem auto 1rem;
   height: 3rem;
   width: 3rem;
   color: ${p => p.theme.colors.accent.green};
