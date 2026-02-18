@@ -232,6 +232,23 @@ const LinkButton = styled.button`
   }
 `
 
+const ChangeFileButton = styled.button`
+  margin-top: 0.75rem;
+  padding: 0.375rem 0.875rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: ${p => p.theme.colors.button.primaryText};
+  background-color: ${p => p.theme.colors.button.primary};
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: background-color 0.15s;
+
+  &:hover {
+    background-color: ${p => p.theme.colors.button.primaryHover};
+  }
+`
+
 export const FileUpload = observer(() => {
   const { logStore, uiStore, analysisStore } = useStores()
   const [isDragging, setIsDragging] = useObservableState(false)
@@ -404,12 +421,12 @@ export const FileUpload = observer(() => {
                 {logStore.metadata.craftName}
               </p>
             )}
-            <LinkButton
+            <ChangeFileButton
               data-testid="upload-different-file"
               onClick={() => { logStore.reset(); analysisStore.reset(); uiStore.reset() }}
             >
               Upload different file
-            </LinkButton>
+            </ChangeFileButton>
           </MetadataBlock>
         )}
 
