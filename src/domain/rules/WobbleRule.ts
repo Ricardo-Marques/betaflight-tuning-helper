@@ -102,32 +102,61 @@ export const WobbleRule: TuningRule = {
       const band = issue.metrics.dominantBand
 
       if (band === 'low') {
-        // Low-frequency wobble (< 20 Hz) - insufficient P gain
+        // Low-frequency wobble (< 20 Hz) — typically I-term hunting or structural
+        // Sub-20Hz oscillation without stick input is usually I-term building up,
+        // overshooting, and correcting in a slow cycle. Increasing P would be wrong.
         recommendations.push({
           id: generateId(),
           issueId: issue.id,
-          type: 'increasePID',
+          type: 'adjustFiltering',
           priority: 8,
-          confidence: 0.85,
-          title: `Increase P on ${issue.axis}`,
-          description: 'Low-frequency oscillation indicates insufficient P gain',
+          confidence: 0.80,
+          title: `Lower I-term relax cutoff on ${issue.axis}`,
+          description: 'Low-frequency oscillation during hover is typically caused by I-term windup',
           rationale:
-            'P gain provides the main restoring force. Low-frequency wobble means the quad is not holding position firmly enough.',
+            'Sub-20Hz oscillation without stick input usually indicates the I-term is slowly building, overshooting, and reversing. Lowering iterm_relax_cutoff prevents the I-term from winding up during small disturbances.',
           risks: [
-            'Too much P can cause rapid oscillations',
-            'May need D adjustment to compensate',
+            'May slightly reduce tracking precision on very slow stick inputs',
+            'If the issue is structural (frame flex), this may not help',
           ],
           changes: [
             {
-              parameter: 'pidPGain',
-              recommendedChange: '+0.3',
-              axis: issue.axis,
-              explanation: 'Increase P to improve positional authority',
+              parameter: 'itermRelaxCutoff',
+              recommendedChange: '10',
+              explanation: 'Lower iterm_relax_cutoff to reduce I-term hunting during hover',
             },
           ],
           expectedImprovement:
-            'Firmer hold during cruise, reduced slow oscillations',
+            'Reduced slow drift and correction cycles during hover/cruise',
         })
+
+        // Also suggest reducing I gain directly if amplitude is high
+        if (amplitude > 25) {
+          recommendations.push({
+            id: generateId(),
+            issueId: issue.id,
+            type: 'decreasePID',
+            priority: 7,
+            confidence: 0.75,
+            title: `Reduce I gain on ${issue.axis}`,
+            description: 'Persistent low-frequency wobble may need lower I gain',
+            rationale:
+              'If I-term relax adjustment is not sufficient, reducing I gain directly limits the corrective force that causes the slow oscillation cycle.',
+            risks: [
+              'Reduced ability to hold attitude against wind',
+              'May drift more during hands-off hover',
+            ],
+            changes: [
+              {
+                parameter: 'pidIGain',
+                recommendedChange: '-0.3',
+                axis: issue.axis,
+                explanation: 'Reduce I gain to limit slow oscillation',
+              },
+            ],
+            expectedImprovement: 'Less I-term overshoot, smoother hover',
+          })
+        }
       } else if (band === 'high') {
         // High-frequency noise (> 80 Hz) - filtering or D-term issue
         recommendations.push(
@@ -185,34 +214,61 @@ export const WobbleRule: TuningRule = {
           }
         )
       } else {
-        // Mid-frequency wobble (20-80 Hz) - P/D balance issue
+        // Mid-frequency wobble (20-80 Hz) — likely P oscillation
+        // 20-50Hz oscillation without stick input is the classic P-too-high signature.
+        // The correct response is to increase D to damp it, or reduce P.
         recommendations.push({
           id: generateId(),
           issueId: issue.id,
           type: 'increasePID',
-          priority: 7,
-          confidence: 0.80,
-          title: `Adjust P/D balance on ${issue.axis}`,
-          description: 'Mid-frequency wobble suggests P/D tuning needed',
+          priority: 8,
+          confidence: 0.85,
+          title: `Increase D on ${issue.axis}`,
+          description: 'Mid-frequency wobble (20-80Hz) indicates P oscillation — needs more damping',
           rationale:
-            'Mid-frequency oscillations (20-80 Hz) typically indicate P and D are not in optimal balance.',
-          risks: ['May require iterative tuning', 'Could affect other flight characteristics'],
+            'Mid-frequency oscillation without stick input is typically P gain driving the quad past its target faster than D can damp it. Increasing D provides more damping to suppress the oscillation.',
+          risks: [
+            'High D amplifies gyro noise — monitor motor temperatures',
+            'May need filter adjustment if D-term noise increases',
+          ],
           changes: [
             {
-              parameter: 'pidPGain',
-              recommendedChange: '+0.2',
-              axis: issue.axis,
-              explanation: 'Increase P for better authority',
-            },
-            {
               parameter: 'pidDGain',
-              recommendedChange: '+0.1',
+              recommendedChange: '+0.15',
               axis: issue.axis,
-              explanation: 'Slight D increase to maintain damping ratio',
+              explanation: 'Increase D to damp mid-frequency P oscillation',
             },
           ],
-          expectedImprovement: 'Stable cruise without oscillations',
+          expectedImprovement: 'Stable cruise without visible oscillations',
         })
+
+        // Also suggest reducing P if amplitude is high
+        if (amplitude > 25) {
+          recommendations.push({
+            id: generateId(),
+            issueId: issue.id,
+            type: 'decreasePID',
+            priority: 7,
+            confidence: 0.80,
+            title: `Reduce P on ${issue.axis}`,
+            description: 'If increasing D is not enough, reducing P lowers oscillation tendency',
+            rationale:
+              'If D increase alone does not stop the oscillation, reducing P lowers the corrective force that drives the oscillation. This is especially useful when D is already causing motor heat.',
+            risks: [
+              'Reduced tracking responsiveness',
+              'May feel less locked-in during fast maneuvers',
+            ],
+            changes: [
+              {
+                parameter: 'pidPGain',
+                recommendedChange: '-0.2',
+                axis: issue.axis,
+                explanation: 'Reduce P to lower oscillation tendency',
+              },
+            ],
+            expectedImprovement: 'Reduced oscillation amplitude at the source',
+          })
+        }
       }
 
       // Additional filtering recommendation for persistent wobble

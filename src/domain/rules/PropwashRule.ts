@@ -221,31 +221,31 @@ export const PropwashRule: TuningRule = {
         })
       }
 
-      // Additional recommendation for master multiplier if widespread
-      if (issue.severity === 'high') {
+      // For severe propwash, also recommend iterm_relax_cutoff if not already
+      // covered by the profile-specific path above
+      if (issue.severity === 'high' && !profile?.overrides.propwashPreferItermRelax) {
         recommendations.push({
           id: generateId(),
           issueId: issue.id,
-          type: 'adjustMasterMultiplier',
+          type: 'adjustFiltering',
           priority: 5,
           confidence: 0.70,
-          title: 'Consider Master Multiplier increase',
-          description: 'Severe propwash may benefit from overall PID increase',
+          title: `Lower I-term relax cutoff on ${issue.axis}`,
+          description: 'Severe propwash may be worsened by I-term windup during throttle transitions',
           rationale:
-            'If propwash is widespread across axes, the quad may be generally under-damped. Master multiplier scales all PIDs proportionally.',
+            'I-term relax controls how aggressively the I-term builds during rapid maneuvers. A lower cutoff prevents the I-term from winding up and amplifying propwash oscillations.',
           risks: [
-            'Will increase ALL PIDs - may cause issues if other axes are well-tuned',
-            'Increases motor heat and battery consumption',
-            'May require filter adjustments',
+            'May slightly reduce tracking precision on aggressive moves',
+            'Could feel slightly less locked-in during rapid direction changes',
           ],
           changes: [
             {
-              parameter: 'pidMasterMultiplier',
-              recommendedChange: '+5%',
-              explanation: 'Small master multiplier increase for global damping improvement',
+              parameter: 'itermRelaxCutoff',
+              recommendedChange: '10',
+              explanation: 'Lower iterm_relax_cutoff to reduce I-term contribution to propwash',
             },
           ],
-          expectedImprovement: 'Overall improvement in stability during aggressive maneuvers',
+          expectedImprovement: 'Reduced propwash by limiting I-term windup during throttle drops',
         })
       }
     }

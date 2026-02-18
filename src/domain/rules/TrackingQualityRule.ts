@@ -111,18 +111,18 @@ export const TrackingQualityRule: TuningRule = {
 
     // Classify issue type based on amplitude ratio
     // amplitudeRatio = gyroRMS / setpointRMS * 100
-    //   < 90%  → underdamped: gyro not reaching setpoint (too little P)
-    //   > 105% → overdamped: too much D or too little P causing sluggish, ringing response
+    //   < 90%  → overdamped: gyro not reaching setpoint (too little P or too much D)
+    //   > 105% → underdamped: overshooting setpoint (too much P or not enough D)
     //   90-105% → reasonable amplitude but still high error (phase lag / timing)
     let issueType: 'underdamped' | 'overdamped' | 'lowFrequencyOscillation'
     let issueDescription: string
 
     if (amplitudeRatio < 90 && normalizedError > 25) {
-      issueType = 'underdamped'
-      issueDescription = `Poor tracking: not enough P gain — gyro only reaching ${amplitudeRatio.toFixed(0)}% of setpoint (${normalizedError.toFixed(0)}% error)`
-    } else if (amplitudeRatio > 105) {
       issueType = 'overdamped'
-      issueDescription = `Poor tracking: overshooting setpoint — ${amplitudeRatio.toFixed(0)}% amplitude ratio, too much P or not enough D (${normalizedError.toFixed(0)}% error)`
+      issueDescription = `Poor tracking: gyro only reaching ${amplitudeRatio.toFixed(0)}% of setpoint — insufficient P gain or too much D (${normalizedError.toFixed(0)}% error)`
+    } else if (amplitudeRatio > 105) {
+      issueType = 'underdamped'
+      issueDescription = `Poor tracking: overshooting setpoint at ${amplitudeRatio.toFixed(0)}% — too much P or insufficient D damping (${normalizedError.toFixed(0)}% error)`
     } else {
       issueType = 'lowFrequencyOscillation'
       issueDescription = `Poor tracking: ${normalizedError.toFixed(0)}% error during active flight`
@@ -181,8 +181,8 @@ export const TrackingQualityRule: TuningRule = {
       const amplitudeRatio = worstIssue.metrics.amplitudeRatio || 0
 
       // Recommendation logic based on issue type
-      if (worstIssue.type === 'underdamped') {
-        // Low amplitude ratio + high error = insufficient P gain
+      if (worstIssue.type === 'overdamped') {
+        // Low amplitude ratio + high error = insufficient P gain or excessive D
         const pIncrease = normalizedError > 50 ? '+0.5' : normalizedError > 35 ? '+0.4' : '+0.3'
 
         recommendations.push({
@@ -192,9 +192,9 @@ export const TrackingQualityRule: TuningRule = {
           priority: 8,
           confidence: worstIssue.confidence,
           title: `Increase P gain on ${axis}`,
-          description: 'Gyro not reaching setpoint - insufficient P gain',
+          description: 'Gyro not reaching setpoint — overdamped or insufficient P',
           rationale:
-            'Low amplitude ratio indicates the quad is not generating enough corrective force to match commanded rates. Increasing P gain improves responsiveness.',
+            'Low amplitude ratio indicates the quad is not generating enough corrective force to match commanded rates. The response is sluggish, possibly due to too little P or too much D dampening the response.',
           risks: [
             'Too much P can cause rapid oscillations',
             'May need corresponding D increase',
@@ -210,32 +210,34 @@ export const TrackingQualityRule: TuningRule = {
           ],
           expectedImprovement: 'Gyro will follow setpoint more closely during maneuvers',
         })
-      } else if (worstIssue.type === 'overdamped') {
-        // Overdamped: too much D or too little P causing sluggish, ringing response
+      } else if (worstIssue.type === 'underdamped') {
+        // Underdamped: overshooting setpoint — too much P or not enough D
+        const dIncrease = normalizedError > 50 ? '+0.3' : normalizedError > 35 ? '+0.2' : '+0.15'
+
         recommendations.push({
           id: uuidv4(),
           issueId: worstIssue.id,
-          type: 'decreasePID',
+          type: 'increasePID',
           priority: 7,
           confidence: worstIssue.confidence,
-          title: `Reduce D gain on ${axis}`,
-          description: 'Overdamped response — too much D or too little P',
+          title: `Increase D gain on ${axis}`,
+          description: 'Underdamped response — overshooting setpoint',
           rationale:
-            'High amplitude ratio with tracking error indicates excessive damping. The quad is overshooting and ringing because D gain is too high relative to P, causing a sluggish, oscillating response. Reducing D allows faster settling.',
+            'High amplitude ratio with tracking error indicates the quad is overshooting its target and oscillating around it. Increasing D gain provides more damping to resist overshoot. If D is already high, consider reducing P instead.',
           risks: [
-            'May need corresponding P increase for responsiveness',
-            'Too little D can cause overshoot on stick stops',
-            'Reduce in small increments',
+            'High D amplifies gyro noise — monitor motor temperatures',
+            'May need filter adjustment if D-term noise increases',
+            'If D is already high, reduce P instead',
           ],
           changes: [
             {
               parameter: 'pidDGain',
-              recommendedChange: '-0.3',
+              recommendedChange: dIncrease,
               axis: axis as 'roll' | 'pitch' | 'yaw',
-              explanation: `Reduce D to fix overdamped response (amplitude ratio: ${amplitudeRatio.toFixed(0)}%)`,
+              explanation: `Increase D to damp overshoot (amplitude ratio: ${amplitudeRatio.toFixed(0)}%)`,
             },
           ],
-          expectedImprovement: 'Faster settling and cleaner tracking',
+          expectedImprovement: 'Reduced overshoot and cleaner tracking',
         })
       } else {
         // Generic tracking issue - try feedforward first
