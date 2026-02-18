@@ -171,7 +171,7 @@ const HoverPopover = styled.div`
   border-radius: 0.5rem;
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
   padding: 0.75rem;
-  max-width: 20rem;
+  max-width: 40rem;
 `
 
 
@@ -432,6 +432,45 @@ export const LogChart = observer(() => {
       ? theme.colors.severity.medium
       : theme.colors.severity.low
 
+  // Build issue popover HTML for a set of issues
+  const buildPopoverHTML = (issues: DetectedIssue[]): string => {
+    const sevBgColor = (s: string): string =>
+      s === 'high' ? theme.colors.severity.highBg
+        : s === 'medium' ? theme.colors.severity.mediumBg
+        : theme.colors.severity.lowBg
+    const sevTextColor = (s: string): string =>
+      s === 'high' ? theme.colors.severity.highText
+        : s === 'medium' ? theme.colors.severity.mediumText
+        : theme.colors.severity.lowText
+
+    // Wrap each issue in a break-inside:avoid div so CSS columns don't split an issue card
+    const parts: string[] = []
+    issues.forEach((issue, idx) => {
+      const isSelected = issue.id === analysisStore.selectedIssueId
+      const borderStyle = isSelected
+        ? `border-left:3px solid ${severityColor(issue.severity)};padding-left:0.5rem;margin-left:-0.25rem`
+        : ''
+      const divider = idx > 0 ? `<hr style="border:none;border-top:1px solid ${theme.colors.border.main};margin:0.5rem 0"/>` : ''
+      const metrics: string[] = []
+      if (issue.metrics.overshoot !== undefined) metrics.push(`<p>Overshoot: ${issue.metrics.overshoot.toFixed(1)}</p>`)
+      if (issue.metrics.frequency !== undefined) metrics.push(`<p>Frequency: ${issue.metrics.frequency.toFixed(1)} Hz</p>`)
+      if (issue.metrics.amplitude !== undefined) metrics.push(`<p>Amplitude: ${issue.metrics.amplitude.toFixed(1)} deg/s</p>`)
+      parts.push(`<div style="break-inside:avoid">${divider}<div style="${borderStyle}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;margin-bottom:0.25rem">
+          <p style="font-size:0.875rem;font-weight:${isSelected ? 700 : 500};color:${theme.colors.text.primary}">${issue.description}</p>
+          <span style="padding:0.125rem 0.375rem;border-radius:0.25rem;font-size:0.75rem;font-weight:500;flex-shrink:0;background-color:${sevBgColor(issue.severity)};color:${sevTextColor(issue.severity)}">${issue.severity.toUpperCase()}</span>
+        </div>
+        <p style="font-size:0.75rem;color:${theme.colors.text.muted};margin-bottom:0.25rem">Axis: ${issue.axis}</p>
+        <div style="font-size:0.75rem;color:${theme.colors.text.secondary}">${metrics.join('')}</div>
+      </div></div>`)
+    })
+    if (issues.length > 1) {
+      parts.push(`<div style="break-inside:avoid"><hr style="border:none;border-top:1px solid ${theme.colors.border.main};margin:0.5rem 0"/>
+        <p style="font-size:0.75rem;color:${theme.colors.text.muted};font-style:italic">Click to cycle through issues</p></div>`)
+    }
+    return parts.join('')
+  }
+
   // Imperatively update the issue hover popover — no React re-render
   const updateHoverPopover = (hovered: HoveredIssues | null, source: 'hover' | 'forced' = 'hover'): void => {
     hoveredIssuesRef.current = hovered
@@ -443,81 +482,85 @@ export const LogChart = observer(() => {
       return
     }
     el.style.display = ''
-    // Render off-screen first to measure dimensions before positioning
+    // Render off-screen first in single-column to measure natural height
     el.style.left = '0px'
     el.style.top = '-9999px'
     el.style.bottom = ''
     el.style.right = ''
     el.style.visibility = 'hidden'
+    el.style.columns = ''
+    el.style.columnGap = ''
+    el.style.maxHeight = ''
 
-    // Build inner HTML
-    const sevBgColor = (s: string): string =>
-      s === 'high' ? theme.colors.severity.highBg
-        : s === 'medium' ? theme.colors.severity.mediumBg
-        : theme.colors.severity.lowBg
-    const sevTextColor = (s: string): string =>
-      s === 'high' ? theme.colors.severity.highText
-        : s === 'medium' ? theme.colors.severity.mediumText
-        : theme.colors.severity.lowText
+    el.innerHTML = buildPopoverHTML(hovered.issues)
 
-    const parts: string[] = []
-    hovered.issues.forEach((issue, idx) => {
-      const isSelected = issue.id === analysisStore.selectedIssueId
-      const borderStyle = isSelected
-        ? `border-left:3px solid ${severityColor(issue.severity)};padding-left:0.5rem;margin-left:-0.25rem`
-        : ''
-      const divider = idx > 0 ? `<hr style="border:none;border-top:1px solid ${theme.colors.border.main};margin:0.5rem 0"/>` : ''
-      const metrics: string[] = []
-      if (issue.metrics.overshoot !== undefined) metrics.push(`<p>Overshoot: ${issue.metrics.overshoot.toFixed(1)}</p>`)
-      if (issue.metrics.frequency !== undefined) metrics.push(`<p>Frequency: ${issue.metrics.frequency.toFixed(1)} Hz</p>`)
-      if (issue.metrics.amplitude !== undefined) metrics.push(`<p>Amplitude: ${issue.metrics.amplitude.toFixed(1)} deg/s</p>`)
-      parts.push(`${divider}<div style="${borderStyle}">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;margin-bottom:0.25rem">
-          <p style="font-size:0.875rem;font-weight:${isSelected ? 700 : 500};color:${theme.colors.text.primary}">${issue.description}</p>
-          <span style="padding:0.125rem 0.375rem;border-radius:0.25rem;font-size:0.75rem;font-weight:500;flex-shrink:0;background-color:${sevBgColor(issue.severity)};color:${sevTextColor(issue.severity)}">${issue.severity.toUpperCase()}</span>
-        </div>
-        <p style="font-size:0.75rem;color:${theme.colors.text.muted};margin-bottom:0.25rem">Axis: ${issue.axis}</p>
-        <div style="font-size:0.75rem;color:${theme.colors.text.secondary}">${metrics.join('')}</div>
-      </div>`)
-    })
-    if (hovered.issues.length > 1) {
-      parts.push(`<hr style="border:none;border-top:1px solid ${theme.colors.border.main};margin:0.5rem 0"/>
-        <p style="font-size:0.75rem;color:${theme.colors.text.muted};font-style:italic">Click to cycle through issues</p>`)
+    const VP_MARGIN = 8
+    const maxAvailable = window.innerHeight - VP_MARGIN * 2
+
+    // Measure natural single-column height
+    let popoverHeight = el.offsetHeight
+
+    // If too tall, enable CSS columns to split into 2 columns
+    if (popoverHeight > maxAvailable && hovered.issues.length > 1) {
+      el.style.columns = '2 18rem'
+      el.style.columnGap = '1rem'
+      popoverHeight = el.offsetHeight
     }
-    el.innerHTML = parts.join('')
-    // Measure actual dimensions for smart positioning
-    const popoverHeight = el.offsetHeight
+
+    // If still too tall (even with columns), cap with overflow scroll
+    if (popoverHeight > maxAvailable) {
+      el.style.maxHeight = `${maxAvailable}px`
+      el.style.overflowY = 'auto'
+      popoverHeight = maxAvailable
+    } else {
+      el.style.maxHeight = ''
+      el.style.overflowY = ''
+    }
+
     const popoverWidth = el.offsetWidth
     el.style.visibility = ''
 
-    // Horizontal: place on opposite side from the Recharts tooltip.
-    // Read the actual bounding rect of the Recharts tooltip to avoid overlap.
-    const rcWrapper = chartContainerRef.current?.querySelector('.recharts-tooltip-wrapper') as HTMLElement | null
-    const rcRect = rcWrapper?.getBoundingClientRect()
-    if (rcRect && rcRect.width > 0) {
-      // Recharts tooltip has a real position — place issue popover on the opposite side
-      const rcOnRight = rcRect.left > hovered.x
-      if (rcOnRight) {
-        // Recharts is to the right → issue popover goes left of Recharts
-        el.style.left = `${Math.max(4, rcRect.left - popoverWidth - 8)}px`
+    // Horizontal positioning: for forced popovers, place next to the issue line;
+    // for hover popovers, place on opposite side from the Recharts tooltip.
+    let leftPos: number
+    if (source === 'forced') {
+      // Forced popover: place to the right of the issue line, or left if not enough space
+      const spaceRight = window.innerWidth - hovered.x - 12
+      if (spaceRight >= popoverWidth + VP_MARGIN) {
+        leftPos = hovered.x + 12
       } else {
-        // Recharts is to the left → issue popover goes right of Recharts
-        el.style.left = `${rcRect.right + 8}px`
+        leftPos = hovered.x - popoverWidth - 12
       }
     } else {
-      // Fallback: no Recharts tooltip visible, center on cursor
-      el.style.left = `${hovered.x + 20}px`
+      const rcWrapper = chartContainerRef.current?.querySelector('.recharts-tooltip-wrapper') as HTMLElement | null
+      const rcRect = rcWrapper?.getBoundingClientRect()
+      if (rcRect && rcRect.width > 0) {
+        const rcOnRight = rcRect.left > hovered.x
+        leftPos = rcOnRight
+          ? rcRect.left - popoverWidth - 8
+          : rcRect.right + 8
+      } else {
+        leftPos = hovered.x + 20
+      }
     }
+    // Clamp horizontal to viewport
+    leftPos = Math.max(VP_MARGIN, Math.min(leftPos, window.innerWidth - popoverWidth - VP_MARGIN))
+    el.style.left = `${leftPos}px`
 
-    // Vertical: prefer above cursor, flip below if not enough space
+    // Vertical: prefer above cursor, flip below if needed, always clamp to viewport
+    el.style.bottom = ''
+    let topPos: number
     const spaceAbove = hovered.y - 12
     if (spaceAbove >= popoverHeight) {
-      el.style.top = ''
-      el.style.bottom = `${window.innerHeight - hovered.y + 12}px`
+      // Above cursor
+      topPos = hovered.y - 12 - popoverHeight
     } else {
-      el.style.bottom = ''
-      el.style.top = `${hovered.y + 12}px`
+      // Below cursor
+      topPos = hovered.y + 12
     }
+    // Clamp to viewport bounds
+    topPos = Math.max(VP_MARGIN, Math.min(topPos, window.innerHeight - popoverHeight - VP_MARGIN))
+    el.style.top = `${topPos}px`
   }
 
   // Rebuild popover innerHTML in-place (no repositioning) to update selected-issue highlight
@@ -525,41 +568,7 @@ export const LogChart = observer(() => {
     const hovered = hoveredIssuesRef.current
     const el = popoverRef.current
     if (!hovered || !el || el.style.display === 'none') return
-
-    const sevBgColor = (s: string): string =>
-      s === 'high' ? theme.colors.severity.highBg
-        : s === 'medium' ? theme.colors.severity.mediumBg
-        : theme.colors.severity.lowBg
-    const sevTextColor = (s: string): string =>
-      s === 'high' ? theme.colors.severity.highText
-        : s === 'medium' ? theme.colors.severity.mediumText
-        : theme.colors.severity.lowText
-
-    const parts: string[] = []
-    hovered.issues.forEach((issue, idx) => {
-      const isSelected = issue.id === analysisStore.selectedIssueId
-      const borderStyle = isSelected
-        ? `border-left:3px solid ${severityColor(issue.severity)};padding-left:0.5rem;margin-left:-0.25rem`
-        : ''
-      const divider = idx > 0 ? `<hr style="border:none;border-top:1px solid ${theme.colors.border.main};margin:0.5rem 0"/>` : ''
-      const metrics: string[] = []
-      if (issue.metrics.overshoot !== undefined) metrics.push(`<p>Overshoot: ${issue.metrics.overshoot.toFixed(1)}</p>`)
-      if (issue.metrics.frequency !== undefined) metrics.push(`<p>Frequency: ${issue.metrics.frequency.toFixed(1)} Hz</p>`)
-      if (issue.metrics.amplitude !== undefined) metrics.push(`<p>Amplitude: ${issue.metrics.amplitude.toFixed(1)} deg/s</p>`)
-      parts.push(`${divider}<div style="${borderStyle}">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;margin-bottom:0.25rem">
-          <p style="font-size:0.875rem;font-weight:${isSelected ? 700 : 500};color:${theme.colors.text.primary}">${issue.description}</p>
-          <span style="padding:0.125rem 0.375rem;border-radius:0.25rem;font-size:0.75rem;font-weight:500;flex-shrink:0;background-color:${sevBgColor(issue.severity)};color:${sevTextColor(issue.severity)}">${issue.severity.toUpperCase()}</span>
-        </div>
-        <p style="font-size:0.75rem;color:${theme.colors.text.muted};margin-bottom:0.25rem">Axis: ${issue.axis}</p>
-        <div style="font-size:0.75rem;color:${theme.colors.text.secondary}">${metrics.join('')}</div>
-      </div>`)
-    })
-    if (hovered.issues.length > 1) {
-      parts.push(`<hr style="border:none;border-top:1px solid ${theme.colors.border.main};margin:0.5rem 0"/>
-        <p style="font-size:0.75rem;color:${theme.colors.text.muted};font-style:italic">Click to cycle through issues</p>`)
-    }
-    el.innerHTML = parts.join('')
+    el.innerHTML = buildPopoverHTML(hovered.issues)
   }
 
   // Flash glow when selected issue changes, then fade after 1.5s
@@ -779,7 +788,7 @@ export const LogChart = observer(() => {
     updateHoverPopover({
       issues,
       x: rect.left + 16 + pxLeft, // 16 = 1rem padding
-      y: rect.top + 30,
+      y: rect.top + rect.height / 2, // vertical center of chart
     }, 'forced')
     forcedPopoverTimer.current = setTimeout(() => {
       // Only auto-dismiss if a real hover didn't take over
@@ -871,29 +880,24 @@ export const LogChart = observer(() => {
       if (prevIds !== nextIds) {
         updateHoverPopover({ issues: nearby, x: event.clientX, y: event.clientY })
       } else if (popoverRef.current) {
-        // Reposition only — opposite side from Recharts tooltip + smart vertical
+        // Reposition only — opposite side from Recharts tooltip, clamped to viewport
         const el = popoverRef.current
-        const popoverWidth = el.offsetWidth
-        const popoverHeight = el.offsetHeight
+        const pw = el.offsetWidth
+        const ph = el.offsetHeight
+        const M = 8
         const rcW = chartContainerRef.current?.querySelector('.recharts-tooltip-wrapper') as HTMLElement | null
         const rcR = rcW?.getBoundingClientRect()
+        let lp: number
         if (rcR && rcR.width > 0) {
-          if (rcR.left > event.clientX) {
-            el.style.left = `${Math.max(4, rcR.left - popoverWidth - 8)}px`
-          } else {
-            el.style.left = `${rcR.right + 8}px`
-          }
+          lp = rcR.left > event.clientX ? rcR.left - pw - 8 : rcR.right + 8
         } else {
-          el.style.left = `${event.clientX + 20}px`
+          lp = event.clientX + 20
         }
-        const spaceAbove = event.clientY - 12
-        if (spaceAbove >= popoverHeight) {
-          el.style.top = ''
-          el.style.bottom = `${window.innerHeight - event.clientY + 12}px`
-        } else {
-          el.style.bottom = ''
-          el.style.top = `${event.clientY + 12}px`
-        }
+        el.style.left = `${Math.max(M, Math.min(lp, window.innerWidth - pw - M))}px`
+        el.style.bottom = ''
+        let tp = event.clientY - 12 >= ph ? event.clientY - 12 - ph : event.clientY + 12
+        tp = Math.max(M, Math.min(tp, window.innerHeight - ph - M))
+        el.style.top = `${tp}px`
       }
     } else {
       if (hoveredIssuesRef.current && !hoverClearTimer.current) {
