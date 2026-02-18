@@ -47,6 +47,20 @@ E2E tests use Playwright (`pnpm test`). Aim for the full suite to run in ~10 min
 - MobX reactive primitives (`useObservableState`, `useComputed`, `useAutorun`) instead of React hooks
 - Web Worker uses `postMessage` for progress updates
 
+## Commit Workflow
+
+- **Plain language commit messages** — write for non-technical users, not developers
+  - Good: "Show build time in user's timezone on What's New modal"
+  - Bad: "Emit full ISO datetime from changelogPlugin and add formatBuildDate using toLocaleTimeString"
+- **One concern per commit** — split unrelated changes into separate commits
+- **After committing**: if the change is user-facing, add an entry to `src/data/changelog.ts`
+- **NEVER use `force: true` or `evaluate` workarounds** — fix the actual component instead
+- **Don't re-run all tests** unless there's a strong reason they might fail; run targeted tests instead
+
+## Useful Scripts
+
+- Screenshot automation: `npx tsx scripts/take-screenshots.ts` (pass a number for individual shots, e.g. `2`)
+
 ## Deployment
 
 GitHub Pages via `.github/workflows/deploy.yml`. Pushes to `main` trigger build + deploy. Vite `base` is set dynamically from `GITHUB_REPOSITORY` env var.
