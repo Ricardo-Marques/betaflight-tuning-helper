@@ -491,18 +491,21 @@ export const LogChart = observer(() => {
     el.style.visibility = ''
 
     // Horizontal: place on opposite side from the Recharts tooltip.
-    // Recharts puts its tooltip to the right when cursor is in the left half,
-    // and to the left when cursor is in the right half.
-    // We do the inverse so they never overlap.
-    const chartRect = chartContainerRef.current?.getBoundingClientRect()
-    const chartMidX = chartRect
-      ? chartRect.left + chartRect.width / 2
-      : window.innerWidth / 2
-    if (hovered.x < chartMidX) {
-      // Cursor in left half → Recharts tooltip right → issue popover LEFT
-      el.style.left = `${Math.max(4, hovered.x - popoverWidth - 20)}px`
+    // Read the actual bounding rect of the Recharts tooltip to avoid overlap.
+    const rcWrapper = chartContainerRef.current?.querySelector('.recharts-tooltip-wrapper') as HTMLElement | null
+    const rcRect = rcWrapper?.getBoundingClientRect()
+    if (rcRect && rcRect.width > 0) {
+      // Recharts tooltip has a real position — place issue popover on the opposite side
+      const rcOnRight = rcRect.left > hovered.x
+      if (rcOnRight) {
+        // Recharts is to the right → issue popover goes left of Recharts
+        el.style.left = `${Math.max(4, rcRect.left - popoverWidth - 8)}px`
+      } else {
+        // Recharts is to the left → issue popover goes right of Recharts
+        el.style.left = `${rcRect.right + 8}px`
+      }
     } else {
-      // Cursor in right half → Recharts tooltip left → issue popover RIGHT
+      // Fallback: no Recharts tooltip visible, center on cursor
       el.style.left = `${hovered.x + 20}px`
     }
 
@@ -843,6 +846,8 @@ export const LogChart = observer(() => {
     const nearby: DetectedIssue[] = []
 
     for (const issue of visibleIssues) {
+      // Only detect hover on issues that are actually visible (toggle on, or selected)
+      if (!uiStore.showIssues && issue.id !== analysisStore.selectedIssueId) continue
       const times = issue.occurrences ?? [issue.timeRange]
       for (const tr of times) {
         const occTime = tr[0] / 1000000
@@ -870,10 +875,14 @@ export const LogChart = observer(() => {
         const el = popoverRef.current
         const popoverWidth = el.offsetWidth
         const popoverHeight = el.offsetHeight
-        const chartRect = chartContainerRef.current?.getBoundingClientRect()
-        const midX = chartRect ? chartRect.left + chartRect.width / 2 : window.innerWidth / 2
-        if (event.clientX < midX) {
-          el.style.left = `${Math.max(4, event.clientX - popoverWidth - 20)}px`
+        const rcW = chartContainerRef.current?.querySelector('.recharts-tooltip-wrapper') as HTMLElement | null
+        const rcR = rcW?.getBoundingClientRect()
+        if (rcR && rcR.width > 0) {
+          if (rcR.left > event.clientX) {
+            el.style.left = `${Math.max(4, rcR.left - popoverWidth - 8)}px`
+          } else {
+            el.style.left = `${rcR.right + 8}px`
+          }
         } else {
           el.style.left = `${event.clientX + 20}px`
         }
