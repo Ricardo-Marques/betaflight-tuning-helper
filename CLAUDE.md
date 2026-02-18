@@ -5,13 +5,13 @@ Client-side Blackbox log analyzer. No backend — everything runs in-browser.
 ## Commands
 
 ```bash
-npm run dev        # Dev server at localhost:5173
-npm run build      # tsc && vite build → dist/
-npm run preview    # Preview production build
-npm run lint       # ESLint
+pnpm dev           # Dev server at localhost:5173
+pnpm build         # tsc && vite build → dist/
+pnpm preview       # Preview production build
+pnpm lint          # ESLint
 ```
 
-E2E tests use Playwright (`npm run test`). Aim for the full suite to run in ~10 minutes or less.
+E2E tests use Playwright (`pnpm test`). Aim for the full suite to run in ~10 minutes or less.
 
 ## Architecture
 
@@ -20,7 +20,7 @@ E2E tests use Playwright (`npm run test`). Aim for the full suite to run in ~10 
   - `rules/` — 8 self-contained `TuningRule` objects (BouncebackRule, PropwashRule, WobbleRule, TrackingQualityRule, MotorSaturationRule, DTermNoiseRule, GyroNoiseRule, HighThrottleOscillationRule)
   - `types/` — `LogFrame`, `Analysis` (DetectedIssue, Recommendation, ParameterChange), `TuningRule` interface
   - `utils/` — FFT (Cooley-Tukey), signal analysis algorithms
-- **Stores** (`src/stores/`) — MobX with decorators (`experimentalDecorators: true`)
+- **Stores** (`src/stores/`) — MobX with `makeAutoObservable`
   - `LogStore` — Parsed frames, metadata, worker communication
   - `AnalysisStore` — Analysis results, issue/recommendation selection
   - `UIStore` — Axis selection, zoom, chart toggles
@@ -28,6 +28,7 @@ E2E tests use Playwright (`npm run test`). Aim for the full suite to run in ~10 
 - **Components** (`src/components/`) — React 18 with `observer()` from mobx-react-lite
 - **BBL Parser** (`src/domain/blackbox/`) — Pure TypeScript binary parser for .bbl/.bfl files (version-agnostic, no WASM)
 - **Workers** (`src/workers/logParser.worker.ts`) — Parses .bbl/.bfl (native TS parser) and .txt/.csv in background thread
+- **MobX Reactive Primitives** (`src/lib/mobx-reactivity/`) — `useObservableState`, `useComputed`, `useAutorun`
 
 ## Key Patterns
 
@@ -41,8 +42,9 @@ E2E tests use Playwright (`npm run test`). Aim for the full suite to run in ~10 
 
 - TypeScript strict mode, `noUnusedLocals`, `noUnusedParameters`
 - No `any` in domain layer (warning-level in eslint)
-- Tailwind CSS for styling
-- MobX `@observable`, `@computed`, `@action`, `runInAction` patterns
+- Emotion styled components for styling (no Tailwind, no inline styles)
+- MobX `makeAutoObservable`, `runInAction` patterns
+- MobX reactive primitives (`useObservableState`, `useComputed`, `useAutorun`) instead of React hooks
 - Web Worker uses `postMessage` for progress updates
 
 ## Deployment
