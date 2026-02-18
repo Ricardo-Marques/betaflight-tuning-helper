@@ -254,11 +254,8 @@ export class AnalysisStore {
     return this.issues.filter(issue => {
       const occurrences = issue.occurrences ?? [issue.timeRange]
       return occurrences.some((tr, idx) => {
-        // Time range overlaps the visible window
-        if (tr[0] <= endTime && tr[1] >= startTime) return true
-        // Peak time falls within the visible window
-        const peak = issue.peakTimes?.[idx] ?? issue.metrics.peakTime
-        return peak !== undefined && peak >= startTime && peak <= endTime
+        const peak = issue.peakTimes?.[idx] ?? issue.metrics.peakTime ?? (tr[0] + tr[1]) / 2
+        return peak >= startTime && peak <= endTime
       })
     })
   }

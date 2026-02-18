@@ -94,6 +94,20 @@ export const IssueSummaryLabel = styled.span`
   color: ${p => p.theme.colors.text.muted};
 `
 
+export const IssueSummaryLink = styled.button`
+  font-size: 0.75rem;
+  color: ${p => p.theme.colors.text.link};
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+
+  &:hover {
+    color: ${p => p.theme.colors.text.linkHover};
+    text-decoration: underline;
+  }
+`
+
 export const IssuePillList = styled.div`
   display: flex;
   align-items: center;

@@ -10,7 +10,7 @@ import {
 import {
   ChartWrapper, EmptyState, AxisBar, AxisLabel, AxisButton,
   ToggleBar, ToggleLabel, StyledCheckbox,
-  IssueSummaryStrip, IssueSummaryLabel, IssuePillList, IssuePill, IssueDot,
+  IssueSummaryStrip, IssueSummaryLabel, IssueSummaryLink, IssuePillList, IssuePill, IssueDot,
   ChartContainer, LabelOverlay, ChartLabel, HoverPopover,
   ZoomControls, ZoomHeader, ZoomInfoLabel, ZoomResetBtn,
   AxisSwitchToast,
@@ -134,56 +134,67 @@ export const LogChart = observer(() => {
         </ToggleBar>
       </AxisBar>
 
-      {uiStore.showIssues && visibleIssues.length > 0 && (
+      {analysisStore.isComplete && (
         <IssueSummaryStrip data-testid="issues-in-view">
-          <IssueSummaryLabel>{visibleIssues.length} issue{visibleIssues.length !== 1 ? 's' : ''} in view</IssueSummaryLabel>
-          <IssuePillList>
-            {visibleIssues.map(issue => (
-              <IssuePill
-                key={issue.id}
-                data-testid={`issue-pill-${issue.id}`}
-                data-issue-type={issue.type}
-                data-severity={issue.severity}
-                data-axis={issue.axis}
-                onClick={() => {
-                  const times = issue.occurrences ?? [issue.timeRange]
-                  const viewStart = visibleFrames.length > 0 ? visibleFrames[0].time : 0
-                  const viewEnd = visibleFrames.length > 0 ? visibleFrames[visibleFrames.length - 1].time : Infinity
-                  const inViewIdx = times.findIndex((tr, idx) => {
-                    const peak = issue.peakTimes?.[idx] ?? issue.metrics.peakTime ?? (tr[0] + tr[1]) / 2
-                    return peak >= viewStart && peak <= viewEnd
-                  })
-                  const occIdx = inViewIdx >= 0 ? inViewIdx : 0
-                  analysisStore.selectIssue(issue.id, occIdx)
-                  uiStore.setActiveRightTab('issues')
-                  if (!uiStore.rightPanelOpen) uiStore.toggleRightPanel()
-                  if (inViewIdx < 0) {
-                    const frames = logStore.frames
-                    if (times.length > 0 && frames.length > 0) {
-                      const tr = times[occIdx]
-                      const occTime = issue.peakTimes?.[occIdx] ?? issue.metrics.peakTime ?? (tr[0] + tr[1]) / 2
-                      let lo = 0, hi = frames.length - 1
-                      while (lo < hi) { const mid = (lo + hi) >> 1; if (frames[mid].time < occTime) lo = mid + 1; else hi = mid }
-                      const centerPct = (lo / frames.length) * 100
-                      const halfDur = (uiStore.zoomEnd - uiStore.zoomStart) / 2
-                      let newStart = centerPct - halfDur
-                      let newEnd = centerPct + halfDur
-                      if (newStart < 0) { newEnd -= newStart; newStart = 0 }
-                      if (newEnd > 100) { newStart -= newEnd - 100; newEnd = 100 }
-                      uiStore.animateZoom(Math.max(0, newStart), Math.min(100, newEnd))
-                    }
-                  }
-                }}
-                style={{
-                  color: severityColor(issue.severity),
-                  opacity: issue.axis !== uiStore.selectedAxis ? 0.35 : undefined,
-                }}
-              >
-                <IssueDot style={{ backgroundColor: severityColor(issue.severity) }} />
-                {shortLabel(issue)}
-              </IssuePill>
-            ))}
-          </IssuePillList>
+          {!uiStore.showIssues ? (
+            <>
+              <IssueSummaryLabel>Issues hidden</IssueSummaryLabel>
+              <IssueSummaryLink onClick={uiStore.toggleIssues}>Show issues</IssueSummaryLink>
+            </>
+          ) : visibleIssues.length === 0 ? (
+            <IssueSummaryLabel>No issues in view</IssueSummaryLabel>
+          ) : (
+            <>
+              <IssueSummaryLabel>{visibleIssues.length} issue{visibleIssues.length !== 1 ? 's' : ''} in view</IssueSummaryLabel>
+              <IssuePillList>
+                {visibleIssues.map(issue => (
+                  <IssuePill
+                    key={issue.id}
+                    data-testid={`issue-pill-${issue.id}`}
+                    data-issue-type={issue.type}
+                    data-severity={issue.severity}
+                    data-axis={issue.axis}
+                    onClick={() => {
+                      const times = issue.occurrences ?? [issue.timeRange]
+                      const viewStart = visibleFrames.length > 0 ? visibleFrames[0].time : 0
+                      const viewEnd = visibleFrames.length > 0 ? visibleFrames[visibleFrames.length - 1].time : Infinity
+                      const inViewIdx = times.findIndex((tr, idx) => {
+                        const peak = issue.peakTimes?.[idx] ?? issue.metrics.peakTime ?? (tr[0] + tr[1]) / 2
+                        return peak >= viewStart && peak <= viewEnd
+                      })
+                      const occIdx = inViewIdx >= 0 ? inViewIdx : 0
+                      analysisStore.selectIssue(issue.id, occIdx)
+                      uiStore.setActiveRightTab('issues')
+                      if (!uiStore.rightPanelOpen) uiStore.toggleRightPanel()
+                      if (inViewIdx < 0) {
+                        const frames = logStore.frames
+                        if (times.length > 0 && frames.length > 0) {
+                          const tr = times[occIdx]
+                          const occTime = issue.peakTimes?.[occIdx] ?? issue.metrics.peakTime ?? (tr[0] + tr[1]) / 2
+                          let lo = 0, hi = frames.length - 1
+                          while (lo < hi) { const mid = (lo + hi) >> 1; if (frames[mid].time < occTime) lo = mid + 1; else hi = mid }
+                          const centerPct = (lo / frames.length) * 100
+                          const halfDur = (uiStore.zoomEnd - uiStore.zoomStart) / 2
+                          let newStart = centerPct - halfDur
+                          let newEnd = centerPct + halfDur
+                          if (newStart < 0) { newEnd -= newStart; newStart = 0 }
+                          if (newEnd > 100) { newStart -= newEnd - 100; newEnd = 100 }
+                          uiStore.animateZoom(Math.max(0, newStart), Math.min(100, newEnd))
+                        }
+                      }
+                    }}
+                    style={{
+                      color: severityColor(issue.severity),
+                      opacity: issue.axis !== uiStore.selectedAxis ? 0.35 : undefined,
+                    }}
+                  >
+                    <IssueDot style={{ backgroundColor: severityColor(issue.severity) }} />
+                    {shortLabel(issue)}
+                  </IssuePill>
+                ))}
+              </IssuePillList>
+            </>
+          )}
         </IssueSummaryStrip>
       )}
 
