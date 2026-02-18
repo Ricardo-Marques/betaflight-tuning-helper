@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/logo.svg" width="200" alt="Betaflight Tuning Helper logo" />
+  <img src="public/logo.svg" width="100" alt="Betaflight Tuning Helper logo" />
 </p>
 
 <h1 align="center">Betaflight Tuning Helper</h1>
@@ -15,7 +15,7 @@ Client-side web app that analyzes Betaflight Blackbox logs and generates actiona
 
 PID tuning is one of the hardest parts of FPV. Most pilots either fly stock settings or spend hours in trial-and-error, changing one slider at a time and hoping for the best.
 
-Blackbox logs contain all the data needed to diagnose problems — oscillations, propwash, bounceback, noise — but interpreting raw gyro/motor traces is expert-level knowledge. Existing tools like Blackbox Explorer show you the data, but don't tell you *what to change*.
+Blackbox logs contain all the data needed to diagnose problems — oscillations, propwash, bounceback, noise — but interpreting raw gyro/motor traces is expert-level knowledge. Existing tools like Blackbox Explorer show you the data, but don't tell you _what to change_.
 
 This app bridges that gap. Drop a log file, and it will:
 
@@ -31,16 +31,16 @@ Everything runs 100% client-side. No data leaves your browser, no account requir
 
 **8 detection rules** — The rule engine analyzes overlapping time windows across roll, pitch, and yaw:
 
-| Rule | Detects | Key recommendations |
-|------|---------|-------------------|
-| Bounceback | Overshoot after stick release | Adjust D / D_min |
-| Propwash | Oscillations during throttle drops | Increase D_min, dynamic idle |
-| Wobble | Mid-throttle oscillations without stick input | Increase P / FF or filtering |
-| Tracking Quality | Setpoint-to-gyro tracking error | Adjust P, I, or FF |
-| Motor Saturation | Motors clipping at 100% | Reduce master multiplier or P |
-| D-term Noise | Excessive D-term activity | Increase D-term filtering |
-| Gyro Noise | High gyro noise floor | Increase gyro filtering |
-| High-Throttle Oscillation | Oscillations at high throttle (TPA) | Adjust TPA rate/breakpoint |
+| Rule                      | Detects                                       | Key recommendations           |
+| ------------------------- | --------------------------------------------- | ----------------------------- |
+| Bounceback                | Overshoot after stick release                 | Adjust D / D_min              |
+| Propwash                  | Oscillations during throttle drops            | Increase D_min, dynamic idle  |
+| Wobble                    | Mid-throttle oscillations without stick input | Increase P / FF or filtering  |
+| Tracking Quality          | Setpoint-to-gyro tracking error               | Adjust P, I, or FF            |
+| Motor Saturation          | Motors clipping at 100%                       | Reduce master multiplier or P |
+| D-term Noise              | Excessive D-term activity                     | Increase D-term filtering     |
+| Gyro Noise                | High gyro noise floor                         | Increase gyro filtering       |
+| High-Throttle Oscillation | Oscillations at high throttle (TPA)           | Adjust TPA rate/breakpoint    |
 
 **Smart deduplication** — Issues are collapsed per type+axis (one entry regardless of how many windows detected it). Recommendations are deduplicated by parameter+axis so you never see two items targeting the same slider.
 
@@ -62,9 +62,9 @@ npm run dev        # http://localhost:5173
 ### Usage
 
 1. Drag and drop a `.bbl` file from your flight controller (or a `.txt`/`.csv` export from Blackbox Explorer)
-3. Click **Analyze Log**
-4. Review detected issues and recommendations
-5. Apply changes in Betaflight Configurator
+2. Click **Analyze Log**
+3. Review detected issues and recommendations
+4. Apply changes in Betaflight Configurator
 
 ### Build
 

@@ -216,7 +216,7 @@ export const App = observer(() => {
                   <animateTransform attributeName="transform" type="rotate" from="360 36 164" to="0 36 164" dur="0.7s" repeatCount="indefinite"/>
                 </g>
                 <rect x="72" y="64" width="56" height="72" rx="8" fill="#2563eb"/>
-                <rect x="86" y="52" width="28" height="14" rx="3" fill="#334155" transform="rotate(-10 100 59)"/>
+                <rect x="86" y="52" width="28" height="14" rx="3" fill="#334155" transform="rotate(0 100 59)"/>
                 <circle cx="100" cy="59" r="5" fill="#1e293b" transform="rotate(-10 100 59)"/>
                 <circle cx="100" cy="59" r="3" fill="#0f172a" transform="rotate(-10 100 59)"/>
                 <circle cx="111" cy="54" r="2" fill="#ef4444" transform="rotate(-10 100 59)">
