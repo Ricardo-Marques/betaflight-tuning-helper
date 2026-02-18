@@ -521,6 +521,10 @@ export const RecommendationsPanel = observer(() => {
     return (cliCommands.match(/^set /gm) || []).length
   }, [cliCommands])
 
+  const unresolvedCount = useMemo(() => {
+    return (cliCommands.match(/current value unknown/gm) || []).length
+  }, [cliCommands])
+
   // Group issues by severity
   const issuesBySeverity = useMemo(() => {
     const groups: Record<string, DetectedIssue[]> = {}
@@ -596,7 +600,7 @@ export const RecommendationsPanel = observer(() => {
           <CliBarInner>
             <div className="flex items-center gap-2">
               <CliLabel>
-                {commandCount} CLI command{commandCount !== 1 ? 's' : ''}
+                {commandCount} CLI command{commandCount !== 1 ? 's' : ''}{unresolvedCount > 0 ? ` (${unresolvedCount} need manual values)` : ''}
               </CliLabel>
               <CliPreviewToggle onClick={() => setCliExpanded(!cliExpanded)}>
                 {cliExpanded ? 'Hide' : 'Preview'}

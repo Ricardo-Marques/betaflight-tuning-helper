@@ -567,6 +567,7 @@ export const LogChart = observer(() => {
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={chartData}
+            margin={{ top: 20, right: 5, bottom: 5, left: 5 }}
             onMouseDown={handleChartMouseDown}
             onMouseMove={handleChartMouseMove}
             onMouseUp={handleChartMouseUp}
@@ -576,7 +577,8 @@ export const LogChart = observer(() => {
             <XAxis
               dataKey="time"
               type="number"
-              domain={['dataMin', 'dataMax']}
+              domain={chartData.length > 0 ? [chartData[0].time, chartData[chartData.length - 1].time] : [0, 1]}
+              allowDataOverflow
               height={50}
               label={{ value: 'Time (s)', position: 'insideBottom', offset: -2 }}
               stroke={theme.colors.chart.axis}
@@ -615,6 +617,7 @@ export const LogChart = observer(() => {
                       stroke={severityColor(issue.severity)}
                       strokeWidth={10}
                       strokeOpacity={0.25}
+                      ifOverflow="hidden"
                     />
                   )
                 }
@@ -625,6 +628,7 @@ export const LogChart = observer(() => {
                     stroke={severityColor(issue.severity)}
                     strokeWidth={isThisOccurrence ? 3.5 : 1.5}
                     strokeDasharray={isThisOccurrence ? undefined : '4 3'}
+                    ifOverflow="hidden"
                     label={{
                       value: issue.type,
                       position: 'top',

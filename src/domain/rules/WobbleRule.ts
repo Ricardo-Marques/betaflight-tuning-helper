@@ -166,12 +166,12 @@ export const WobbleRule: TuningRule = {
             changes: [
               {
                 parameter: 'gyroFilterMultiplier',
-                recommendedChange: '+1 step',
+                recommendedChange: '+10',
                 explanation: 'Increase gyro filtering to reduce high-frequency noise input',
               },
               {
                 parameter: 'dtermFilterMultiplier',
-                recommendedChange: '+1 step',
+                recommendedChange: '+10',
                 explanation: 'Increase D-term filtering to prevent noise amplification',
               },
             ],

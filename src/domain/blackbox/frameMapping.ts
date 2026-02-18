@@ -226,6 +226,8 @@ function extractPidProfile(h: Map<string, string>): PidProfile | undefined {
   const ffPitch = parseInt(h.get('feedforward_pitch') ?? '0') || undefined
   const ffYaw = parseInt(h.get('feedforward_yaw') ?? '0') || undefined
 
+  const masterMultiplier = parseInt(h.get('simplified_master_multiplier') ?? '0') || undefined
+
   return {
     rollP, rollI, rollD,
     pitchP, pitchI, pitchD,
@@ -239,6 +241,7 @@ function extractPidProfile(h: Map<string, string>): PidProfile | undefined {
     tpaRate,
     tpaBreakpoint,
     dynamicIdle,
+    masterMultiplier,
   }
 }
 
@@ -262,7 +265,12 @@ function extractFilterSettings(h: Map<string, string>): FilterSettings | undefin
   const dtermLpf1Type = h.get('dterm_lpf1_type') ?? undefined
   const dtermLpf2Type = h.get('dterm_lpf2_type') ?? undefined
 
-  if (!gyroLpf1Cutoff && !dtermLpf1Cutoff && !dynamicNotchCount && !rpmFilterHarmonics) {
+  const gyroFilterMultiplier = parseInt(h.get('simplified_gyro_filter_multiplier') ?? '0') || undefined
+  const dtermFilterMultiplier = parseInt(h.get('simplified_dterm_filter_multiplier') ?? '0') || undefined
+  const itermRelaxCutoff = parseInt(h.get('iterm_relax_cutoff') ?? '0') || undefined
+
+  if (!gyroLpf1Cutoff && !dtermLpf1Cutoff && !dynamicNotchCount && !rpmFilterHarmonics
+      && !gyroFilterMultiplier && !dtermFilterMultiplier && !itermRelaxCutoff) {
     return undefined
   }
 
@@ -282,5 +290,8 @@ function extractFilterSettings(h: Map<string, string>): FilterSettings | undefin
     rpmFilterHarmonics,
     rpmFilterMinHz,
     rpmFilterQ,
+    gyroFilterMultiplier,
+    dtermFilterMultiplier,
+    itermRelaxCutoff,
   }
 }

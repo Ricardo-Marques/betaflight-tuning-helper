@@ -156,4 +156,11 @@ export interface FilterSettings {
   rpmFilterHarmonics?: number
   rpmFilterMinHz?: number
   rpmFilterQ?: number
+
+  // Simplified filter multipliers
+  gyroFilterMultiplier?: number
+  dtermFilterMultiplier?: number
+
+  // I-term relax
+  itermRelaxCutoff?: number
 }

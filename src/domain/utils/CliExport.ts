@@ -155,6 +155,12 @@ export function getGlobalValue(
       return filterSettings?.rpmFilterHarmonics
     case 'rpmFilterMinHz':
       return filterSettings?.rpmFilterMinHz
+    case 'gyroFilterMultiplier':
+      return filterSettings?.gyroFilterMultiplier
+    case 'dtermFilterMultiplier':
+      return filterSettings?.dtermFilterMultiplier
+    case 'itermRelaxCutoff':
+      return filterSettings?.itermRelaxCutoff
     default:
       return undefined
   }
