@@ -2,7 +2,7 @@ import { observer, useLocalObservable } from 'mobx-react-lite'
 import { useTheme } from '@emotion/react'
 import { useRef, useCallback } from 'react'
 import { useLogStore, useUIStore, useAnalysisStore } from '../stores/RootStore'
-import { useObservableState } from '../lib/mobx-reactivity'
+import { useObservableState, useAutorun } from '../lib/mobx-reactivity'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, ReferenceLine,
@@ -13,6 +13,7 @@ import {
   IssueSummaryStrip, IssueSummaryLabel, IssuePillList, IssuePill, IssueDot,
   ChartContainer, LabelOverlay, ChartLabel, HoverPopover,
   ZoomControls, ZoomHeader, ZoomInfoLabel, ZoomResetBtn,
+  AxisSwitchToast,
 } from './LogChart.styles'
 import { RangeSlider } from './RangeSlider'
 import { useChartData } from './logChart/useChartData'
@@ -67,6 +68,15 @@ export const LogChart = observer(() => {
   const interactionRefs = { chartContainerRef, hoveredIssuesRef, popoverSourceRef, popoverRef, hoverClearTimer, forcedPopoverTimer }
   const { handleChartMouseMove, handleChartMouseLeave, handleChartMouseDown, handleChartMouseUp, handleRangeChange } =
     useChartInteractions(interactionRefs, { setIsDraggingObs, setContainerWidth }, visibleIssues, chartData, isDraggingObs, popoverActions, chartMountedBox)
+
+  // Auto-switch axis when an issue on a different axis is selected
+  useAutorun(() => {
+    const issue = analysisStore.selectedIssue
+    if (issue && issue.axis !== uiStore.selectedAxis) {
+      uiStore.setAxis(issue.axis)
+      uiStore.flashAxisHighlight(issue.axis)
+    }
+  })
 
   // Zoom info
   const totalDuration = logStore.duration
@@ -130,6 +140,7 @@ export const LogChart = observer(() => {
                 data-testid={`issue-pill-${issue.id}`}
                 data-issue-type={issue.type}
                 data-severity={issue.severity}
+                data-axis={issue.axis}
                 onClick={() => {
                   const times = issue.occurrences ?? [issue.timeRange]
                   const viewStart = visibleFrames.length > 0 ? visibleFrames[0].time : 0
@@ -236,10 +247,12 @@ export const LogChart = observer(() => {
                       stroke={severityColor(l.issue.severity)} strokeWidth={10} strokeOpacity={0.25} ifOverflow="hidden" />
                   )
                 }
+                const isOnAxis = l.issue.axis === uiStore.selectedAxis
+                const lineOpacity = showAsSelected || isOnAxis ? undefined : 0.25
                 elements.push(
                   <ReferenceLine key={`issue-${l.issue.id}-${l.idx}`} x={l.x} yAxisId="primary"
                     stroke={severityColor(l.issue.severity)} strokeWidth={showAsSelected ? 3.5 : 1.5}
-                    strokeDasharray={showAsSelected ? undefined : '4 3'} ifOverflow="hidden" />
+                    strokeDasharray={showAsSelected ? undefined : '4 3'} strokeOpacity={lineOpacity} ifOverflow="hidden" />
                 )
                 return elements
               })

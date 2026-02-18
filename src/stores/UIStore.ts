@@ -25,14 +25,31 @@ export class UIStore {
   activeRightTab: RightPanelTab = 'summary'
   changelogOpen: boolean = false
 
+  axisHighlight: Axis | null = null
+  axisHighlightKey: number = 0
+
   private _animationFrameId: number | null = null
+  private _axisHighlightTimer: ReturnType<typeof setTimeout> | null = null
 
   constructor() {
-    makeAutoObservable<this, '_animationFrameId'>(this, { _animationFrameId: false })
+    makeAutoObservable<this, '_animationFrameId' | '_axisHighlightTimer'>(this, {
+      _animationFrameId: false,
+      _axisHighlightTimer: false,
+    })
   }
 
   setAxis = (axis: Axis): void => {
     this.selectedAxis = axis
+  }
+
+  flashAxisHighlight = (axis: Axis): void => {
+    if (this._axisHighlightTimer) clearTimeout(this._axisHighlightTimer)
+    this.axisHighlight = axis
+    this.axisHighlightKey++
+    this._axisHighlightTimer = setTimeout(() => {
+      this.axisHighlight = null
+      this._axisHighlightTimer = null
+    }, 1600)
   }
 
   setZoom = (start: number, end: number): void => {
@@ -144,5 +161,6 @@ export class UIStore {
     this.showThrottle = true
     this.showIssues = true
     this.activeRightTab = 'summary'
+    this.axisHighlight = null
   }
 }

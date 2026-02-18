@@ -47,6 +47,13 @@ export function GlobalStyles() {
         .dim-siblings > *:not(.selected-item) {
           animation: dim-fade 1.5s ease-out forwards;
         }
+
+        @keyframes axis-toast {
+          0%   { opacity: 0; transform: translate(-50%, calc(-50% + 4px)); }
+          12%  { opacity: 1; transform: translate(-50%, -50%); }
+          80%  { opacity: 1; transform: translate(-50%, -50%); }
+          100% { opacity: 0; transform: translate(-50%, calc(-50% - 4px)); }
+        }
       `}
     />
   )

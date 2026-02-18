@@ -45,6 +45,22 @@ export const AxisButton = styled.button<{ isActive: boolean }>`
   }
 `
 
+export const AxisSwitchToast = styled.div`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 100;
+  pointer-events: none;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: ${p => p.theme.colors.button.primaryText};
+  background-color: ${p => p.theme.colors.button.primary};
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
+  animation: axis-toast 1.5s ease-out forwards;
+`
+
 export const ToggleBar = styled.div`
   margin-left: auto;
   display: flex;
