@@ -230,7 +230,7 @@ export const LogChart = observer(() => {
                 color: theme.colors.text.primary,
               }}
             />
-            <Legend wrapperStyle={{ paddingTop: 8 }} />
+            <Legend wrapperStyle={{ paddingTop: 8, paddingLeft: 60 }} />
 
             {/* Issue reference lines */}
             {(() => {
