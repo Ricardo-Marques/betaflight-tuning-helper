@@ -2,8 +2,8 @@ import { TuningRule } from '../types/TuningRule'
 import { AnalysisWindow, DetectedIssue, Recommendation } from '../types/Analysis'
 import { LogFrame } from '../types/LogFrame'
 import { QuadProfile } from '../types/QuadProfile'
-import { calculateRMS, calculateError, calculateStdDev } from '../utils/FrequencyAnalysis'
-import { extractAxisData } from '../utils/SignalAnalysis'
+import { calculateRMS, calculateError, calculateStdDev, estimatePhaseLag } from '../utils/FrequencyAnalysis'
+import { extractAxisData, deriveSampleRate } from '../utils/SignalAnalysis'
 
 /**
  * Detects poor tracking quality during active flight maneuvers
@@ -80,20 +80,41 @@ export const TrackingQualityRule: TuningRule = {
       return []
     }
 
-    // Classify issue type based on amplitude ratio
-    // amplitudeRatio = gyroRMS / setpointRMS * 100
-    //   < 90%  → overdamped: gyro not reaching setpoint (too little P or too much D)
-    //   > 105% → underdamped: overshooting setpoint (too much P or not enough D)
-    //   90-105% → reasonable amplitude but still high error (phase lag / timing)
+    // Detect phase lag via cross-correlation
+    const sampleRate = deriveSampleRate(windowFrames)
+    const lag = estimatePhaseLag(setpoint, gyro, sampleRate)
+
+    // Compute lag-corrected amplitude ratio by aligning signals before comparing RMS.
+    // Raw amplitudeRatio is inflated when gyro lags setpoint because the overlap
+    // region contains mismatched data.
+    let correctedRatio = amplitudeRatio
+    if (lag.lagMs > 2) {
+      const lagSamples = Math.round(lag.lagMs / 1000 * sampleRate)
+      const alignedSetpoint = setpoint.slice(0, setpoint.length - lagSamples)
+      const alignedGyro = gyro.slice(lagSamples)
+      if (alignedSetpoint.length > 0) {
+        correctedRatio = (calculateRMS(alignedGyro) / calculateRMS(alignedSetpoint)) * 100
+      }
+    }
+
+    // Classify issue type using phase lag + amplitude ratio
+    //   lagMs > 2 → primary problem is timing, not amplitude
+    //   amplitudeRatio < 90%  → overdamped (too little P or too much D)
+    //   amplitudeRatio > 105% → underdamped (too much P or not enough D)
+    //   Otherwise → phase lag / timing issue
     let issueType: 'underdamped' | 'overdamped' | 'lowFrequencyOscillation'
     let issueDescription: string
 
-    if (amplitudeRatio < 90 && normalizedError > 25) {
+    if (lag.lagMs > 2 && correctedRatio >= 80 && correctedRatio <= 120) {
+      // Significant phase lag with reasonable amplitude — timing problem, not gain
+      issueType = 'lowFrequencyOscillation'
+      issueDescription = `Phase lag: gyro delayed by ${lag.lagMs.toFixed(1)}ms (${normalizedError.toFixed(0)}% tracking error)`
+    } else if (correctedRatio < 90 && normalizedError > 25) {
       issueType = 'overdamped'
-      issueDescription = `Poor tracking: gyro only reaching ${amplitudeRatio.toFixed(0)}% of setpoint — insufficient P gain or too much D (${normalizedError.toFixed(0)}% error)`
-    } else if (amplitudeRatio > 105) {
+      issueDescription = `Poor tracking: gyro only reaching ${correctedRatio.toFixed(0)}% of setpoint — insufficient P gain or too much D (${normalizedError.toFixed(0)}% error)`
+    } else if (correctedRatio > 105 && correctedRatio <= 200) {
       issueType = 'underdamped'
-      issueDescription = `Poor tracking: overshooting setpoint at ${amplitudeRatio.toFixed(0)}% — too much P or insufficient D damping (${normalizedError.toFixed(0)}% error)`
+      issueDescription = `Poor tracking: overshooting setpoint at ${correctedRatio.toFixed(0)}% — too much P or insufficient D damping (${normalizedError.toFixed(0)}% error)`
     } else {
       issueType = 'lowFrequencyOscillation'
       issueDescription = `Poor tracking: ${normalizedError.toFixed(0)}% error during active flight`
@@ -111,9 +132,10 @@ export const TrackingQualityRule: TuningRule = {
       description: issueDescription,
       metrics: {
         normalizedError,
-        amplitudeRatio,
+        amplitudeRatio: correctedRatio,
         rmsError,
         signalToNoise,
+        phaseLagMs: lag.lagMs,
       },
       confidence,
     })

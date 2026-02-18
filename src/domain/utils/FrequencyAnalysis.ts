@@ -239,6 +239,59 @@ export function lowPassFilter(signal: number[], alpha: number): number[] {
 }
 
 /**
+ * Estimates phase lag between setpoint and gyro using time-domain cross-correlation.
+ * Searches positive lags only (gyro physically cannot lead setpoint in a PID system).
+ * @param setpoint Setpoint signal
+ * @param gyro Gyro signal
+ * @param sampleRate Sample rate in Hz
+ * @returns lagMs (delay in milliseconds) and correlation (normalized, 0-1)
+ */
+export function estimatePhaseLag(
+  setpoint: number[],
+  gyro: number[],
+  sampleRate: number
+): { lagMs: number; correlation: number } {
+  const n = Math.min(setpoint.length, gyro.length)
+  const maxLagSamples = Math.min(Math.ceil(sampleRate * 0.02), n - 1) // up to 20ms
+
+  let bestLag = 0
+  let bestMeanCorr = -Infinity
+
+  // Normalize each lag by overlap length to remove bias toward lag=0.
+  // Without this, shorter overlaps (larger d) produce smaller sums purely
+  // from having fewer terms, masking the true peak.
+  for (let d = 0; d <= maxLagSamples; d++) {
+    let sum = 0
+    const overlapLength = n - d
+    for (let i = 0; i < overlapLength; i++) {
+      sum += setpoint[i] * gyro[i + d]
+    }
+    const meanCorr = sum / overlapLength
+    if (meanCorr > bestMeanCorr) {
+      bestMeanCorr = meanCorr
+      bestLag = d
+    }
+  }
+
+  // Compute Pearson correlation coefficient for the best lag
+  let sumXY = 0
+  let sumX2 = 0
+  let sumY2 = 0
+  for (let i = 0; i < n - bestLag; i++) {
+    sumXY += setpoint[i] * gyro[i + bestLag]
+    sumX2 += setpoint[i] * setpoint[i]
+    sumY2 += gyro[i + bestLag] * gyro[i + bestLag]
+  }
+  const denom = Math.sqrt(sumX2 * sumY2)
+  const correlation = denom > 0 ? sumXY / denom : 0
+
+  return {
+    lagMs: (bestLag / sampleRate) * 1000,
+    correlation,
+  }
+}
+
+/**
  * Calculates error signal (setpoint - gyro)
  */
 export function calculateError(setpoint: number[], gyro: number[]): number[] {

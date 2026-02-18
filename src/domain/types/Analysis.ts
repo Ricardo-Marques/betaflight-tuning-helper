@@ -114,6 +114,9 @@ export interface IssueMetrics {
 
   /** Signal-to-noise ratio */
   signalToNoise?: number
+
+  /** Phase lag between setpoint and gyro (ms) */
+  phaseLagMs?: number
 }
 
 export type FrequencyBand = 'low' | 'mid' | 'high'
