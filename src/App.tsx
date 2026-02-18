@@ -64,6 +64,7 @@ const PanelToggleBtn = styled.button`
   align-items: center;
   justify-content: center;
   background-color: ${p => p.theme.colors.button.secondary};
+  border: none;
   border-left: 1px solid ${p => p.theme.colors.border.main};
   border-right: 1px solid ${p => p.theme.colors.border.main};
   transition: background-color 0.15s;
@@ -71,6 +72,7 @@ const PanelToggleBtn = styled.button`
   font-size: 0.75rem;
   font-weight: 700;
   user-select: none;
+  cursor: pointer;
 
   &:hover {
     background-color: ${p => p.theme.colors.button.secondaryHover};

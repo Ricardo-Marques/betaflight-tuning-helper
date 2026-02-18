@@ -151,11 +151,13 @@ const MetadataLabel = styled.span`
 
 const LinkButton = styled.button`
   margin-top: 0.5rem;
+  padding: 0;
   font-size: 0.75rem;
   color: ${p => p.theme.colors.text.link};
   background: none;
   border: none;
   cursor: pointer;
+  text-align: left;
 
   &:hover {
     color: ${p => p.theme.colors.text.linkHover};
