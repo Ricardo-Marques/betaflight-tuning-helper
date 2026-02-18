@@ -39,7 +39,8 @@
       "Bash(npx kill-port 5173 5174)",
       "Bash(pnpm lint:*)",
       "Bash(pnpm add:*)",
-      "Bash(pnpm test:unit:*)"
+      "Bash(pnpm test:unit:*)",
+      "Bash(curl:*)"
     ]
   }
 }
