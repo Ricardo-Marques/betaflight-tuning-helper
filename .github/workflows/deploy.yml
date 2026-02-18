@@ -36,7 +36,7 @@ jobs:
         with:
           path: dist
 
-  unit-test:
+  unit-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -51,7 +51,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:unit
 
-  test:
+  integration-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -83,7 +83,7 @@ jobs:
       - run: pnpm test
 
   deploy:
-    needs: [build, unit-test, test]
+    needs: [build, unit-tests, integration-tests]
     runs-on: ubuntu-latest
     environment:
       name: github-pages
