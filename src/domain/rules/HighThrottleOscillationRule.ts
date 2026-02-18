@@ -61,7 +61,7 @@ export const HighThrottleOscillationRule: TuningRule = {
     } else if (amplitude > 30 * scale) {
       severity = 'medium'
     } else if (amplitude > 18 * scale) {
-      severity = 'medium'
+      severity = 'low'
     } else {
       severity = 'low'
     }

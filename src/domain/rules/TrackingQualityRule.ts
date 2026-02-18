@@ -100,7 +100,7 @@ export const TrackingQualityRule: TuningRule = {
     } else if (normalizedError > 40 * scale) {
       severity = 'medium' // Significantly delayed
     } else if (normalizedError > 25 * scale) {
-      severity = 'medium' // Noticeable sluggishness
+      severity = 'low' // Noticeable sluggishness
     } else if (normalizedError > 12 * scale) {
       severity = 'low' // Visible lag/slop
     } else {

@@ -50,7 +50,7 @@ export const BouncebackRule: TuningRule = {
     } else if (metrics.overshoot > 25 * scale || metrics.settlingTime > 100 * scale) {
       severity = 'medium'
     } else if (metrics.overshoot > 15 * scale || metrics.settlingTime > 75 * scale) {
-      severity = 'medium'
+      severity = 'low'
     } else {
       severity = 'low'
     }

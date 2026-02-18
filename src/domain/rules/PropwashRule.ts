@@ -58,7 +58,7 @@ export const PropwashRule: TuningRule = {
     } else if (metrics.amplitude > 30 * scale || metrics.duration > 80 * scale) {
       severity = 'medium'
     } else if (metrics.amplitude > 18 * scale) {
-      severity = 'medium'
+      severity = 'low'
     } else {
       severity = 'low'
     }

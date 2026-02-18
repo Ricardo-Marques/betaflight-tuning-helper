@@ -46,7 +46,7 @@ export const MotorSaturationRule: TuningRule = {
     } else if (metrics.saturationPercentage > 15 * scale) {
       severity = 'medium'
     } else if (metrics.saturationPercentage > 8 * scale) {
-      severity = 'medium'
+      severity = 'low'
     } else {
       severity = 'low'
     }
@@ -161,6 +161,33 @@ export const MotorSaturationRule: TuningRule = {
             },
           ],
           expectedImprovement: 'Reduced motor saturation with minimal performance impact',
+        })
+      }
+
+      if (saturation > 5 && saturation <= 8) {
+        // Low: Increase TPA as a light touch
+        recommendations.push({
+          id: uuidv4(),
+          issueId: issue.id,
+          type: 'adjustTPA',
+          priority: 4,
+          confidence: issue.confidence * 0.75,
+          title: 'Consider increasing TPA rate',
+          description: 'Minor motor saturation during high-throttle maneuvers',
+          rationale:
+            'Light motor saturation can often be addressed by slightly increasing TPA to reduce PID authority at high throttle, where saturation is most likely to occur.',
+          risks: [
+            'Slightly reduced tracking at high throttle',
+            'May not be needed if saturation only occurs during extreme maneuvers',
+          ],
+          changes: [
+            {
+              parameter: 'tpaRate',
+              recommendedChange: '+5',
+              explanation: 'Small TPA increase to reduce high-throttle motor demand',
+            },
+          ],
+          expectedImprovement: 'Less occasional motor saturation during punches',
         })
       }
     }
