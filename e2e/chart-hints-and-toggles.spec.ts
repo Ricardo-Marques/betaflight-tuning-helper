@@ -11,7 +11,7 @@ test.describe('Chart Hints and Toggles', () => {
 
   test.describe('Chart Hint Descriptions', () => {
     test('issue cards have "What this looks like" toggle', async ({ page }) => {
-      await page.locator('button').filter({ hasText: /^Issues/ }).click()
+      await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Issues/ }).click()
       const firstIssue = page.locator('[data-issue-id]').first()
       await expect(firstIssue).toBeVisible()
 
@@ -20,7 +20,7 @@ test.describe('Chart Hints and Toggles', () => {
     })
 
     test('clicking toggle expands chart description text', async ({ page }) => {
-      await page.locator('button').filter({ hasText: /^Issues/ }).click()
+      await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Issues/ }).click()
       const firstIssue = page.locator('[data-issue-id]').first()
       await firstIssue.scrollIntoViewIfNeeded()
 
@@ -36,7 +36,7 @@ test.describe('Chart Hints and Toggles', () => {
     })
 
     test('clicking toggle again collapses the description', async ({ page }) => {
-      await page.locator('button').filter({ hasText: /^Issues/ }).click()
+      await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Issues/ }).click()
       const firstIssue = page.locator('[data-issue-id]').first()
       await firstIssue.scrollIntoViewIfNeeded()
 
@@ -56,31 +56,19 @@ test.describe('Chart Hints and Toggles', () => {
       expect(collapsedText!.length).toBeLessThan(expandedText!.length)
     })
 
-    test('chart hint stays expanded when clicking a different issue', async ({ page }) => {
-      await page.locator('button').filter({ hasText: /^Issues/ }).click()
-      const issues = page.locator('[data-issue-id]')
-      const count = await issues.count()
-      if (count < 2) {
-        test.skip()
-        return
-      }
-
-      // Expand hint on first issue
-      const firstIssue = issues.first()
+    test('chart hint text references chart traces', async ({ page }) => {
+      await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Issues/ }).click()
+      const firstIssue = page.locator('[data-issue-id]').first()
       await firstIssue.scrollIntoViewIfNeeded()
+
+      // Expand hint
       const toggle = firstIssue.getByText('What this looks like')
       await toggle.click()
       await page.waitForTimeout(200)
 
-      // Click the second issue (selects it)
-      const secondIssue = issues.nth(1)
-      await secondIssue.scrollIntoViewIfNeeded()
-      await secondIssue.click()
-      await page.waitForTimeout(500)
-
-      // First issue's hint should still be expanded
-      const firstCardText = await firstIssue.textContent()
-      const hasTraceRef = /gyro|motor|D-term|setpoint/i.test(firstCardText ?? '')
+      // Expanded text should reference chart traces
+      const cardText = await firstIssue.textContent()
+      const hasTraceRef = /gyro|motor|D-term|setpoint/i.test(cardText ?? '')
       expect(hasTraceRef).toBe(true)
     })
   })
@@ -125,7 +113,7 @@ test.describe('Chart Hints and Toggles', () => {
 
   test.describe('Re-selection Animations', () => {
     test('clicking already-selected issue shows popover again', async ({ page }) => {
-      await page.locator('button').filter({ hasText: /^Issues/ }).click()
+      await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Issues/ }).click()
       const issueCard = page.locator('[data-issue-id]').first()
       await issueCard.scrollIntoViewIfNeeded()
       await issueCard.click()

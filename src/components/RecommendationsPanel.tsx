@@ -511,6 +511,7 @@ const PriorityBadge = styled.span`
   border-radius: 0.25rem;
   font-size: 0.75rem;
   font-weight: 500;
+  white-space: nowrap;
   background-color: ${p => p.theme.colors.severity.lowBg};
   color: ${p => p.theme.colors.severity.lowText};
 `
@@ -632,8 +633,9 @@ const LinkedIssueLink = styled.button`
 
 const RecCardHeader = styled.div`
   display: flex;
-  align-items: flex-start;
+  align-items: baseline;
   justify-content: space-between;
+  gap: 0.75rem;
   margin-bottom: 0.5rem;
 `
 
@@ -641,6 +643,8 @@ const RecBadgeRow = styled.div`
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-shrink: 0;
+  white-space: nowrap;
 `
 
 const ChangesList = styled.ul`

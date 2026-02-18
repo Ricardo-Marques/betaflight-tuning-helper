@@ -120,7 +120,7 @@ test.describe('Issue Interactions', () => {
       await page.waitForTimeout(300)
 
       // Switch to Issues tab and find a multi-occurrence issue
-      await page.locator('button').filter({ hasText: /^Issues/ }).click()
+      await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Issues/ }).click()
       const multiOccCard = page.locator('[data-issue-id]').filter({
         has: page.locator('text=/\\d+\\/\\d+/'),
       }).first()
@@ -152,7 +152,7 @@ test.describe('Issue Interactions', () => {
 
     test('arrow navigation changes zoom when next occurrence off-screen', async ({ page }) => {
       // Switch to Issues tab and find a multi-occurrence issue
-      await page.locator('button').filter({ hasText: /^Issues/ }).click()
+      await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Issues/ }).click()
       const multiOccCard = page.locator('[data-issue-id]').filter({
         has: page.locator('text=/\\d+\\/\\d+/'),
       }).first()
@@ -208,7 +208,7 @@ test.describe('Issue Interactions', () => {
     })
 
     test('popover appears when clicking issue card in right panel', async ({ page }) => {
-      await page.locator('button').filter({ hasText: /^Issues/ }).click()
+      await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Issues/ }).click()
       const issueCard = page.locator('[data-issue-id]').first()
       await issueCard.scrollIntoViewIfNeeded()
       await issueCard.click()
@@ -369,7 +369,7 @@ test.describe('Issue Interactions', () => {
       const refLinesAfter = await refLines.count()
       expect(refLinesAfter).toBe(0)
 
-      await expect(strip).not.toBeVisible()
+      await expect(strip).toContainText('Issues hidden')
 
       const labelsAfter = await labels.count()
       expect(labelsAfter).toBe(0)
@@ -385,7 +385,7 @@ test.describe('Issue Interactions', () => {
       expect(await page.getByTestId('chart-label').count()).toBe(0)
 
       // Select an issue from the right panel
-      await page.locator('button').filter({ hasText: /^Issues/ }).click()
+      await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Issues/ }).click()
       const issueCard = page.locator('[data-issue-id]').first()
       await issueCard.scrollIntoViewIfNeeded()
       await issueCard.click()

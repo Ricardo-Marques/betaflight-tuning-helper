@@ -17,18 +17,18 @@ test.describe('Analysis', () => {
   test('health badge shows valid value', async ({ page }) => {
     const badge = page.getByTestId('overall-health-badge')
     const text = await badge.textContent()
-    expect(['EXCELLENT', 'GOOD', 'NEEDSWORK', 'POOR']).toContain(text?.trim())
+    expect(['EXCELLENT', 'GOOD', 'NEEDS WORK', 'POOR']).toContain(text?.trim())
   })
 
   test('summary shows issue counts', async ({ page }) => {
     const summary = page.getByTestId('analysis-summary')
-    await expect(summary.getByText(/^High:/)).toBeVisible()
-    await expect(summary.getByText(/^Medium:/)).toBeVisible()
-    await expect(summary.getByText(/^Low:/)).toBeVisible()
+    await expect(summary.getByText(/\d+ High/)).toBeVisible()
+    await expect(summary.getByText(/\d+ Med/)).toBeVisible()
+    await expect(summary.getByText(/\d+ Low/)).toBeVisible()
   })
 
   test('issues grouped by severity in order', async ({ page }) => {
-    await page.locator('button').filter({ hasText: /^Issues/ }).click()
+    await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Issues/ }).click()
     const groups = page.locator('[data-testid^="severity-group-"]')
     const count = await groups.count()
     expect(count).toBeGreaterThan(0)
@@ -46,7 +46,7 @@ test.describe('Analysis', () => {
   })
 
   test('issue card has severity badge, axis, and confidence', async ({ page }) => {
-    await page.locator('button').filter({ hasText: /^Issues/ }).click()
+    await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Issues/ }).click()
     const firstIssue = page.locator('[data-issue-id]').first()
     await expect(firstIssue).toBeVisible()
     // Severity badge
@@ -59,7 +59,7 @@ test.describe('Analysis', () => {
   })
 
   test('occurrence navigator shows counter and navigates', async ({ page }) => {
-    await page.locator('button').filter({ hasText: /^Issues/ }).click()
+    await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Issues/ }).click()
     // Find an issue card with occurrence navigator (has prev/next buttons)
     const multiOccCard = page.locator('[data-issue-id]').filter({
       has: page.locator('text=/\\d+\\/\\d+/'),
@@ -93,7 +93,7 @@ test.describe('Analysis', () => {
   })
 
   test('issue cards have linked recommendations', async ({ page }) => {
-    await page.locator('button').filter({ hasText: /^Issues/ }).click()
+    await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Issues/ }).click()
     const fixLinks = page.locator('[data-issue-id]').locator('button').filter({ hasText: /^Fix:/ })
     const count = await fixLinks.count()
     expect(count).toBeGreaterThan(0)
@@ -101,7 +101,7 @@ test.describe('Analysis', () => {
 
   test('recommendation card has priority, changes, and rationale', async ({ page }) => {
     // Switch to Fixes tab
-    await page.locator('button').filter({ hasText: /^Fixes/ }).click()
+    await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Fixes/ }).click()
     const section = page.getByTestId('recommendations-section')
     await expect(section).toBeVisible()
 
@@ -148,7 +148,7 @@ test.describe('Analysis', () => {
 
   test('rationale is always visible on recommendation cards', async ({ page }) => {
     // Switch to Fixes tab
-    await page.locator('button').filter({ hasText: /^Fixes/ }).click()
+    await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Fixes/ }).click()
     const section = page.getByTestId('recommendations-section')
     const firstRec = section.locator('[data-rec-id]').first()
 

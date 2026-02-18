@@ -44,7 +44,7 @@ test.describe('Navigation', () => {
   })
 
   test('clicking issue card zooms chart and highlights card', async ({ page }) => {
-    await page.locator('button').filter({ hasText: /^Issues/ }).click()
+    await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Issues/ }).click()
     const issueCard = page.locator('[data-issue-id]').first()
     await expect(issueCard).toBeVisible()
 
@@ -58,7 +58,7 @@ test.describe('Navigation', () => {
   })
 
   test('issue occurrence nav updates zoom position', async ({ page }) => {
-    await page.locator('button').filter({ hasText: /^Issues/ }).click()
+    await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Issues/ }).click()
     // Find a multi-occurrence issue
     const multiOccCard = page.locator('[data-issue-id]').filter({
       has: page.locator('text=/\\d+\\/\\d+/'),
@@ -86,25 +86,25 @@ test.describe('Navigation', () => {
   })
 
   test('double-click resize handle hides and shows left panel', async ({ page }) => {
-    const leftPanel = page.getByTestId('left-panel')
-    await expect(leftPanel).toBeVisible()
+    const handle = page.getByTestId('resize-left-panel')
+    await expect(handle).toHaveAttribute('data-collapsed', 'false')
 
-    await page.getByTestId('resize-left-panel').dblclick()
-    await expect(leftPanel).not.toBeVisible()
+    await handle.dispatchEvent('dblclick')
+    await expect(handle).toHaveAttribute('data-collapsed', 'true')
 
-    await page.getByTestId('resize-left-panel').dblclick()
-    await expect(leftPanel).toBeVisible()
+    await handle.click()
+    await expect(handle).toHaveAttribute('data-collapsed', 'false')
   })
 
   test('double-click resize handle hides and shows right panel', async ({ page }) => {
-    const rightPanel = page.getByTestId('right-panel')
-    await expect(rightPanel).toBeVisible()
+    const handle = page.getByTestId('resize-right-panel')
+    await expect(handle).toHaveAttribute('data-collapsed', 'false')
 
-    await page.getByTestId('resize-right-panel').dblclick()
-    await expect(rightPanel).not.toBeVisible()
+    await handle.dispatchEvent('dblclick')
+    await expect(handle).toHaveAttribute('data-collapsed', 'true')
 
-    await page.getByTestId('resize-right-panel').dblclick()
-    await expect(rightPanel).toBeVisible()
+    await handle.click()
+    await expect(handle).toHaveAttribute('data-collapsed', 'false')
   })
 
   test('header and footer are visible', async ({ page }) => {

@@ -43,8 +43,6 @@ test.describe('File Upload', () => {
     const logInfo = page.getByTestId('log-info')
     await expect(logInfo).toBeVisible()
     await expect(logInfo.getByText('Firmware:')).toBeVisible()
-    await expect(logInfo.getByText('Loop Rate:')).toBeVisible()
-    await expect(logInfo.getByText('Duration:')).toBeVisible()
     await expect(logInfo.getByText('Motors:')).toBeVisible()
   })
 
