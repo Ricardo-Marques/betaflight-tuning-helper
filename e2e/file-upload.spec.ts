@@ -14,9 +14,8 @@ test.describe('File Upload', () => {
   test('parses BFL file and shows metadata', async ({ page }) => {
     await page.locator('#file-upload').setInputFiles(BFL_PATH)
     await expect(page.getByTestId('parse-progress-bar').or(page.getByTestId('parse-success-text'))).toBeVisible({ timeout: 30_000 })
-    await expect(page.getByTestId('parse-success-text')).toBeVisible({ timeout: 30_000 })
-    const metadata = page.getByTestId('parse-metadata')
-    await expect(metadata).toBeVisible()
+    const metadata = page.getByTestId('parse-success-text')
+    await expect(metadata).toBeVisible({ timeout: 30_000 })
     await expect(metadata.getByText('Duration:')).toBeVisible()
     await expect(metadata.getByText('Loop Rate:')).toBeVisible()
   })
@@ -53,7 +52,7 @@ test.describe('File Upload', () => {
     test.setTimeout(60_000)
     // Load BFL
     await uploadAndAnalyze(page)
-    const bflLoopRate = await page.getByTestId('parse-metadata').getByText('Loop Rate:').textContent()
+    const bflLoopRate = await page.getByTestId('parse-success-text').getByText('Loop Rate:').textContent()
 
     // Reset
     await page.getByTestId('upload-different-file').click()
@@ -62,7 +61,7 @@ test.describe('File Upload', () => {
     // Load CSV
     await page.locator('#file-upload').setInputFiles(CSV_PATH)
     await expect(page.getByTestId('parse-success-text')).toBeVisible({ timeout: 40_000 })
-    const csvLoopRate = await page.getByTestId('parse-metadata').getByText('Loop Rate:').textContent()
+    const csvLoopRate = await page.getByTestId('parse-success-text').getByText('Loop Rate:').textContent()
 
     expect(bflLoopRate).toBe(csvLoopRate)
   })
