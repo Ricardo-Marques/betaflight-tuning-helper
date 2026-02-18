@@ -29,10 +29,12 @@ export function analyzeFrequency(
   const magnitudes: number[] = []
   const frequencies: number[] = []
 
+  // Hann window coherent gain is 0.5 — compensate by multiplying by 2
+  const hannCompensation = 2
   for (let i = 0; i < halfSize; i++) {
     const re = fftResult[i].real
     const im = fftResult[i].imag
-    const magnitude = Math.sqrt(re * re + im * im) / fftSize
+    const magnitude = (Math.sqrt(re * re + im * im) / fftSize) * hannCompensation
     magnitudes.push(magnitude)
     frequencies.push((i * sampleRate) / fftSize)
   }
@@ -112,6 +114,10 @@ function fft(signal: number[]): Complex[] {
 
 /**
  * Calculates energy in different frequency bands
+ * Bands aligned with Betaflight noise domains:
+ *   low:  0-30 Hz  (aerodynamic, I-term hunting, frame sway)
+ *   mid:  30-150 Hz (PID oscillation, propwash, structural resonance)
+ *   high: 150+ Hz  (motor noise, electrical noise, prop harmonics)
  */
 function calculateBandEnergy(
   frequencies: number[],
@@ -125,9 +131,9 @@ function calculateBandEnergy(
     const freq = frequencies[i]
     const energy = magnitudes[i] * magnitudes[i]
 
-    if (freq < 20) {
+    if (freq < 30) {
       low += energy
-    } else if (freq < 80) {
+    } else if (freq < 150) {
       mid += energy
     } else {
       high += energy

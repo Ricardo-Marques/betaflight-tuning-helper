@@ -230,8 +230,8 @@ export interface FrequencySpectrum {
   dominantFrequency: number // Hz
   dominantMagnitude: number
   bandEnergy: {
-    low: number // 0-20 Hz
-    mid: number // 20-80 Hz
-    high: number // 80+ Hz
+    low: number // 0-30 Hz (aerodynamic, I-term)
+    mid: number // 30-150 Hz (PID oscillation, structural)
+    high: number // 150+ Hz (motor noise, electrical)
   }
 }

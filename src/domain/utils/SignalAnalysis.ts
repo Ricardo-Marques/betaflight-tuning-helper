@@ -87,8 +87,9 @@ export function detectBounceback(
     }
   }
 
-  // Calculate settling time (time to stay within 5% band)
-  const settlingBand = 10 // deg/s
+  // Calculate settling time (time to stay within 5% band of peak setpoint)
+  const peakSetpoint = Math.abs(gyro[releaseIndex - 5]) // approximate move magnitude
+  const settlingBand = Math.max(5, peakSetpoint * 0.05) // 5% of move, minimum 5 deg/s
   let settlingIndex = -1
 
   for (let i = peakIndex; i < windowGyro.length - 10; i++) {
@@ -286,9 +287,10 @@ export function detectMidThrottleWobble(
 
   // Classify frequency band
   let frequencyBand: 'low' | 'mid' | 'high'
-  if (frequency < 20) {
+  // Classify frequency band (aligned with FFT band boundaries)
+  if (frequency < 30) {
     frequencyBand = 'low'
-  } else if (frequency < 80) {
+  } else if (frequency < 150) {
     frequencyBand = 'mid'
   } else {
     frequencyBand = 'high'

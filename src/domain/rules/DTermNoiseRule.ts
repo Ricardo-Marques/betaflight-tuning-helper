@@ -43,30 +43,35 @@ export const DTermNoiseRule: TuningRule = {
     const dtermRMS = calculateRMS(dtermSignal)
     const gyroRMS = calculateRMS(gyroSignal)
 
-    // D-to-gyro ratio: high ratio means D is amplifying noise
-    const dToGyroRatio = dtermRMS / (gyroRMS + 1)
+    // FFT on D-term signal to check high-band energy ratio
+    // This is the primary metric — what fraction of D-term energy is high-frequency noise
+    const dtermSpectrum = analyzeFrequency(dtermSignal, sampleRate)
+    const dtermTotalEnergy = dtermSpectrum.bandEnergy.low + dtermSpectrum.bandEnergy.mid + dtermSpectrum.bandEnergy.high
+    const dtermHighRatio = dtermTotalEnergy > 0 ? dtermSpectrum.bandEnergy.high / dtermTotalEnergy : 0
 
-    // FFT on D-term signal to check high-band energy
-    const spectrum = analyzeFrequency(dtermSignal, sampleRate)
-    const totalEnergy = spectrum.bandEnergy.low + spectrum.bandEnergy.mid + spectrum.bandEnergy.high
-    const highBandRatio = totalEnergy > 0 ? spectrum.bandEnergy.high / totalEnergy : 0
+    // Also check gyro high-band ratio for comparison
+    const gyroSpectrum = analyzeFrequency(gyroSignal, sampleRate)
+    const gyroTotalEnergy = gyroSpectrum.bandEnergy.low + gyroSpectrum.bandEnergy.mid + gyroSpectrum.bandEnergy.high
+    const gyroHighRatio = gyroTotalEnergy > 0 ? gyroSpectrum.bandEnergy.high / gyroTotalEnergy : 0
 
-    // Detected if D-term is disproportionately noisy and high-frequency dominant (scaled by profile)
-    if (dToGyroRatio <= 0.5 * scale || highBandRatio <= 0.3) {
+    // D-term is a noise problem if its high-frequency content is dominant (>40%)
+    // AND it has more high-freq content than the gyro (D is amplifying noise)
+    if (dtermHighRatio <= 0.4 * scale || dtermRMS < 1) {
       return []
     }
 
-    // Classify severity based on D-to-gyro ratio (scaled by profile)
+    // Classify severity based on D-term high-frequency energy ratio
+    // This is independent of D gain setting, unlike the old dToGyroRatio
     let severity: 'low' | 'medium' | 'high'
-    if (dToGyroRatio > 2.0 * scale) {
+    if (dtermHighRatio > 0.7 / scale && dtermRMS > 5) {
       severity = 'high'
-    } else if (dToGyroRatio > 1.0 * scale) {
+    } else if (dtermHighRatio > 0.55 / scale || (dtermHighRatio > 0.4 / scale && dtermHighRatio > gyroHighRatio * 1.5)) {
       severity = 'medium'
     } else {
       severity = 'low'
     }
 
-    const confidence = Math.min(0.95, 0.65 + highBandRatio * 0.3 + dToGyroRatio * 0.05)
+    const confidence = Math.min(0.95, 0.65 + dtermHighRatio * 0.3 + (dtermHighRatio > gyroHighRatio ? 0.1 : 0))
 
     issues.push({
       id: uuidv4(),
@@ -74,7 +79,7 @@ export const DTermNoiseRule: TuningRule = {
       severity,
       axis: window.axis,
       timeRange: [window.startTime, window.endTime],
-      description: `D-term noise: ratio ${dToGyroRatio.toFixed(2)}x gyro, ${(highBandRatio * 100).toFixed(0)}% high-freq energy`,
+      description: `D-term noise: ${(dtermHighRatio * 100).toFixed(0)}% high-freq energy (gyro: ${(gyroHighRatio * 100).toFixed(0)}%), D-term RMS: ${dtermRMS.toFixed(1)}`,
       metrics: {
         dtermActivity: dtermRMS,
         noiseFloor: gyroRMS,
