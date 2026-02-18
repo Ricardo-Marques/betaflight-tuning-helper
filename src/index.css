@@ -27,6 +27,29 @@ code {
     monospace;
 }
 
+/* Attention pulse for selected items */
+@keyframes attention-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6); }
+  40% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
+.attention-pulse {
+  animation: attention-pulse 0.7s ease-out;
+}
+
+/* Dim siblings — animated fade that auto-restores after 1.5s */
+@keyframes dim-fade {
+  0% { opacity: 1; }
+  10% { opacity: 0.35; }
+  75% { opacity: 0.35; }
+  100% { opacity: 1; }
+}
+
+.dim-siblings > *:not(.selected-item) {
+  animation: dim-fade 1.5s ease-out forwards;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;

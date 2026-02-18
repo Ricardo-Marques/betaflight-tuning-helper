@@ -1,5 +1,6 @@
 import { AnalysisWindow, DetectedIssue, Recommendation } from './Analysis'
 import { LogFrame } from './LogFrame'
+import { QuadProfile } from './QuadProfile'
 
 /**
  * Extensible tuning rule interface for detection and recommendation
@@ -17,12 +18,12 @@ export interface TuningRule {
   /**
    * Detects issues in the window
    */
-  detect: (window: AnalysisWindow, frames: LogFrame[]) => DetectedIssue[]
+  detect: (window: AnalysisWindow, frames: LogFrame[], profile?: QuadProfile) => DetectedIssue[]
 
   /**
    * Generates recommendations for detected issues
    */
-  recommend: (issues: DetectedIssue[], frames: LogFrame[]) => Recommendation[]
+  recommend: (issues: DetectedIssue[], frames: LogFrame[], profile?: QuadProfile) => Recommendation[]
 
   /**
    * Base confidence for this rule (0-1)

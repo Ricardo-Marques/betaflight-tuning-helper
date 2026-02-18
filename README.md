@@ -6,7 +6,7 @@ Client-side web app that analyzes Betaflight Blackbox logs and generates actiona
 
 ## Features
 
-**Log parsing** — Upload `.bbl` files directly from your flight controller, or `.txt`/`.csv` exports from Blackbox Explorer. Binary BBL parsing uses the `blackbox-log` WASM package. Parsed in a Web Worker so the UI stays responsive. Handles 10MB+ logs.
+**Log parsing** — Upload `.bbl` files directly from your flight controller, or `.txt`/`.csv` exports from Blackbox Explorer. Binary BBL parsing uses a native TypeScript parser (version-agnostic, no WASM dependency). Parsed in a Web Worker so the UI stays responsive. Handles 10MB+ logs.
 
 **8 detection rules** — The rule engine analyzes overlapping time windows across roll, pitch, and yaw:
 

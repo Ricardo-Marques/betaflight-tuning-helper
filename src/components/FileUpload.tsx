@@ -134,10 +134,6 @@ export const FileUpload = observer(() => {
             </p>
             <div data-testid="parse-metadata" className="text-sm text-gray-600 space-y-1">
               <p>
-                <span className="font-medium">Frames:</span>{' '}
-                {logStore.metadata.frameCount.toLocaleString()}
-              </p>
-              <p>
                 <span className="font-medium">Duration:</span>{' '}
                 {logStore.metadata.duration.toFixed(1)}s
               </p>

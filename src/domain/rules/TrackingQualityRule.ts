@@ -1,6 +1,7 @@
 import { TuningRule } from '../types/TuningRule'
 import { AnalysisWindow, DetectedIssue, Recommendation } from '../types/Analysis'
 import { LogFrame } from '../types/LogFrame'
+import { QuadProfile } from '../types/QuadProfile'
 import { calculateRMS, calculateError, calculateStdDev } from '../utils/FrequencyAnalysis'
 import { extractAxisData } from '../utils/SignalAnalysis'
 
@@ -28,9 +29,10 @@ export const TrackingQualityRule: TuningRule = {
     )
   },
 
-  detect: (window: AnalysisWindow, frames: LogFrame[]): DetectedIssue[] => {
+  detect: (window: AnalysisWindow, frames: LogFrame[], profile?: QuadProfile): DetectedIssue[] => {
     const issues: DetectedIssue[] = []
     const windowFrames = window.frameIndices.map(i => frames[i])
+    const scale = profile?.thresholds.trackingError ?? 1.0
 
     // Only log the first few and any with high error
     const shouldLog = window.frameIndices[0] < 2000 || window.metadata.rmsSetpoint > 50
@@ -91,19 +93,19 @@ export const TrackingQualityRule: TuningRule = {
       return []
     }
 
-    // Determine severity based on normalized error
+    // Determine severity based on normalized error (scaled by profile)
     let severity: 'low' | 'medium' | 'high'
-    if (normalizedError > 60) {
+    if (normalizedError > 60 * scale) {
       severity = 'high' // Quad barely responding
-    } else if (normalizedError > 40) {
+    } else if (normalizedError > 40 * scale) {
       severity = 'high' // Significantly delayed
-    } else if (normalizedError > 25) {
+    } else if (normalizedError > 25 * scale) {
       severity = 'medium' // Noticeable sluggishness
-    } else if (normalizedError > 12) {
+    } else if (normalizedError > 12 * scale) {
       severity = 'low' // Visible lag/slop
     } else {
       // Acceptable tracking quality
-      console.debug(`${TrackingQualityRule.id}: No issue detected (error < 12%)`)
+      console.debug(`${TrackingQualityRule.id}: No issue detected (error < ${(12 * scale).toFixed(0)}%)`)
       return []
     }
 

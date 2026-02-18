@@ -11,7 +11,6 @@ import {
   Legend,
   ResponsiveContainer,
   ReferenceLine,
-  ReferenceArea,
 } from 'recharts'
 import { DetectedIssue } from '../domain/types/Analysis'
 
@@ -26,12 +25,26 @@ export const LogChart = observer(() => {
   const uiStore = useUIStore()
   const analysisStore = useAnalysisStore()
   const [hoveredIssue, setHoveredIssue] = useState<HoveredIssue | null>(null)
-  const [dragStart, setDragStart] = useState<number | null>(null)
-  const [dragEnd, setDragEnd] = useState<number | null>(null)
+  const [showGlow, setShowGlow] = useState(false)
+  const glowTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const dragStartX = useRef<number | null>(null)
+  const dragStartZoom = useRef<{ start: number; end: number } | null>(null)
   const isDragging = useRef(false)
+  const didDrag = useRef(false)
 
-  // Derive start and duration from zoomStart/zoomEnd
-  const zoomStart = uiStore.zoomStart
+  // Flash glow when selected issue changes, then fade after 1.5s
+  useEffect(() => {
+    if (analysisStore.selectedIssueId) {
+      setShowGlow(true)
+      if (glowTimer.current) clearTimeout(glowTimer.current)
+      glowTimer.current = setTimeout(() => setShowGlow(false), 1500)
+    } else {
+      setShowGlow(false)
+    }
+    return () => { if (glowTimer.current) clearTimeout(glowTimer.current) }
+  }, [analysisStore.selectedIssueId, analysisStore.selectedOccurrenceIdx])
+
+  // Derive window duration from zoom range
   const zoomDuration = uiStore.zoomEnd - uiStore.zoomStart
 
   // Calculate visible frame range based on zoom
@@ -77,27 +90,37 @@ export const LogChart = observer(() => {
     return analysisStore.getIssuesInTimeRange(startTime, endTime)
   }, [analysisStore.isComplete, visibleFrames, analysisStore.issues])
 
-  // Handle chart mouse move for issue hover detection + drag tracking
+  // Handle chart mouse move for issue hover detection + drag-to-pan
   const handleChartMouseMove = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (state: any, event: React.MouseEvent) => {
-      // Update drag selection
-      if (isDragging.current && state?.activeLabel != null) {
-        setDragEnd(state.activeLabel as number)
-      }
-
-      // Suppress hover popover while dragging
-      if (isDragging.current) {
+    (_state: any, event: React.MouseEvent) => {
+      // Drag-to-pan: convert pixel delta to percentage shift
+      if (isDragging.current && dragStartX.current != null && dragStartZoom.current && chartContainerRef.current) {
+        const rect = chartContainerRef.current.getBoundingClientRect()
+        const pxDelta = event.clientX - dragStartX.current
+        const { start: origStart, end: origEnd } = dragStartZoom.current
+        const dur = origEnd - origStart
+        // Convert pixel movement to percentage of total log
+        const pctDelta = -(pxDelta / rect.width) * dur
+        let newStart = origStart + pctDelta
+        let newEnd = origEnd + pctDelta
+        // Clamp
+        if (newStart < 0) { newEnd -= newStart; newStart = 0 }
+        if (newEnd > 100) { newStart -= newEnd - 100; newEnd = 100 }
+        newStart = Math.max(0, newStart)
+        newEnd = Math.min(100, newEnd)
+        if (Math.abs(pxDelta) > 3) didDrag.current = true
+        uiStore.setZoom(newStart, newEnd)
         setHoveredIssue(null)
         return
       }
 
-      if (!state?.activeLabel || visibleIssues.length === 0) {
+      if (!_state?.activeLabel || visibleIssues.length === 0) {
         setHoveredIssue(null)
         return
       }
 
-      const cursorTime = state.activeLabel as number
+      const cursorTime = _state.activeLabel as number
       const visibleTimeRange =
         chartData.length > 1
           ? chartData[chartData.length - 1].time - chartData[0].time
@@ -129,99 +152,78 @@ export const LogChart = observer(() => {
         setHoveredIssue(null)
       }
     },
-    [visibleIssues, chartData]
+    [visibleIssues, chartData, uiStore]
   )
 
   const handleChartMouseLeave = useCallback(() => {
     setHoveredIssue(null)
-    // Cancel drag if cursor leaves chart
     if (isDragging.current) {
       isDragging.current = false
-      setDragStart(null)
-      setDragEnd(null)
+      didDrag.current = false
+      dragStartX.current = null
+      dragStartZoom.current = null
     }
   }, [])
 
-  // Drag-to-zoom handlers
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleChartMouseDown = useCallback((state: any) => {
-    if (state?.activeLabel != null) {
+  // Drag-to-pan handlers
+  const handleChartMouseDown = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (_state: any, event: React.MouseEvent) => {
       isDragging.current = true
-      setDragStart(state.activeLabel as number)
-      setDragEnd(state.activeLabel as number)
-    }
-  }, [])
+      didDrag.current = false
+      dragStartX.current = event.clientX
+      dragStartZoom.current = { start: uiStore.zoomStart, end: uiStore.zoomEnd }
+    },
+    [uiStore]
+  )
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleChartMouseUp = useCallback((state: any) => {
-    if (!isDragging.current || dragStart == null) {
-      isDragging.current = false
-      return
-    }
+    const wasDrag = didDrag.current
     isDragging.current = false
+    didDrag.current = false
+    dragStartX.current = null
+    dragStartZoom.current = null
 
-    const endTime = state?.activeLabel != null ? (state.activeLabel as number) : dragEnd
-    if (endTime == null) {
-      setDragStart(null)
-      setDragEnd(null)
-      return
-    }
+    // If it was a real drag, the panning already happened in onMouseMove
+    if (wasDrag) return
 
-    const selStart = Math.min(dragStart, endTime)
-    const selEnd = Math.max(dragStart, endTime)
-
-    // Only zoom if selection spans a meaningful range (> 1% of visible window)
+    // Click (not drag) — select nearest issue occurrence
+    if (!state?.activeLabel) return
+    const clickTime = state.activeLabel as number
     const visibleTimeRange = chartData.length > 1
       ? chartData[chartData.length - 1].time - chartData[0].time
       : 1
-    if (selEnd - selStart > visibleTimeRange * 0.01 && logStore.frames.length > 0) {
-      const firstTime = logStore.frames[0].time
-      const totalDuration = logStore.frames[logStore.frames.length - 1].time - firstTime
-      if (totalDuration > 0) {
-        // Convert seconds back to microseconds then to percentage
-        const startPct = Math.max(0, ((selStart * 1_000_000 - firstTime) / totalDuration) * 100)
-        const endPct = Math.min(100, ((selEnd * 1_000_000 - firstTime) / totalDuration) * 100)
-        uiStore.setZoom(startPct, endPct)
-      }
-    } else {
-      // Click (not drag) — select nearest issue
-      const clickTime = (selStart + selEnd) / 2
-      const threshold = visibleTimeRange * 0.015
-      let closest: DetectedIssue | null = null
-      let closestDist = Infinity
+    const threshold = visibleTimeRange * 0.015
+    let closest: DetectedIssue | null = null
+    let closestOccIdx = 0
+    let closestDist = Infinity
 
-      for (const issue of visibleIssues) {
-        const times = issue.occurrences ?? [issue.timeRange]
-        for (const tr of times) {
-          const occTime = tr[0] / 1000000
-          const dist = Math.abs(occTime - clickTime)
-          if (dist < threshold && dist < closestDist) {
-            closest = issue
-            closestDist = dist
-          }
+    for (const issue of visibleIssues) {
+      const times = issue.occurrences ?? [issue.timeRange]
+      for (let tIdx = 0; tIdx < times.length; tIdx++) {
+        const occTime = times[tIdx][0] / 1000000
+        const dist = Math.abs(occTime - clickTime)
+        if (dist < threshold && dist < closestDist) {
+          closest = issue
+          closestOccIdx = tIdx
+          closestDist = dist
         }
-      }
-
-      if (closest) {
-        analysisStore.selectIssue(closest.id)
       }
     }
 
-    setDragStart(null)
-    setDragEnd(null)
-  }, [dragStart, dragEnd, chartData, logStore.frames, uiStore, visibleIssues, analysisStore])
+    if (closest) {
+      analysisStore.selectIssue(closest.id, closestOccIdx)
+      uiStore.setActiveRightTab('issues')
+      if (!uiStore.rightPanelOpen) uiStore.toggleRightPanel()
+    }
+  }, [chartData, uiStore, visibleIssues, analysisStore])
 
-  // Zoom slider handlers
-  const handleStartChange = useCallback(
-    (newStart: number) => {
-      const clampedStart = Math.min(newStart, 100 - zoomDuration)
-      uiStore.setZoom(clampedStart, clampedStart + zoomDuration)
-    },
-    [uiStore, zoomDuration]
-  )
-
-  const handleDurationChange = useCallback(
-    (newDuration: number) => {
+  // Zoom slider handler — slider value is zoom level (1x to 20x)
+  // Zoom level = 100 / windowPct, so windowPct = 100 / zoomLevel
+  const handleZoomChange = useCallback(
+    (zoomLevel: number) => {
+      const newDuration = 100 / zoomLevel
       const center = (uiStore.zoomStart + uiStore.zoomEnd) / 2
       const halfDur = newDuration / 2
       let newStart = center - halfDur
@@ -266,10 +268,10 @@ export const LogChart = observer(() => {
     return () => el.removeEventListener('wheel', handleWheel)
   }, [uiStore, logStore.isLoaded])
 
-  // Compute time labels
+  // Compute time labels and zoom level
   const totalDuration = logStore.duration
-  const startTimeSec = (zoomStart / 100) * totalDuration
   const windowSec = (zoomDuration / 100) * totalDuration
+  const zoomLevel = 100 / zoomDuration
 
   if (!logStore.isLoaded) {
     return (
@@ -350,8 +352,46 @@ export const LogChart = observer(() => {
         </div>
       </div>
 
+      {/* B2: Issue summary strip */}
+      {visibleIssues.length > 0 && (
+        <div className="flex items-center gap-3 px-4 py-1.5 border-b bg-gray-50">
+          <span className="text-xs text-gray-500">{visibleIssues.length} issue{visibleIssues.length !== 1 ? 's' : ''} in view</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            {visibleIssues.map(issue => (
+              <button
+                key={issue.id}
+                onClick={() => {
+                  analysisStore.selectIssue(issue.id, 0)
+                  const times = issue.occurrences ?? [issue.timeRange]
+                  if (times.length > 0 && logStore.frames.length > 0) {
+                    const firstTime = logStore.frames[0].time
+                    const totalDuration = logStore.frames[logStore.frames.length - 1].time - firstTime
+                    if (totalDuration > 0) {
+                      const tr = times[0]
+                      const span = tr[1] - tr[0]
+                      const padding = Math.max(span * 2, 500_000)
+                      const startPct = Math.max(0, ((tr[0] - padding - firstTime) / totalDuration) * 100)
+                      const endPct = Math.min(100, ((tr[1] + padding - firstTime) / totalDuration) * 100)
+                      uiStore.animateZoom(startPct, endPct)
+                    }
+                  }
+                }}
+                className="flex items-center gap-1 text-xs hover:underline"
+                style={{ color: severityColor(issue.severity) }}
+              >
+                <span
+                  className="inline-block w-2 h-2 rounded-full"
+                  style={{ backgroundColor: severityColor(issue.severity) }}
+                />
+                {issue.type}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Chart */}
-      <div data-testid="chart-container" ref={chartContainerRef} className={`flex-1 p-4 relative${dragStart != null ? ' select-none' : ''}`}>
+      <div data-testid="chart-container" ref={chartContainerRef} className="flex-1 p-4 relative cursor-grab active:cursor-grabbing select-none">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={chartData}
@@ -385,26 +425,43 @@ export const LogChart = observer(() => {
             />
             <Legend wrapperStyle={{ paddingTop: 8 }} />
 
-            {/* Issue markers — one line per occurrence */}
+            {/* Issue markers — vertical lines at each occurrence start */}
             {visibleIssues.flatMap(issue => {
               const times = issue.occurrences ?? [issue.timeRange]
-              const isSelected = issue.id === analysisStore.selectedIssueId
-              return times.map((tr, idx) => {
-                const occTime = tr[0] / 1000000
-                return (
+              const isIssueSelected = issue.id === analysisStore.selectedIssueId
+              return times.flatMap((tr, idx) => {
+                const x = tr[0] / 1000000
+                const isThisOccurrence = isIssueSelected && analysisStore.selectedOccurrenceIdx === idx
+                const lines = []
+                // Temporary glow halo behind the specific selected occurrence
+                if (isThisOccurrence && showGlow) {
+                  lines.push(
+                    <ReferenceLine
+                      key={`issue-glow-${issue.id}-${idx}`}
+                      x={x}
+                      stroke={severityColor(issue.severity)}
+                      strokeWidth={10}
+                      strokeOpacity={0.25}
+                    />
+                  )
+                }
+                lines.push(
                   <ReferenceLine
-                    key={`${issue.id}-${idx}`}
-                    x={occTime}
+                    key={`issue-${issue.id}-${idx}`}
+                    x={x}
                     stroke={severityColor(issue.severity)}
-                    strokeDasharray={isSelected ? undefined : '3 3'}
-                    strokeWidth={isSelected ? 3 : 1}
+                    strokeWidth={isThisOccurrence ? 3.5 : 1.5}
+                    strokeDasharray={isThisOccurrence ? undefined : '4 3'}
                     label={{
                       value: issue.type,
                       position: 'top',
-                      fontSize: 10,
+                      fontSize: isThisOccurrence ? 11 : 9,
+                      fill: severityColor(issue.severity),
+                      fontWeight: isThisOccurrence ? 'bold' : 'normal',
                     }}
                   />
                 )
+                return lines
               })
             })}
 
@@ -490,17 +547,6 @@ export const LogChart = observer(() => {
               </>
             )}
 
-            {/* Drag-to-zoom selection overlay */}
-            {dragStart != null && dragEnd != null && dragStart !== dragEnd && (
-              <ReferenceArea
-                x1={Math.min(dragStart, dragEnd)}
-                x2={Math.max(dragStart, dragEnd)}
-                fill="#3b82f6"
-                fillOpacity={0.15}
-                stroke="#3b82f6"
-                strokeOpacity={0.4}
-              />
-            )}
           </LineChart>
         </ResponsiveContainer>
 
@@ -553,40 +599,23 @@ export const LogChart = observer(() => {
         )}
       </div>
 
-      {/* Zoom controls: Start + Duration */}
+      {/* Zoom controls */}
       <div className="px-4 py-3 border-t">
         <div className="flex items-center gap-4">
           <div className="flex-1">
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs font-medium text-gray-600">
-                Start: {startTimeSec.toFixed(1)}s
+                Zoom: {zoomLevel.toFixed(1)}x ({windowSec.toFixed(1)}s)
               </span>
             </div>
             <input
-              data-testid="zoom-start-slider"
-              type="range"
-              min="0"
-              max={100 - zoomDuration}
-              step="0.1"
-              value={zoomStart}
-              onChange={e => handleStartChange(parseFloat(e.target.value))}
-              className="w-full"
-            />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium text-gray-600">
-                Window: {windowSec.toFixed(1)}s
-              </span>
-            </div>
-            <input
-              data-testid="zoom-duration-slider"
+              data-testid="zoom-level-slider"
               type="range"
               min="1"
-              max="100"
+              max="20"
               step="0.1"
-              value={zoomDuration}
-              onChange={e => handleDurationChange(parseFloat(e.target.value))}
+              value={zoomLevel}
+              onChange={e => handleZoomChange(parseFloat(e.target.value))}
               className="w-full"
             />
           </div>

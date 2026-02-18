@@ -1,6 +1,7 @@
 import { TuningRule } from '../types/TuningRule'
 import { AnalysisWindow, DetectedIssue, Recommendation } from '../types/Analysis'
 import { LogFrame } from '../types/LogFrame'
+import { QuadProfile } from '../types/QuadProfile'
 import { extractAxisData, deriveSampleRate } from '../utils/SignalAnalysis'
 import { calculateRMS, estimateFrequencyFromZeroCrossings, calculateError } from '../utils/FrequencyAnalysis'
 
@@ -28,10 +29,11 @@ export const HighThrottleOscillationRule: TuningRule = {
     return window.metadata.avgThrottle > 1600
   },
 
-  detect: (window: AnalysisWindow, frames: LogFrame[]): DetectedIssue[] => {
+  detect: (window: AnalysisWindow, frames: LogFrame[], profile?: QuadProfile): DetectedIssue[] => {
     const issues: DetectedIssue[] = []
     const windowFrames = window.frameIndices.map(i => frames[i])
     const sampleRate = deriveSampleRate(windowFrames)
+    const scale = profile?.thresholds.highThrottleOscillation ?? 1.0
 
     // Extract gyro and setpoint signals
     const gyroSignal = extractAxisData(windowFrames, 'gyroADC', window.axis)
@@ -44,21 +46,21 @@ export const HighThrottleOscillationRule: TuningRule = {
     // Estimate oscillation frequency via zero crossings
     const frequency = estimateFrequencyFromZeroCrossings(error, sampleRate)
 
-    // Detected if significant error oscillation in the 5-100 Hz range
-    if (errorRMS <= 8 || frequency < 5 || frequency > 100) {
+    // Detected if significant error oscillation in the 5-100 Hz range (scaled by profile)
+    if (errorRMS <= 8 * scale || frequency < 5 || frequency > 100) {
       return []
     }
 
     // Calculate amplitude (peak-to-peak)
     const amplitude = Math.max(...error.map(Math.abs)) * 2
 
-    // Classify severity based on amplitude
+    // Classify severity based on amplitude (scaled by profile)
     let severity: 'low' | 'medium' | 'high'
-    if (amplitude > 50) {
+    if (amplitude > 50 * scale) {
       severity = 'high'
-    } else if (amplitude > 30) {
+    } else if (amplitude > 30 * scale) {
       severity = 'high'
-    } else if (amplitude > 18) {
+    } else if (amplitude > 18 * scale) {
       severity = 'medium'
     } else {
       severity = 'low'

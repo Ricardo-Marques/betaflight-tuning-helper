@@ -1,6 +1,7 @@
 import { TuningRule } from '../types/TuningRule'
 import { AnalysisWindow, DetectedIssue, Recommendation } from '../types/Analysis'
 import { LogFrame } from '../types/LogFrame'
+import { QuadProfile } from '../types/QuadProfile'
 import { detectBounceback, extractAxisData, deriveSampleRate } from '../utils/SignalAnalysis'
 
 /**
@@ -20,10 +21,11 @@ export const BouncebackRule: TuningRule = {
     return window.metadata.maxSetpoint > 50 && window.metadata.hasStickInput
   },
 
-  detect: (window: AnalysisWindow, frames: LogFrame[]): DetectedIssue[] => {
+  detect: (window: AnalysisWindow, frames: LogFrame[], profile?: QuadProfile): DetectedIssue[] => {
     const issues: DetectedIssue[] = []
     const windowFrames = window.frameIndices.map(i => frames[i])
     const sampleRate = deriveSampleRate(windowFrames)
+    const scale = profile?.thresholds.bouncebackOvershoot ?? 1.0
 
     // Log why detection might not run
     console.debug(`${BouncebackRule.id} analyzing window:`, {
@@ -41,14 +43,13 @@ export const BouncebackRule: TuningRule = {
       return []
     }
 
-    // Classify severity based on overshoot and settling time
-    // Well-tuned quads have < 10 deg/s overshoot
+    // Classify severity based on overshoot and settling time (scaled by profile)
     let severity: 'low' | 'medium' | 'high'
-    if (metrics.overshoot > 40 || metrics.settlingTime > 150) {
+    if (metrics.overshoot > 40 * scale || metrics.settlingTime > 150 * scale) {
       severity = 'high'
-    } else if (metrics.overshoot > 25 || metrics.settlingTime > 100) {
+    } else if (metrics.overshoot > 25 * scale || metrics.settlingTime > 100 * scale) {
       severity = 'high'
-    } else if (metrics.overshoot > 15 || metrics.settlingTime > 75) {
+    } else if (metrics.overshoot > 15 * scale || metrics.settlingTime > 75 * scale) {
       severity = 'medium'
     } else {
       severity = 'low'

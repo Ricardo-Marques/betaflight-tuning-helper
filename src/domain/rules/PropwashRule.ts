@@ -1,6 +1,7 @@
 import { TuningRule } from '../types/TuningRule'
 import { AnalysisWindow, DetectedIssue, Recommendation } from '../types/Analysis'
 import { LogFrame } from '../types/LogFrame'
+import { QuadProfile } from '../types/QuadProfile'
 import { detectPropwash, deriveSampleRate } from '../utils/SignalAnalysis'
 
 /**
@@ -23,8 +24,9 @@ export const PropwashRule: TuningRule = {
     )
   },
 
-  detect: (window: AnalysisWindow, frames: LogFrame[]): DetectedIssue[] => {
+  detect: (window: AnalysisWindow, frames: LogFrame[], profile?: QuadProfile): DetectedIssue[] => {
     const issues: DetectedIssue[] = []
+    const scale = profile?.thresholds.propwashAmplitude ?? 1.0
     // Extend the frame range backward to capture the throttle drop that leads into this window
     const firstIdx = window.frameIndices[0]
     const lastIdx = window.frameIndices[window.frameIndices.length - 1]
@@ -49,14 +51,13 @@ export const PropwashRule: TuningRule = {
       return []
     }
 
-    // Classify severity based on amplitude and duration
-    // Well-tuned quads target < 15 deg/s propwash
+    // Classify severity based on amplitude and duration (scaled by profile)
     let severity: 'low' | 'medium' | 'high'
-    if (metrics.amplitude > 50 || metrics.duration > 120) {
+    if (metrics.amplitude > 50 * scale || metrics.duration > 120 * scale) {
       severity = 'high'
-    } else if (metrics.amplitude > 30 || metrics.duration > 80) {
+    } else if (metrics.amplitude > 30 * scale || metrics.duration > 80 * scale) {
       severity = 'high'
-    } else if (metrics.amplitude > 18) {
+    } else if (metrics.amplitude > 18 * scale) {
       severity = 'medium'
     } else {
       severity = 'low'
@@ -84,7 +85,7 @@ export const PropwashRule: TuningRule = {
     return issues
   },
 
-  recommend: (issues: DetectedIssue[], _frames: LogFrame[]): Recommendation[] => {
+  recommend: (issues: DetectedIssue[], _frames: LogFrame[], profile?: QuadProfile): Recommendation[] => {
     const recommendations: Recommendation[] = []
 
     for (const issue of issues) {
@@ -93,6 +94,33 @@ export const PropwashRule: TuningRule = {
       const frequency = issue.metrics.frequency || 0
       const amplitude = issue.metrics.amplitude || 0
       const dtermActivity = issue.metrics.dtermActivity || 0
+
+      // Add iterm_relax_cutoff recommendation for profiles that prefer it
+      if (profile?.overrides.propwashPreferItermRelax && profile.overrides.itermRelaxCutoff > 0) {
+        recommendations.push({
+          id: generateId(),
+          issueId: issue.id,
+          type: 'adjustFiltering',
+          priority: 8,
+          confidence: issue.confidence,
+          title: `Lower I-term relax cutoff on ${issue.axis}`,
+          description: `For ${profile.label} quads, lowering iterm_relax_cutoff is often more effective than raising D-min for propwash`,
+          rationale:
+            'I-term relax controls how aggressively the I-term builds during rapid maneuvers. A lower cutoff prevents I-term windup that exacerbates propwash oscillations, which is especially effective on larger or lower-authority quads.',
+          risks: [
+            'May reduce tracking precision on very aggressive moves',
+            'Could feel slightly less locked-in during rapid direction changes',
+          ],
+          changes: [
+            {
+              parameter: 'itermRelaxCutoff',
+              recommendedChange: String(profile.overrides.itermRelaxCutoff),
+              explanation: `Set iterm_relax_cutoff to ${profile.overrides.itermRelaxCutoff} (recommended for ${profile.label} quads)`,
+            },
+          ],
+          expectedImprovement: 'Reduced propwash oscillations by limiting I-term windup during throttle transitions',
+        })
+      }
 
       if (amplitude > 60) {
         // Severe propwash - multiple interventions needed
@@ -194,7 +222,7 @@ export const PropwashRule: TuningRule = {
       }
 
       // Additional recommendation for master multiplier if widespread
-      if (severity === 'high') {
+      if (issue.severity === 'high') {
         recommendations.push({
           id: generateId(),
           issueId: issue.id,
@@ -234,5 +262,3 @@ function generateId(): string {
   })
 }
 
-type Severity = 'low' | 'medium' | 'high'
-const severity: Severity = 'low' // Just to satisfy type checking

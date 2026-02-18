@@ -1,6 +1,7 @@
 import { TuningRule } from '../types/TuningRule'
 import { AnalysisWindow, DetectedIssue, Recommendation } from '../types/Analysis'
 import { LogFrame } from '../types/LogFrame'
+import { QuadProfile } from '../types/QuadProfile'
 import { extractAxisData, deriveSampleRate } from '../utils/SignalAnalysis'
 import { calculateRMS, analyzeFrequency } from '../utils/FrequencyAnalysis'
 
@@ -28,10 +29,11 @@ export const DTermNoiseRule: TuningRule = {
     return window.metadata.avgThrottle > 1100 && !window.metadata.hasStickInput
   },
 
-  detect: (window: AnalysisWindow, frames: LogFrame[]): DetectedIssue[] => {
+  detect: (window: AnalysisWindow, frames: LogFrame[], profile?: QuadProfile): DetectedIssue[] => {
     const issues: DetectedIssue[] = []
     const windowFrames = window.frameIndices.map(i => frames[i])
     const sampleRate = deriveSampleRate(windowFrames)
+    const scale = profile?.thresholds.dtermNoise ?? 1.0
 
     // Extract D-term and gyro signals for this axis
     const dtermSignal = extractAxisData(windowFrames, 'pidD', window.axis)
@@ -49,16 +51,16 @@ export const DTermNoiseRule: TuningRule = {
     const totalEnergy = spectrum.bandEnergy.low + spectrum.bandEnergy.mid + spectrum.bandEnergy.high
     const highBandRatio = totalEnergy > 0 ? spectrum.bandEnergy.high / totalEnergy : 0
 
-    // Detected if D-term is disproportionately noisy and high-frequency dominant
-    if (dToGyroRatio <= 0.5 || highBandRatio <= 0.3) {
+    // Detected if D-term is disproportionately noisy and high-frequency dominant (scaled by profile)
+    if (dToGyroRatio <= 0.5 * scale || highBandRatio <= 0.3) {
       return []
     }
 
-    // Classify severity based on D-to-gyro ratio
+    // Classify severity based on D-to-gyro ratio (scaled by profile)
     let severity: 'low' | 'medium' | 'high'
-    if (dToGyroRatio > 2.0) {
+    if (dToGyroRatio > 2.0 * scale) {
       severity = 'high'
-    } else if (dToGyroRatio > 1.0) {
+    } else if (dToGyroRatio > 1.0 * scale) {
       severity = 'high'
     } else {
       severity = 'medium'

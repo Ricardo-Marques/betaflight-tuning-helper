@@ -1,6 +1,7 @@
 import { observer } from 'mobx-react-lite'
 import { useLogStore, useAnalysisStore, useUIStore } from '../stores/RootStore'
 import { FileUpload } from './FileUpload'
+import { ProfileSelector } from './ProfileSelector'
 
 export const LeftPanel = observer(() => {
   const logStore = useLogStore()
@@ -42,6 +43,9 @@ export const LeftPanel = observer(() => {
           )}
         </div>
       )}
+
+      {/* Quad Profile Selector */}
+      {logStore.isLoaded && <ProfileSelector />}
 
       {/* Flight Segments */}
       {analysisStore.isComplete && analysisStore.segments.length > 0 && (
@@ -108,10 +112,6 @@ export const LeftPanel = observer(() => {
             <p>
               <span className="font-medium">Duration:</span>{' '}
               {logStore.metadata.duration.toFixed(1)}s
-            </p>
-            <p>
-              <span className="font-medium">Frames:</span>{' '}
-              {logStore.metadata.frameCount.toLocaleString()}
             </p>
             <p>
               <span className="font-medium">Motors:</span> {logStore.metadata.motorCount}

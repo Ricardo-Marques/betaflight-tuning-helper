@@ -1,6 +1,7 @@
 import { TuningRule } from '../types/TuningRule'
 import { AnalysisWindow, DetectedIssue, Recommendation } from '../types/Analysis'
 import { LogFrame } from '../types/LogFrame'
+import { QuadProfile } from '../types/QuadProfile'
 import { extractAxisData, deriveSampleRate } from '../utils/SignalAnalysis'
 import { calculateRMS, analyzeFrequency } from '../utils/FrequencyAnalysis'
 
@@ -32,10 +33,11 @@ export const GyroNoiseRule: TuningRule = {
     )
   },
 
-  detect: (window: AnalysisWindow, frames: LogFrame[]): DetectedIssue[] => {
+  detect: (window: AnalysisWindow, frames: LogFrame[], profile?: QuadProfile): DetectedIssue[] => {
     const issues: DetectedIssue[] = []
     const windowFrames = window.frameIndices.map(i => frames[i])
     const sampleRate = deriveSampleRate(windowFrames)
+    const scale = profile?.thresholds.gyroNoise ?? 1.0
 
     // Extract gyro signal for this axis
     const gyroSignal = extractAxisData(windowFrames, 'gyroADC', window.axis)
@@ -48,18 +50,18 @@ export const GyroNoiseRule: TuningRule = {
     const totalEnergy = spectrum.bandEnergy.low + spectrum.bandEnergy.mid + spectrum.bandEnergy.high
     const highBandRatio = totalEnergy > 0 ? spectrum.bandEnergy.high / totalEnergy : 0
 
-    // Detected if: gyroRMS > 3 AND (high-band ratio > 0.3 OR gyroRMS > 8)
-    if (gyroRMS <= 3 || (highBandRatio <= 0.3 && gyroRMS <= 8)) {
+    // Detected if: gyroRMS > threshold AND (high-band ratio > 0.3 OR gyroRMS > threshold) — scaled by profile
+    if (gyroRMS <= 3 * scale || (highBandRatio <= 0.3 && gyroRMS <= 8 * scale)) {
       return []
     }
 
-    // Classify severity based on gyroRMS
+    // Classify severity based on gyroRMS (scaled by profile)
     let severity: 'low' | 'medium' | 'high'
-    if (gyroRMS > 15) {
+    if (gyroRMS > 15 * scale) {
       severity = 'high'
-    } else if (gyroRMS > 10) {
+    } else if (gyroRMS > 10 * scale) {
       severity = 'high'
-    } else if (gyroRMS > 5) {
+    } else if (gyroRMS > 5 * scale) {
       severity = 'medium'
     } else {
       severity = 'low'
@@ -84,13 +86,34 @@ export const GyroNoiseRule: TuningRule = {
     return issues
   },
 
-  recommend: (issues: DetectedIssue[], _frames: LogFrame[]): Recommendation[] => {
+  recommend: (issues: DetectedIssue[], _frames: LogFrame[], profile?: QuadProfile): Recommendation[] => {
     const recommendations: Recommendation[] = []
 
     for (const issue of issues) {
       if (issue.type !== 'gyroNoise') continue
 
       const gyroRMS = issue.metrics.noiseFloor || 0
+
+      // Whoop-specific aggressive filtering warning
+      if (profile?.overrides.warnAggressiveFiltering) {
+        recommendations.push({
+          id: uuidv4(),
+          issueId: issue.id,
+          type: 'adjustFiltering',
+          priority: 7,
+          confidence: issue.confidence * 0.85,
+          title: `Caution: avoid over-filtering on ${profile.label}`,
+          description: `${profile.label} quads have inherently higher gyro noise. Aggressive filtering adds latency that hurts the already-limited motor authority.`,
+          rationale:
+            'Small quads with low-authority motors are more sensitive to filter delay. The noise levels flagged here may be normal for this frame size. Focus on RPM filtering and moderate LPF settings rather than heavy filtering.',
+          risks: [
+            'Under-filtering can cause hot motors',
+            'Need to balance noise vs latency for the specific frame',
+          ],
+          changes: [],
+          expectedImprovement: 'Better understanding of acceptable noise levels for this quad size',
+        })
+      }
 
       // Increase gyro filtering
       recommendations.push({

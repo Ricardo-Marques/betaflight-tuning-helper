@@ -1,6 +1,7 @@
 import { TuningRule } from '../types/TuningRule'
 import { AnalysisWindow, DetectedIssue, Recommendation } from '../types/Analysis'
 import { LogFrame } from '../types/LogFrame'
+import { QuadProfile } from '../types/QuadProfile'
 import { detectMotorSaturation } from '../utils/SignalAnalysis'
 
 function uuidv4(): string {
@@ -27,9 +28,10 @@ export const MotorSaturationRule: TuningRule = {
     return window.metadata.avgThrottle > 1300
   },
 
-  detect: (window: AnalysisWindow, frames: LogFrame[]): DetectedIssue[] => {
+  detect: (window: AnalysisWindow, frames: LogFrame[], profile?: QuadProfile): DetectedIssue[] => {
     const issues: DetectedIssue[] = []
     const windowFrames = window.frameIndices.map(i => frames[i])
+    const scale = profile?.thresholds.motorSaturation ?? 1.0
 
     const metrics = detectMotorSaturation(windowFrames)
 
@@ -37,13 +39,13 @@ export const MotorSaturationRule: TuningRule = {
       return []
     }
 
-    // Classify severity based on saturation percentage
+    // Classify severity based on saturation percentage (scaled by profile)
     let severity: 'low' | 'medium' | 'high'
-    if (metrics.saturationPercentage > 30) {
+    if (metrics.saturationPercentage > 30 * scale) {
       severity = 'high'
-    } else if (metrics.saturationPercentage > 15) {
+    } else if (metrics.saturationPercentage > 15 * scale) {
       severity = 'high'
-    } else if (metrics.saturationPercentage > 8) {
+    } else if (metrics.saturationPercentage > 8 * scale) {
       severity = 'medium'
     } else {
       severity = 'low'

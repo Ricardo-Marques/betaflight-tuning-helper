@@ -192,6 +192,7 @@ export type BetaflightParameter =
   | 'dynamicIdle'
   | 'tpaRate'
   | 'tpaBreakpoint'
+  | 'itermRelaxCutoff'
 
 /**
  * Analysis results for entire log
@@ -205,9 +206,9 @@ export interface AnalysisResult {
 
 export interface AnalysisSummary {
   overallHealth: 'excellent' | 'good' | 'needsWork' | 'poor'
-  criticalIssueCount: number
-  majorIssueCount: number
-  minorIssueCount: number
+  highIssueCount: number
+  mediumIssueCount: number
+  lowIssueCount: number
   topPriorities: string[] // Top 3 things to fix
 }
 

@@ -1,6 +1,7 @@
 import { TuningRule } from '../types/TuningRule'
 import { AnalysisWindow, DetectedIssue, Recommendation } from '../types/Analysis'
 import { LogFrame } from '../types/LogFrame'
+import { QuadProfile } from '../types/QuadProfile'
 import { detectMidThrottleWobble, deriveSampleRate } from '../utils/SignalAnalysis'
 
 /**
@@ -23,10 +24,11 @@ export const WobbleRule: TuningRule = {
     )
   },
 
-  detect: (window: AnalysisWindow, frames: LogFrame[]): DetectedIssue[] => {
+  detect: (window: AnalysisWindow, frames: LogFrame[], profile?: QuadProfile): DetectedIssue[] => {
     const issues: DetectedIssue[] = []
     const windowFrames = window.frameIndices.map(i => frames[i])
     const sampleRate = deriveSampleRate(windowFrames)
+    const scale = profile?.thresholds.wobbleAmplitude ?? 1.0
 
     // Log why detection might not run
     console.debug(`${WobbleRule.id} analyzing window:`, {
@@ -44,14 +46,13 @@ export const WobbleRule: TuningRule = {
       return []
     }
 
-    // Classify severity based on amplitude
-    // Amplitude > 25 deg/s = visible wobble in DVR
+    // Classify severity based on amplitude (scaled by profile)
     let severity: 'low' | 'medium' | 'high'
-    if (metrics.amplitude > 35) {
+    if (metrics.amplitude > 35 * scale) {
       severity = 'high'
-    } else if (metrics.amplitude > 25) {
+    } else if (metrics.amplitude > 25 * scale) {
       severity = 'high'
-    } else if (metrics.amplitude > 15) {
+    } else if (metrics.amplitude > 15 * scale) {
       severity = 'medium'
     } else {
       severity = 'low'

@@ -1,6 +1,9 @@
 import { makeObservable, observable, action, computed, runInAction } from 'mobx'
 import { AnalysisResult, DetectedIssue, Recommendation, FlightSegment } from '../domain/types/Analysis'
 import { RuleEngine } from '../domain/engine/RuleEngine'
+import { QuadProfile, QuadSize } from '../domain/types/QuadProfile'
+import { QUAD_PROFILES, DEFAULT_PROFILE } from '../domain/profiles/quadProfiles'
+import { detectQuadSize, DetectionResult } from '../domain/profiles/detectQuadSize'
 import { LogStore } from './LogStore'
 
 export type AnalysisStatus = 'idle' | 'analyzing' | 'complete' | 'error'
@@ -16,7 +19,10 @@ export class AnalysisStore {
   result: AnalysisResult | null = null
   selectedSegmentId: string | null = null
   selectedIssueId: string | null = null
+  selectedOccurrenceIdx: number | null = null
   selectedRecommendationId: string | null = null
+  quadProfile: QuadProfile = DEFAULT_PROFILE
+  detectionResult: DetectionResult | null = null
 
   // Dependencies
   private logStore: LogStore
@@ -33,20 +39,24 @@ export class AnalysisStore {
       result: observable,
       selectedSegmentId: observable,
       selectedIssueId: observable,
+      selectedOccurrenceIdx: observable,
       selectedRecommendationId: observable,
+      quadProfile: observable,
+      detectionResult: observable,
       isComplete: computed,
       issues: computed,
       recommendations: computed,
       segments: computed,
       selectedSegment: computed,
       selectedIssue: computed,
-      criticalIssues: computed,
+      highSeverityIssues: computed,
       highPriorityRecommendations: computed,
       analyze: action,
       reset: action,
       selectSegment: action,
       selectIssue: action,
       selectRecommendation: action,
+      setQuadProfile: action,
     })
   }
 
@@ -95,9 +105,9 @@ export class AnalysisStore {
   }
 
   /**
-   * Computed: Critical issues only
+   * Computed: High severity issues only
    */
-  get criticalIssues(): DetectedIssue[] {
+  get highSeverityIssues(): DetectedIssue[] {
     return this.issues.filter(i => i.severity === 'high')
   }
 
@@ -106,6 +116,16 @@ export class AnalysisStore {
    */
   get highPriorityRecommendations(): Recommendation[] {
     return this.recommendations.filter(r => r.priority >= 7)
+  }
+
+  /**
+   * Set quad profile manually (triggers re-analysis)
+   */
+  setQuadProfile = (sizeId: QuadSize): void => {
+    this.quadProfile = QUAD_PROFILES[sizeId]
+    if (this.logStore.isLoaded) {
+      this.analyze()
+    }
   }
 
   /**
@@ -124,6 +144,15 @@ export class AnalysisStore {
     })
 
     try {
+      // Auto-detect quad size if not manually overridden
+      if (this.logStore.metadata && !this.detectionResult) {
+        const detection = detectQuadSize(this.logStore.metadata)
+        runInAction(() => {
+          this.detectionResult = detection
+          this.quadProfile = QUAD_PROFILES[detection.suggestedSize]
+        })
+      }
+
       // Simulate async analysis (in reality, rule engine is sync but we want UI feedback)
       await new Promise(resolve => setTimeout(resolve, 100))
 
@@ -146,10 +175,11 @@ export class AnalysisStore {
         this.analysisMessage = 'Generating recommendations...'
       })
 
-      // Run actual analysis
+      // Run actual analysis with active profile
       const result = this.ruleEngine.analyzeLog(
         this.logStore.frames,
-        this.logStore.metadata!
+        this.logStore.metadata!,
+        this.quadProfile
       )
 
       // Log analysis results for debugging
@@ -188,7 +218,10 @@ export class AnalysisStore {
     this.result = null
     this.selectedSegmentId = null
     this.selectedIssueId = null
+    this.selectedOccurrenceIdx = null
     this.selectedRecommendationId = null
+    this.quadProfile = DEFAULT_PROFILE
+    this.detectionResult = null
   }
 
   /**
@@ -199,10 +232,11 @@ export class AnalysisStore {
   }
 
   /**
-   * Select an issue
+   * Select an issue and optionally a specific occurrence
    */
-  selectIssue = (issueId: string | null): void => {
+  selectIssue = (issueId: string | null, occurrenceIdx?: number): void => {
     this.selectedIssueId = issueId
+    this.selectedOccurrenceIdx = occurrenceIdx ?? null
   }
 
   /**

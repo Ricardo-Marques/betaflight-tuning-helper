@@ -25,13 +25,49 @@ const GLOBAL_PARAM_MAP: Partial<Record<BetaflightParameter, string>> = {
   dynamicIdle: 'dshot_idle_value',
   tpaRate: 'tpa_rate',
   tpaBreakpoint: 'tpa_breakpoint',
+  itermRelaxCutoff: 'iterm_relax_cutoff',
+}
+
+/**
+ * Human-readable display names for Betaflight parameters
+ */
+export const PARAMETER_DISPLAY_NAMES: Record<BetaflightParameter, string> = {
+  pidMasterMultiplier: 'Master Multiplier',
+  pidPGain: 'P Gain',
+  pidIGain: 'I Gain',
+  pidDGain: 'D Gain',
+  pidDMinGain: 'D Min',
+  pidFeedforward: 'Feedforward',
+  gyroFilterMultiplier: 'Gyro Filter',
+  dtermFilterMultiplier: 'D-term Filter',
+  dynamicNotchCount: 'Dyn Notch Count',
+  dynamicNotchQ: 'Dyn Notch Q',
+  dynamicNotchMinHz: 'Dyn Notch Min',
+  dynamicNotchMaxHz: 'Dyn Notch Max',
+  rpmFilterHarmonics: 'RPM Harmonics',
+  rpmFilterMinHz: 'RPM Min Hz',
+  dynamicIdle: 'Dynamic Idle',
+  tpaRate: 'TPA Rate',
+  tpaBreakpoint: 'TPA Breakpoint',
+  itermRelaxCutoff: 'I-term Relax Cutoff',
+}
+
+/**
+ * Get the CLI parameter name for a BetaflightParameter + axis combo
+ */
+export function getCliName(parameter: BetaflightParameter, axis?: Axis): string {
+  const perAxis = PER_AXIS_PARAMS[parameter]
+  if (perAxis && axis) {
+    return `${perAxis.cliPrefix}_${axis}`
+  }
+  return GLOBAL_PARAM_MAP[parameter] ?? parameter
 }
 
 /**
  * Parse a recommendedChange string and compute the new value
  * Returns [newValue, isResolved] where isResolved=false means we couldn't compute
  */
-function resolveChange(
+export function resolveChange(
   recommendedChange: string,
   currentValue: number | undefined,
   isPerAxisPid: boolean
@@ -76,7 +112,7 @@ function resolveChange(
 /**
  * Look up the current PID value from the profile
  */
-function getPidValue(
+export function getPidValue(
   pidProfile: PidProfile | undefined,
   parameter: BetaflightParameter,
   axis: Axis | undefined
@@ -93,7 +129,7 @@ function getPidValue(
 /**
  * Look up current value for a global parameter from profile/filter settings
  */
-function getGlobalValue(
+export function getGlobalValue(
   parameter: BetaflightParameter,
   pidProfile?: PidProfile,
   filterSettings?: FilterSettings

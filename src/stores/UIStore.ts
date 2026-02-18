@@ -1,6 +1,8 @@
 import { makeObservable, observable, action } from 'mobx'
 import { Axis } from '../domain/types/Analysis'
 
+export type RightPanelTab = 'summary' | 'issues' | 'fixes'
+
 /**
  * Store for UI state (axis selection, zoom, toggles, etc.)
  */
@@ -21,6 +23,7 @@ export class UIStore {
   // UI panels
   leftPanelOpen: boolean = true
   rightPanelOpen: boolean = true
+  activeRightTab: RightPanelTab = 'summary'
 
   // Zoom animation
   private _animationFrameId: number | null = null
@@ -40,6 +43,7 @@ export class UIStore {
       showThrottle: observable,
       leftPanelOpen: observable,
       rightPanelOpen: observable,
+      activeRightTab: observable,
       setAxis: action,
       setZoom: action,
       toggleGyro: action,
@@ -52,6 +56,7 @@ export class UIStore {
       toggleThrottle: action,
       toggleLeftPanel: action,
       toggleRightPanel: action,
+      setActiveRightTab: action,
       reset: action,
     })
   }
@@ -147,6 +152,13 @@ export class UIStore {
   }
 
   /**
+   * Set active right panel tab
+   */
+  setActiveRightTab = (tab: RightPanelTab): void => {
+    this.activeRightTab = tab
+  }
+
+  /**
    * Animate zoom to target range with ease-out cubic easing
    */
   animateZoom = (targetStart: number, targetEnd: number, duration: number = 300): void => {
@@ -195,5 +207,6 @@ export class UIStore {
     this.showPidD = false
     this.showMotors = true
     this.showThrottle = true
+    this.activeRightTab = 'summary'
   }
 }

@@ -1,6 +1,8 @@
 import { TuningRule } from '../types/TuningRule'
 import { AnalysisWindow, DetectedIssue, Recommendation, AnalysisResult } from '../types/Analysis'
 import { LogFrame, LogMetadata } from '../types/LogFrame'
+import { QuadProfile } from '../types/QuadProfile'
+import { DEFAULT_PROFILE } from '../profiles/quadProfiles'
 import { BouncebackRule } from '../rules/BouncebackRule'
 import { PropwashRule } from '../rules/PropwashRule'
 import { WobbleRule } from '../rules/WobbleRule'
@@ -38,14 +40,16 @@ export class RuleEngine {
   /**
    * Analyze log frames and generate recommendations
    */
-  analyzeLog(frames: LogFrame[], metadata: LogMetadata): AnalysisResult {
+  analyzeLog(frames: LogFrame[], metadata: LogMetadata, profile?: QuadProfile): AnalysisResult {
+    const activeProfile = profile ?? DEFAULT_PROFILE
+
     // Segment the log into analysis windows
     const windows = this.segmentLog(frames, metadata)
 
     // Detect issues using all rules
     const allIssues: DetectedIssue[] = []
     for (const window of windows) {
-      const windowIssues = this.analyzeWindow(window, frames)
+      const windowIssues = this.analyzeWindow(window, frames, activeProfile)
       allIssues.push(...windowIssues)
     }
 
@@ -54,7 +58,7 @@ export class RuleEngine {
 
     // Generate recommendations and deduplicate
     const recommendations = this.deduplicateRecommendations(
-      this.generateRecommendations(deduplicatedIssues, frames)
+      this.generateRecommendations(deduplicatedIssues, frames, activeProfile)
     )
 
     // Sort recommendations by priority
@@ -68,7 +72,7 @@ export class RuleEngine {
 
     return {
       issues: deduplicatedIssues,
-      recommendations: recommendations.slice(0, 10), // Top 10 recommendations
+      recommendations,
       summary,
       segments,
     }
@@ -77,7 +81,7 @@ export class RuleEngine {
   /**
    * Analyze a single window with all applicable rules
    */
-  private analyzeWindow(window: AnalysisWindow, frames: LogFrame[]): DetectedIssue[] {
+  private analyzeWindow(window: AnalysisWindow, frames: LogFrame[], profile: QuadProfile): DetectedIssue[] {
     const issues: DetectedIssue[] = []
 
     for (const rule of this.rules) {
@@ -92,7 +96,7 @@ export class RuleEngine {
       }
 
       // Detect issues
-      const ruleIssues = rule.detect(window, frames)
+      const ruleIssues = rule.detect(window, frames, profile)
       issues.push(...ruleIssues)
     }
 
@@ -104,7 +108,8 @@ export class RuleEngine {
    */
   private generateRecommendations(
     issues: DetectedIssue[],
-    frames: LogFrame[]
+    frames: LogFrame[],
+    profile: QuadProfile
   ): Recommendation[] {
     const recommendations: Recommendation[] = []
 
@@ -123,7 +128,7 @@ export class RuleEngine {
         const relevantIssues = typeIssues.filter(issue => rule.issueTypes.includes(issue.type))
 
         if (relevantIssues.length > 0) {
-          const ruleRecommendations = rule.recommend(relevantIssues, frames)
+          const ruleRecommendations = rule.recommend(relevantIssues, frames, profile)
           recommendations.push(...ruleRecommendations)
         }
       }
@@ -420,9 +425,9 @@ export class RuleEngine {
 
     return {
       overallHealth,
-      criticalIssueCount: highCount,
-      majorIssueCount: mediumCount,
-      minorIssueCount: mediumCount + lowCount,
+      highIssueCount: highCount,
+      mediumIssueCount: mediumCount,
+      lowIssueCount: lowCount,
       topPriorities,
     }
   }

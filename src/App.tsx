@@ -11,55 +11,11 @@ export const App = observer(() => {
     <div className="h-screen flex flex-col bg-gray-100">
       {/* Header */}
       <header data-testid="app-header" className="bg-blue-600 text-white p-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Betaflight Tuning Helper</h1>
-            <p className="text-sm text-blue-100">
-              Analyze blackbox logs and get actionable tuning recommendations
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              data-testid="toggle-left-panel"
-              onClick={uiStore.toggleLeftPanel}
-              className="p-2 rounded hover:bg-blue-700 transition-colors"
-              title="Toggle left panel"
-            >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              </svg>
-            </button>
-            <button
-              data-testid="toggle-right-panel"
-              onClick={uiStore.toggleRightPanel}
-              className="p-2 rounded hover:bg-blue-700 transition-colors"
-              title="Toggle right panel"
-            >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                />
-              </svg>
-            </button>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold">Betaflight Tuning Helper</h1>
+          <p className="text-sm text-blue-100">
+            Analyze blackbox logs and get actionable tuning recommendations
+          </p>
         </div>
       </header>
 
@@ -72,10 +28,34 @@ export const App = observer(() => {
           </div>
         )}
 
+        {/* Left panel toggle */}
+        <button
+          data-testid="toggle-left-panel"
+          onClick={uiStore.toggleLeftPanel}
+          className="w-6 flex-shrink-0 flex items-center justify-center bg-gray-200 hover:bg-gray-300 transition-colors border-r border-gray-300"
+          title={uiStore.leftPanelOpen ? 'Collapse left panel' : 'Expand left panel'}
+        >
+          <span className="text-gray-500 text-xs font-bold select-none">
+            {uiStore.leftPanelOpen ? '\u2039' : '\u203A'}
+          </span>
+        </button>
+
         {/* Center: Chart */}
-        <div className="flex-1 bg-white">
+        <div className="flex-1 bg-white min-w-0">
           <LogChart />
         </div>
+
+        {/* Right panel toggle */}
+        <button
+          data-testid="toggle-right-panel"
+          onClick={uiStore.toggleRightPanel}
+          className="w-6 flex-shrink-0 flex items-center justify-center bg-gray-200 hover:bg-gray-300 transition-colors border-l border-gray-300"
+          title={uiStore.rightPanelOpen ? 'Collapse right panel' : 'Expand right panel'}
+        >
+          <span className="text-gray-500 text-xs font-bold select-none">
+            {uiStore.rightPanelOpen ? '\u203A' : '\u2039'}
+          </span>
+        </button>
 
         {/* Right Panel: Recommendations */}
         {uiStore.rightPanelOpen && (
@@ -87,8 +67,7 @@ export const App = observer(() => {
 
       {/* Footer */}
       <footer className="bg-gray-800 text-gray-400 text-xs p-2 text-center">
-        Betaflight Tuning Helper | Built for Betaflight 4.4/4.5 | Client-side
-        processing
+        Betaflight Tuning Helper | Built for Betaflight 4.4/4.5
       </footer>
     </div>
   )
