@@ -36,7 +36,7 @@ export const darkTheme: Theme = {
       mediumBg: '#422006',
       mediumText: '#fde68a', // amber-200
       low: '#60a5fa',       // blue-400
-      lowBg: '#172554',
+      lowBg: '#172554',     // blue-950
       lowText: '#93c5fd',   // blue-300
     },
     chart: {

@@ -259,9 +259,12 @@ export class AnalysisStore {
    * Get issues in a time range
    */
   getIssuesInTimeRange(startTime: number, endTime: number): DetectedIssue[] {
-    return this.issues.filter(
-      issue =>
-        issue.timeRange[0] <= endTime && issue.timeRange[1] >= startTime
-    )
+    return this.issues.filter(issue => {
+      // Check if any occurrence's marker (placed at tr[0]) falls within the visible range
+      const occurrences = issue.occurrences ?? [issue.timeRange]
+      return occurrences.some(
+        tr => tr[0] >= startTime && tr[0] <= endTime
+      )
+    })
   }
 }

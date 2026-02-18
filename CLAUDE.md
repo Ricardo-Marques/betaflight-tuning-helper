@@ -11,7 +11,7 @@ npm run preview    # Preview production build
 npm run lint       # ESLint
 ```
 
-No test framework is set up yet.
+E2E tests use Playwright (`npm run test`). Aim for the full suite to run in ~10 minutes or less.
 
 ## Architecture
 

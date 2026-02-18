@@ -60,8 +60,8 @@ const CliBar = styled.div`
 const CliBarInner = styled.div`
   padding: 0.75rem;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 0.5rem;
 `
 
 const CliLabel = styled.span`
@@ -464,6 +464,38 @@ const RiskList = styled.ul`
   }
 `
 
+const LinkedIssuesSection = styled.div`
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid ${p => p.theme.colors.border.main};
+`
+
+const LinkedIssuesSummary = styled.p`
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: ${p => p.theme.colors.text.secondary};
+  margin-bottom: 0.25rem;
+`
+
+const LinkedIssueLink = styled.button`
+  display: block;
+  font-size: 0.75rem;
+  color: ${p => p.theme.colors.text.link};
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+
+  &:hover {
+    color: ${p => p.theme.colors.text.linkHover};
+    text-decoration: underline;
+  }
+
+  & + & {
+    margin-top: 0.125rem;
+  }
+`
+
 /* ---- Change Display ---- */
 
 const ChangeParamName = styled.span`
@@ -598,21 +630,21 @@ export const RecommendationsPanel = observer(() => {
       {cliCommands && (
         <CliBar data-testid="cli-commands-section">
           <CliBarInner>
-            <div className="flex items-center gap-2">
-              <CliLabel>
-                {commandCount} CLI command{commandCount !== 1 ? 's' : ''}{unresolvedCount > 0 ? ` (${unresolvedCount} need manual values)` : ''}
-              </CliLabel>
+            <CliLabel>
+              {commandCount} CLI command{commandCount !== 1 ? 's' : ''}{unresolvedCount > 0 ? ` (${unresolvedCount} need manual values)` : ''}
+            </CliLabel>
+            <div className="flex items-center justify-end gap-2">
               <CliPreviewToggle onClick={() => setCliExpanded(!cliExpanded)}>
                 {cliExpanded ? 'Hide' : 'Preview'}
               </CliPreviewToggle>
+              <CopyButton
+                data-testid="copy-cli-button"
+                copied={copied}
+                onClick={handleCopy}
+              >
+                {copied ? 'Copied!' : 'Copy'}
+              </CopyButton>
             </div>
-            <CopyButton
-              data-testid="copy-cli-button"
-              copied={copied}
-              onClick={handleCopy}
-            >
-              {copied ? 'Copied!' : 'Copy All to Clipboard'}
-            </CopyButton>
           </CliBarInner>
           {cliExpanded && (
             <CliPreview>{cliCommands}</CliPreview>
@@ -733,6 +765,15 @@ const IssueCard = observer(({ issue, onNavigateToRec }: { issue: DetectedIssue; 
   const logStore = useLogStore()
   const [occIdx, setOccIdx] = useState(0)
 
+  // Sync local occurrence index when selected externally (e.g. clicking chart pill)
+  const storeOccIdx = analysisStore.selectedOccurrenceIdx
+  const isSelected = analysisStore.selectedIssueId === issue.id
+  useEffect(() => {
+    if (isSelected && storeOccIdx != null && storeOccIdx !== occIdx) {
+      setOccIdx(storeOccIdx)
+    }
+  }, [isSelected, storeOccIdx]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const occurrences = issue.occurrences ?? [issue.timeRange]
   const hasMultiple = occurrences.length > 1
   const linkedRecs = analysisStore.getRecommendationsForIssue(issue.id)
@@ -741,24 +782,32 @@ const IssueCard = observer(({ issue, onNavigateToRec }: { issue: DetectedIssue; 
     (idx: number) => {
       analysisStore.selectIssue(issue.id, idx)
 
-      if (logStore.frames.length > 0) {
-        const firstTime = logStore.frames[0].time
-        const totalDuration =
-          logStore.frames[logStore.frames.length - 1].time - firstTime
-        if (totalDuration > 0) {
-          const tr = occurrences[idx]
-          const occSpan = tr[1] - tr[0]
-          const padding = Math.max(occSpan * 2, 500_000)
-          const startPct = Math.max(
-            0,
-            ((tr[0] - padding - firstTime) / totalDuration) * 100
-          )
-          const endPct = Math.min(
-            100,
-            ((tr[1] + padding - firstTime) / totalDuration) * 100
-          )
-          uiStore.animateZoom(startPct, endPct)
+      const frames = logStore.frames
+      if (frames.length > 0) {
+        const tr = occurrences[idx]
+        const occTime = tr[0]
+
+        // Check if this occurrence is already visible in the current view
+        const startFrame = Math.floor((uiStore.zoomStart / 100) * frames.length)
+        const endFrame = Math.min(frames.length - 1, Math.ceil((uiStore.zoomEnd / 100) * frames.length))
+        const viewStart = frames[startFrame]?.time ?? 0
+        const viewEnd = frames[endFrame]?.time ?? Infinity
+        if (occTime >= viewStart && occTime <= viewEnd) return
+
+        // Occurrence is off-screen — navigate to center it
+        let lo = 0, hi = frames.length - 1
+        while (lo < hi) {
+          const mid = (lo + hi) >> 1
+          if (frames[mid].time < occTime) lo = mid + 1
+          else hi = mid
         }
+        const centerPct = (lo / frames.length) * 100
+        const halfDur = (uiStore.zoomEnd - uiStore.zoomStart) / 2
+        let newStart = centerPct - halfDur
+        let newEnd = centerPct + halfDur
+        if (newStart < 0) { newEnd -= newStart; newStart = 0 }
+        if (newEnd > 100) { newStart -= newEnd - 100; newEnd = 100 }
+        uiStore.animateZoom(Math.max(0, newStart), Math.min(100, newEnd))
       }
     },
     [analysisStore, uiStore, logStore, issue, occurrences]
@@ -787,8 +836,6 @@ const IssueCard = observer(({ issue, onNavigateToRec }: { issue: DetectedIssue; 
     },
     [occIdx, occurrences.length, zoomToOccurrence]
   )
-
-  const isSelected = analysisStore.selectedIssueId === issue.id
 
   return (
     <IssueCardWrapper
@@ -919,7 +966,25 @@ const RecommendationCard = observer(
     filterSettings?: Parameters<typeof getGlobalValue>[2]
   }) => {
     const analysisStore = useAnalysisStore()
+    const uiStore = useUIStore()
     const isHighlighted = analysisStore.selectedRecommendationId === recommendation.id
+
+    // Collect all linked issue IDs (primary + related)
+    const linkedIssueIds = useMemo(() => {
+      const ids: string[] = []
+      if (recommendation.issueId) ids.push(recommendation.issueId)
+      if (recommendation.relatedIssueIds) {
+        for (const id of recommendation.relatedIssueIds) {
+          if (!ids.includes(id)) ids.push(id)
+        }
+      }
+      return ids
+    }, [recommendation.issueId, recommendation.relatedIssueIds])
+
+    const navigateToIssue = useCallback((issueId: string) => {
+      analysisStore.selectIssue(issueId, 0)
+      uiStore.setActiveRightTab('issues')
+    }, [analysisStore, uiStore])
 
     return (
       <RecCardWrapper
@@ -987,6 +1052,26 @@ const RecommendationCard = observer(
               ))}
             </RiskList>
           </RisksSection>
+        )}
+
+        {/* Linked Issues */}
+        {linkedIssueIds.length > 0 && (
+          <LinkedIssuesSection>
+            <LinkedIssuesSummary>
+              Based on {linkedIssueIds.length} issue{linkedIssueIds.length !== 1 ? 's' : ''}
+            </LinkedIssuesSummary>
+            {linkedIssueIds.map(issueId => {
+              const issue = analysisStore.issues.find(i => i.id === issueId)
+              return (
+                <LinkedIssueLink
+                  key={issueId}
+                  onClick={() => navigateToIssue(issueId)}
+                >
+                  {issue ? issue.description : issueId}
+                </LinkedIssueLink>
+              )
+            })}
+          </LinkedIssuesSection>
         )}
       </RecCardWrapper>
     )

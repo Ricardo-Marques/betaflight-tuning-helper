@@ -53,28 +53,34 @@ test.describe('Chart', () => {
     expect(linesAfter).toBeGreaterThan(linesBefore)
   })
 
-  test('zoom slider changes zoom level', async ({ page }) => {
-    const slider = page.getByTestId('zoom-level-slider')
-    const valueBefore = parseFloat(await slider.inputValue())
-    expect(valueBefore).toBeCloseTo(1, 0) // starts at 1x
+  test('scroll-wheel zoom changes range slider', async ({ page }) => {
+    const container = page.getByTestId('chart-container')
 
-    await slider.fill('5')
-    await page.waitForTimeout(300)
-    const valueAfter = parseFloat(await slider.inputValue())
-    expect(valueAfter).toBeCloseTo(5, 0)
+    // Zoom in via scroll wheel
+    await container.hover()
+    await page.mouse.wheel(0, -300)
+    await page.waitForTimeout(500)
+
+    // Reset button should be visible and clicking it restores full range
+    const resetBtn = page.getByTestId('zoom-reset-button')
+    await expect(resetBtn).toBeVisible()
   })
 
-  test('reset zoom returns to 1x', async ({ page }) => {
-    // Zoom in first
-    await page.getByTestId('zoom-level-slider').fill('5')
-    await page.waitForTimeout(300)
+  test('reset zoom restores full view', async ({ page }) => {
+    const container = page.getByTestId('chart-container')
+
+    // Zoom in first via scroll wheel
+    await container.hover()
+    await page.mouse.wheel(0, -300)
+    await page.waitForTimeout(500)
 
     // Reset
     await page.getByTestId('zoom-reset-button').click()
     await page.waitForTimeout(500)
 
-    const val = parseFloat(await page.getByTestId('zoom-level-slider').inputValue())
-    expect(val).toBeCloseTo(1, 0)
+    // Verify the zoom info shows 1.0x
+    const zoomControls = page.locator('text=/1\\.0x/')
+    await expect(zoomControls).toBeVisible()
   })
 
   test('issue markers are present on chart', async ({ page }) => {
@@ -85,14 +91,16 @@ test.describe('Chart', () => {
 
   test('scroll-wheel zooms chart', async ({ page }) => {
     const container = page.getByTestId('chart-container')
-    const valBefore = parseFloat(await page.getByTestId('zoom-level-slider').inputValue())
+
+    // Should start at 1.0x
+    await expect(page.locator('text=/1\\.0x/')).toBeVisible()
 
     // Scroll up (zoom in)
     await container.hover()
     await page.mouse.wheel(0, -300)
     await page.waitForTimeout(500)
 
-    const valAfter = parseFloat(await page.getByTestId('zoom-level-slider').inputValue())
-    expect(valAfter).toBeGreaterThan(valBefore)
+    // After scrolling, zoom level should have changed from 1.0x
+    await expect(page.locator('text=/1\\.0x/')).not.toBeVisible()
   })
 })

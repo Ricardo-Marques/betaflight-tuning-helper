@@ -308,16 +308,18 @@ test.describe('Data Verification', () => {
   })
 
   test('issue reference lines on chart use known issue type labels', async ({ page }) => {
-    // Reference line labels are issue type strings rendered on the chart SVG
+    // Labels are HTML elements rendered in an overlay above the chart
     const container = page.getByTestId('chart-container')
-    const refLineLabels = container.locator('.recharts-reference-line .recharts-label tspan')
-    const count = await refLineLabels.count()
+    const chartLabels = container.locator('[data-testid="chart-label"]')
+    const count = await chartLabels.count()
     expect(count).toBeGreaterThan(0)
 
     for (let i = 0; i < count; i++) {
-      const text = (await refLineLabels.nth(i).textContent())!.trim()
+      const text = (await chartLabels.nth(i).textContent())!.trim()
       if (text.length === 0) continue
-      expect(VALID_ISSUE_TYPES.has(text)).toBe(true)
+      // Label may include a stack count suffix like "propwash +2"
+      const issueType = text.replace(/\s\+\d+$/, '')
+      expect(VALID_ISSUE_TYPES.has(issueType)).toBe(true)
     }
   })
 })

@@ -1,5 +1,5 @@
 import { TuningRule } from '../types/TuningRule'
-import { AnalysisWindow, DetectedIssue, Recommendation, AnalysisResult } from '../types/Analysis'
+import { AnalysisWindow, DetectedIssue, Recommendation, AnalysisResult, ParameterChange } from '../types/Analysis'
 import { LogFrame, LogMetadata } from '../types/LogFrame'
 import { QuadProfile } from '../types/QuadProfile'
 import { DEFAULT_PROFILE } from '../profiles/quadProfiles'
@@ -11,6 +11,41 @@ import { MotorSaturationRule } from '../rules/MotorSaturationRule'
 import { DTermNoiseRule } from '../rules/DTermNoiseRule'
 import { HighThrottleOscillationRule } from '../rules/HighThrottleOscillationRule'
 import { GyroNoiseRule } from '../rules/GyroNoiseRule'
+import { PARAMETER_DISPLAY_NAMES } from '../utils/CliExport'
+
+/**
+ * Parse the direction (sign) and magnitude from a recommendedChange string.
+ * Returns { sign: +1|-1|0, magnitude: number } or null if unparseable.
+ */
+function parseChangeDirection(change: string): { sign: 1 | -1 | 0; magnitude: number } | null {
+  const trimmed = change.trim()
+
+  // Percentage: "+5%", "-10%"
+  const pctMatch = trimmed.match(/^([+-])(\d+(?:\.\d+)?)%$/)
+  if (pctMatch) {
+    return {
+      sign: pctMatch[1] === '+' ? 1 : -1,
+      magnitude: parseFloat(pctMatch[2]) / 100,
+    }
+  }
+
+  // Relative: "+0.3", "-0.2", "+10", "-50"
+  const relMatch = trimmed.match(/^([+-])(\d+(?:\.\d+)?)$/)
+  if (relMatch) {
+    return {
+      sign: relMatch[1] === '+' ? 1 : -1,
+      magnitude: parseFloat(relMatch[2]),
+    }
+  }
+
+  // Absolute value — no direction
+  const absMatch = trimmed.match(/^(\d+(?:\.\d+)?)$/)
+  if (absMatch) {
+    return { sign: 0, magnitude: parseFloat(absMatch[1]) }
+  }
+
+  return null
+}
 
 /**
  * Central rule engine that orchestrates analysis
@@ -138,56 +173,216 @@ export class RuleEngine {
   }
 
   /**
-   * Deduplicate recommendations by parameter+axis, keeping highest priority (confidence as tiebreaker).
-   * Two recommendations targeting the same parameter+axis combo are semantic duplicates
-   * even if their titles differ (e.g., "Increase P on pitch" vs "Increase P gain on pitch").
-   * Falls back to title-based keying for informational recommendations with no changes.
+   * Deduplicate recommendations with per-change conflict resolution.
+   *
+   * Resolves conflicts at the individual parameter+axis level across ALL recommendations,
+   * not just those with identical change sets. For example, "Adjust P/D balance on roll"
+   * (pidPGain+pidDGain) can conflict with "Reduce D on roll" (pidDGain) — both touch
+   * pidDGain:roll and must be resolved together.
+   *
+   * Algorithm:
+   * 1. Index every change by param:axis across all recs
+   * 2. For each param:axis with multiple recs: detect conflicts, merge or pick winner
+   * 3. Assign each resolved change to the best rec, drop recs with no remaining changes
+   * 4. Merged values are rounded to Betaflight's 0.05 slider increments
    */
   private deduplicateRecommendations(recommendations: Recommendation[]): Recommendation[] {
-    const byKey = new Map<string, Recommendation>()
-    for (const rec of recommendations) {
-      const key = this.recommendationKey(rec)
-      const existing = byKey.get(key)
-      if (!existing || rec.priority > existing.priority ||
-          (rec.priority === existing.priority && rec.confidence > existing.confidence)) {
-        if (existing) {
-          // Losing recommendation's issueId gets merged into the winner's relatedIssueIds
-          const merged = new Set(rec.relatedIssueIds ?? [])
-          merged.add(existing.issueId)
-          if (existing.relatedIssueIds) {
-            for (const id of existing.relatedIssueIds) merged.add(id)
-          }
-          merged.delete(rec.issueId) // Don't duplicate the primary issueId
-          byKey.set(key, { ...rec, relatedIssueIds: Array.from(merged) })
-        } else {
-          byKey.set(key, rec)
-        }
-      } else {
-        // Current rec loses — merge its issueId into the existing winner's relatedIssueIds
-        const merged = new Set(existing.relatedIssueIds ?? [])
-        merged.add(rec.issueId)
-        if (rec.relatedIssueIds) {
-          for (const id of rec.relatedIssueIds) merged.add(id)
-        }
-        merged.delete(existing.issueId) // Don't duplicate the primary issueId
-        byKey.set(key, { ...existing, relatedIssueIds: Array.from(merged) })
+    if (recommendations.length === 0) return []
+
+    type ChangeEntry = {
+      change: ParameterChange
+      recIdx: number
+      dir: ReturnType<typeof parseChangeDirection>
+    }
+
+    // Phase 1: Index all changes by param:axis
+    const byParamAxis = new Map<string, ChangeEntry[]>()
+    for (let i = 0; i < recommendations.length; i++) {
+      for (const change of recommendations[i].changes) {
+        const key = `${change.parameter}:${change.axis ?? '_global'}`
+        const entries = byParamAxis.get(key) ?? []
+        entries.push({ change, recIdx: i, dir: parseChangeDirection(change.recommendedChange) })
+        byParamAxis.set(key, entries)
       }
     }
-    return Array.from(byKey.values())
+
+    // Phase 2: Resolve each param:axis — assign winner rec + resolved change
+    const resolvedByRec = new Map<number, ParameterChange[]>()
+    const extraIssuesByRec = new Map<number, Set<string>>()
+
+    for (const [, entries] of byParamAxis) {
+      if (entries.length === 1) {
+        // Single rec owns this change — keep as-is
+        this.addResolvedChange(resolvedByRec, entries[0].recIdx, entries[0].change)
+        continue
+      }
+
+      // Multiple recs touch this param:axis — find winner
+      const winnerIdx = entries.reduce((bestIdx, e) => {
+        const best = recommendations[bestIdx]
+        const curr = recommendations[e.recIdx]
+        if (curr.priority > best.priority) return e.recIdx
+        if (curr.priority === best.priority && curr.confidence > best.confidence) return e.recIdx
+        return bestIdx
+      }, entries[0].recIdx)
+
+      // Check for directional conflicts
+      const signs = new Set<number>()
+      for (const e of entries) {
+        if (e.dir && e.dir.sign !== 0) signs.add(e.dir.sign)
+      }
+      const hasConflict = signs.has(1) && signs.has(-1)
+
+      if (hasConflict) {
+        const merged = this.weightedMergeChange(entries.map(e => ({
+          change: e.change,
+          dir: e.dir,
+          rec: recommendations[e.recIdx],
+        })))
+        if (merged) {
+          this.addResolvedChange(resolvedByRec, winnerIdx, merged)
+        }
+        // If null, changes cancelled out — no change for anyone
+      } else {
+        // No conflict — keep the winner's version
+        const winnerEntry = entries.find(e => e.recIdx === winnerIdx)!
+        this.addResolvedChange(resolvedByRec, winnerIdx, winnerEntry.change)
+      }
+
+      // Merge issue IDs from losing recs into winner
+      for (const e of entries) {
+        if (e.recIdx !== winnerIdx) {
+          this.absorbIssueIds(extraIssuesByRec, winnerIdx, recommendations[e.recIdx])
+        }
+      }
+    }
+
+    // Phase 3: Reconstruct recommendations
+    const result: Recommendation[] = []
+    const titleSeen = new Set<string>()
+
+    for (let i = 0; i < recommendations.length; i++) {
+      const rec = recommendations[i]
+
+      // Title-only recs (no changes) — dedup by title
+      if (rec.changes.length === 0) {
+        if (titleSeen.has(rec.title)) continue
+        titleSeen.add(rec.title)
+        result.push(rec)
+        continue
+      }
+
+      const changes = resolvedByRec.get(i)
+      if (!changes || changes.length === 0) continue // all changes absorbed by other recs
+
+      // Build related issue IDs
+      const allRelated = new Set(rec.relatedIssueIds ?? [])
+      const extra = extraIssuesByRec.get(i)
+      if (extra) {
+        for (const id of extra) {
+          if (id !== rec.issueId) allRelated.add(id)
+        }
+      }
+
+      // Check if any changes were modified by conflict resolution
+      const wasModified = changes.some(c =>
+        !rec.changes.some(orig =>
+          orig.parameter === c.parameter && orig.axis === c.axis &&
+          orig.recommendedChange === c.recommendedChange
+        )
+      )
+
+      let title = rec.title
+      let description = rec.description
+      if (wasModified) {
+        const paramNames = changes.map(c => {
+          const name = PARAMETER_DISPLAY_NAMES[c.parameter] ?? c.parameter
+          const axisLabel = c.axis ? ` on ${c.axis}` : ''
+          return `${name}${axisLabel}`
+        })
+        title = `Adjust ${paramNames.join(', ')}`
+        description = `Balanced adjustment based on multiple recommendations.`
+      }
+
+      result.push({
+        ...rec,
+        title,
+        description,
+        changes,
+        relatedIssueIds: allRelated.size > 0 ? Array.from(allRelated) : undefined,
+      })
+    }
+
+    return result
+  }
+
+  /** Helper: append a resolved change to a rec's change list */
+  private addResolvedChange(map: Map<number, ParameterChange[]>, recIdx: number, change: ParameterChange): void {
+    const arr = map.get(recIdx) ?? []
+    arr.push(change)
+    map.set(recIdx, arr)
+  }
+
+  /** Helper: merge a losing rec's issue IDs into the winner */
+  private absorbIssueIds(map: Map<number, Set<string>>, hostIdx: number, losingRec: Recommendation): void {
+    const set = map.get(hostIdx) ?? new Set()
+    set.add(losingRec.issueId)
+    if (losingRec.relatedIssueIds) {
+      for (const id of losingRec.relatedIssueIds) set.add(id)
+    }
+    map.set(hostIdx, set)
   }
 
   /**
-   * Build a deduplication key for a recommendation based on its parameter changes.
-   * Recommendations with the same set of parameter+axis targets are considered duplicates.
+   * Weighted-average merge for conflicting changes on the same parameter+axis.
+   * Returns null if the net change magnitude is below threshold (cancels out).
+   * Values are rounded to Betaflight's 0.05 slider increments.
    */
-  private recommendationKey(rec: Recommendation): string {
-    if (rec.changes.length === 0) {
-      return `title:${rec.title}`
+  private weightedMergeChange(
+    entries: { change: ParameterChange; dir: ReturnType<typeof parseChangeDirection>; rec: Recommendation }[]
+  ): ParameterChange | null {
+    // Filter to entries with parseable directions
+    const valid = entries.filter(e => e.dir !== null && e.dir.sign !== 0) as
+      { change: ParameterChange; dir: { sign: 1 | -1; magnitude: number }; rec: Recommendation }[]
+
+    if (valid.length === 0) {
+      return entries[0]?.change ?? null
     }
-    const parts = rec.changes
-      .map(c => `${c.parameter}:${c.axis ?? '_global'}`)
-      .sort()
-    return parts.join('|')
+
+    // Weighted average: netChange = sum(sign * mag * confidence) / sum(confidence)
+    let numerator = 0
+    let denominator = 0
+    for (const e of valid) {
+      numerator += e.dir.sign * e.dir.magnitude * e.rec.confidence
+      denominator += e.rec.confidence
+    }
+
+    if (denominator === 0) return null
+    const netChange = numerator / denominator
+
+    // Round to nearest Betaflight slider increment (0.05)
+    const rounded = Math.round(netChange / 0.05) * 0.05
+
+    // If net change rounds to zero, cancel out
+    if (rounded === 0) return null
+
+    const sign = rounded > 0 ? '+' : '-'
+    const mag = Math.abs(rounded)
+
+    // Check if original changes were percentage-based
+    const isPercent = valid.some(e => e.change.recommendedChange.includes('%'))
+    const changeStr = isPercent
+      ? `${sign}${(mag * 100).toFixed(0)}%`
+      : `${sign}${mag.toFixed(2)}`
+
+    const representative = valid[0].change
+    return {
+      parameter: representative.parameter,
+      axis: representative.axis,
+      currentValue: representative.currentValue,
+      recommendedChange: changeStr,
+      explanation: `Balanced from ${valid.length} recommendations`,
+    }
   }
 
   /**

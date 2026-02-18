@@ -24,16 +24,16 @@ test.describe('Navigation', () => {
   })
 
   test('clicking segment zooms chart', async ({ page }) => {
-    const zoomBefore = parseFloat(await page.getByTestId('zoom-level-slider').inputValue())
-    expect(zoomBefore).toBeCloseTo(1, 0)
+    // Should start at 1.0x (full view)
+    await expect(page.locator('text=/1\\.0x/')).toBeVisible()
 
     const segment = page.locator('[data-testid^="segment-"]').first()
     await segment.scrollIntoViewIfNeeded()
     await segment.evaluate(el => (el as HTMLElement).click())
     await page.waitForTimeout(500)
 
-    const zoomAfter = parseFloat(await page.getByTestId('zoom-level-slider').inputValue())
-    expect(zoomAfter).toBeGreaterThan(zoomBefore)
+    // After clicking a segment, zoom should have changed from 1.0x
+    await expect(page.locator('text=/1\\.0x/')).not.toBeVisible()
   })
 
   test('clicked segment has selected state', async ({ page }) => {
