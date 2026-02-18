@@ -452,7 +452,16 @@ export class RuleEngine {
           })
         }
 
-        // Simple flight phase detection
+        // Flight phase detection
+        // Check for throttle drop within this window (propwash requires a transition)
+        const throttleValues = windowFrames.map(f => f.throttle)
+        let maxThrottleDrop = 0
+        const dropCheckStep = Math.max(1, Math.floor(windowFrames.length / 10))
+        for (let j = dropCheckStep; j < throttleValues.length; j += dropCheckStep) {
+          const drop = throttleValues[j - dropCheckStep] - throttleValues[j]
+          if (drop > maxThrottleDrop) maxThrottleDrop = drop
+        }
+
         let flightPhase: 'hover' | 'cruise' | 'flip' | 'roll' | 'punch' | 'propwash' | 'idle' | 'unknown'
         if (avgThrottle < 1050) {
           flightPhase = 'idle'
@@ -460,7 +469,8 @@ export class RuleEngine {
           flightPhase = axis === 'roll' ? 'roll' : 'flip'
         } else if (avgThrottle > 1700 && hasStickInput) {
           flightPhase = 'punch'
-        } else if (avgThrottle < 1400 && !hasStickInput) {
+        } else if (maxThrottleDrop > 80 && !hasStickInput) {
+          // Propwash requires an actual throttle drop, not just low throttle
           flightPhase = 'propwash'
         } else if (avgThrottle < 1300) {
           flightPhase = 'hover'

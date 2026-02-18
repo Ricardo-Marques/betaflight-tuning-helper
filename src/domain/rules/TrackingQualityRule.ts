@@ -94,18 +94,17 @@ export const TrackingQualityRule: TuningRule = {
     }
 
     // Determine severity based on normalized error (scaled by profile)
+    // 20% threshold — even well-tuned quads show 10-20% error during fast moves
+    // due to inherent PID phase lag (feedforward reduces but doesn't eliminate)
     let severity: 'low' | 'medium' | 'high'
     if (normalizedError > 60 * scale) {
       severity = 'high' // Quad barely responding
     } else if (normalizedError > 40 * scale) {
       severity = 'medium' // Significantly delayed
-    } else if (normalizedError > 25 * scale) {
+    } else if (normalizedError > 20 * scale) {
       severity = 'low' // Noticeable sluggishness
-    } else if (normalizedError > 12 * scale) {
-      severity = 'low' // Visible lag/slop
     } else {
-      // Acceptable tracking quality
-      console.debug(`${TrackingQualityRule.id}: No issue detected (error < ${(12 * scale).toFixed(0)}%)`)
+      // Acceptable tracking quality — within normal PID phase lag range
       return []
     }
 

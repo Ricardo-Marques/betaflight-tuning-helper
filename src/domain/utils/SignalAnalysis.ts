@@ -1,6 +1,6 @@
 import { LogFrame, AxisData } from '../types/LogFrame'
 import { Axis } from '../types/Analysis'
-import { calculateRMS } from './FrequencyAnalysis'
+import { calculateRMS, analyzeFrequency } from './FrequencyAnalysis'
 
 /**
  * Detects bounceback after a rapid stick return
@@ -209,20 +209,20 @@ export function detectPropwash(
   const error = windowGyro.map((g, i) => g - windowSetpoint[i])
   const errorRMS = calculateRMS(error)
 
-  // Count zero crossings to estimate frequency
-  let crossings = 0
-  for (let i = 1; i < error.length; i++) {
-    if (Math.sign(error[i - 1]) !== Math.sign(error[i])) {
-      crossings++
-    }
-  }
+  // Use FFT for robust frequency estimation (immune to noise-induced zero crossings)
+  const spectrum = analyzeFrequency(error, sampleRate)
+  const frequency = spectrum.dominantFrequency
   const durationSec = (analysisWindow[analysisWindow.length - 1].time - analysisWindow[0].time) / 1000000 // µs → seconds
-  const frequency = durationSec > 0 ? crossings / (2 * durationSec) : 0 // Hz
   const duration = durationSec * 1000 // Store as ms for metrics
 
-  // Calculate peak-to-peak amplitude
-  const maxError = Math.max(...error.map(Math.abs))
-  const amplitude = maxError * 2
+  // Calculate true peak-to-peak amplitude (max - min, not 2 * max(abs))
+  let errorMin = error[0]
+  let errorMax = error[0]
+  for (let i = 1; i < error.length; i++) {
+    if (error[i] < errorMin) errorMin = error[i]
+    if (error[i] > errorMax) errorMax = error[i]
+  }
+  const amplitude = errorMax - errorMin
 
   // D-term activity
   const dtermActivity = calculateRMS(windowDterm)
@@ -249,7 +249,7 @@ export interface WobbleMetrics {
 export function detectMidThrottleWobble(
   frames: LogFrame[],
   axis: Axis,
-  _sampleRate: number
+  sampleRate: number
 ): WobbleMetrics {
   const throttle = frames.map(f => f.throttle)
   const gyro = frames.map(f => getAxisValue(f.gyroADC, axis))
@@ -280,24 +280,9 @@ export function detectMidThrottleWobble(
   // Analyze gyro oscillation
   const gyroRMS = calculateRMS(gyro)
 
-  // Estimate frequency from zero crossings
-  let crossings = 0
-  for (let i = 1; i < gyro.length; i++) {
-    if (Math.sign(gyro[i - 1]) !== Math.sign(gyro[i])) {
-      crossings++
-    }
-  }
-  const durationSec = (frames[frames.length - 1].time - frames[0].time) / 1000000 // µs → seconds
-  const frequency = durationSec > 0 ? crossings / (2 * durationSec) : 0 // Hz
-
-  // Debug logging to help diagnose detection issues
-  console.debug('detectMidThrottleWobble:', {
-    frames: frames.length,
-    duration: (durationSec * 1000).toFixed(2) + 'ms',
-    crossings,
-    frequency: frequency.toFixed(2) + 'Hz',
-    gyroRMS: gyroRMS.toFixed(2),
-  })
+  // Use FFT for robust frequency estimation (immune to noise-induced zero crossings)
+  const spectrum = analyzeFrequency(gyro, sampleRate)
+  const frequency = spectrum.dominantFrequency
 
   // Classify frequency band
   let frequencyBand: 'low' | 'mid' | 'high'
@@ -310,7 +295,7 @@ export function detectMidThrottleWobble(
   }
 
   return {
-    detected: gyroRMS > 5 && frequency > 5 && frequency < 100, // Lowered thresholds to catch moderate wobble on real data
+    detected: gyroRMS > 8 && frequency > 5 && frequency < 100, // 8 deg/s RMS to avoid false positives on healthy quads
     frequency,
     amplitude: gyroRMS,
     frequencyBand,

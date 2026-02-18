@@ -3,7 +3,7 @@ import { AnalysisWindow, DetectedIssue, Recommendation } from '../types/Analysis
 import { LogFrame } from '../types/LogFrame'
 import { QuadProfile } from '../types/QuadProfile'
 import { extractAxisData, deriveSampleRate } from '../utils/SignalAnalysis'
-import { calculateRMS, estimateFrequencyFromZeroCrossings, calculateError } from '../utils/FrequencyAnalysis'
+import { calculateRMS, analyzeFrequency, calculateError } from '../utils/FrequencyAnalysis'
 
 function uuidv4(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
@@ -43,16 +43,23 @@ export const HighThrottleOscillationRule: TuningRule = {
     const error = calculateError(setpointSignal, gyroSignal)
     const errorRMS = calculateRMS(error)
 
-    // Estimate oscillation frequency via zero crossings
-    const frequency = estimateFrequencyFromZeroCrossings(error, sampleRate)
+    // Use FFT for robust frequency estimation (immune to noise-induced zero crossings)
+    const spectrum = analyzeFrequency(error, sampleRate)
+    const frequency = spectrum.dominantFrequency
 
     // Detected if significant error oscillation in the 5-100 Hz range (scaled by profile)
     if (errorRMS <= 8 * scale || frequency < 5 || frequency > 100) {
       return []
     }
 
-    // Calculate amplitude (peak-to-peak)
-    const amplitude = Math.max(...error.map(Math.abs)) * 2
+    // Calculate true peak-to-peak amplitude (max - min)
+    let errorMin = error[0]
+    let errorMax = error[0]
+    for (let i = 1; i < error.length; i++) {
+      if (error[i] < errorMin) errorMin = error[i]
+      if (error[i] > errorMax) errorMax = error[i]
+    }
+    const amplitude = errorMax - errorMin
 
     // Classify severity based on amplitude (scaled by profile)
     let severity: 'low' | 'medium' | 'high'

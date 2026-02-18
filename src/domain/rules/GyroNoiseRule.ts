@@ -51,7 +51,8 @@ export const GyroNoiseRule: TuningRule = {
     const highBandRatio = totalEnergy > 0 ? spectrum.bandEnergy.high / totalEnergy : 0
 
     // Detected if: gyroRMS > threshold AND (high-band ratio > 0.3 OR gyroRMS > threshold) — scaled by profile
-    if (gyroRMS <= 3 * scale || (highBandRatio <= 0.3 && gyroRMS <= 8 * scale)) {
+    // 5 deg/s RMS baseline — healthy quads on soft-mounted FCs show 3-5 deg/s during hover
+    if (gyroRMS <= 5 * scale || (highBandRatio <= 0.3 && gyroRMS <= 10 * scale)) {
       return []
     }
 
@@ -61,7 +62,7 @@ export const GyroNoiseRule: TuningRule = {
       severity = 'high'
     } else if (gyroRMS > 10 * scale) {
       severity = 'medium'
-    } else if (gyroRMS > 5 * scale) {
+    } else if (gyroRMS > 6 * scale) {
       severity = 'low'
     } else {
       severity = 'low'
