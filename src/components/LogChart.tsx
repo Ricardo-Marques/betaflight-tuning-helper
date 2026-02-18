@@ -5,15 +5,16 @@ import { useLogStore, useUIStore, useAnalysisStore } from '../stores/RootStore'
 import { useObservableState, useAutorun } from '../lib/mobx-reactivity'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer, ReferenceLine,
+  Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts'
 import {
   ChartWrapper, EmptyState, AxisBar, AxisLabel, AxisButton,
-  ToggleBar, ToggleLabel, StyledCheckbox,
+  ToggleBar, ToggleChip, ToggleChipDot, HiddenCheckbox,
   IssueSummaryStrip, IssueSummaryLabel, IssueSummaryLink, IssuePillList, IssuePill, IssueDot,
   ChartContainer, LabelOverlay, ChartLabel, HoverPopover,
   ZoomControls, ZoomHeader, ZoomInfoLabel, ZoomResetBtn,
   AxisSwitchToast,
+  ChartLegend, LegendItem, LegendSwatch,
 } from './LogChart.styles'
 import { RangeSlider } from './RangeSlider'
 import { useChartData } from './logChart/useChartData'
@@ -107,30 +108,30 @@ export const LogChart = observer(() => {
           </AxisButton>
         ))}
         <ToggleBar>
-          <ToggleLabel>
-            <StyledCheckbox data-testid="toggle-gyro" type="checkbox" checked={uiStore.showGyro} onChange={uiStore.toggleGyro} />
-            Gyro
-          </ToggleLabel>
-          <ToggleLabel>
-            <StyledCheckbox data-testid="toggle-setpoint" type="checkbox" checked={uiStore.showSetpoint} onChange={uiStore.toggleSetpoint} />
-            Setpoint
-          </ToggleLabel>
-          <ToggleLabel>
-            <StyledCheckbox data-testid="toggle-dterm" type="checkbox" checked={uiStore.showPidD} onChange={uiStore.togglePidD} />
-            D-term
-          </ToggleLabel>
-          <ToggleLabel>
-            <StyledCheckbox data-testid="toggle-motors" type="checkbox" checked={uiStore.showMotors} onChange={uiStore.toggleMotors} />
-            Motors
-          </ToggleLabel>
-          <ToggleLabel>
-            <StyledCheckbox data-testid="toggle-throttle" type="checkbox" checked={uiStore.showThrottle} onChange={uiStore.toggleThrottle} />
-            Throttle
-          </ToggleLabel>
-          <ToggleLabel>
-            <StyledCheckbox data-testid="toggle-issues" type="checkbox" checked={uiStore.showIssues} onChange={uiStore.toggleIssues} />
+          <ToggleChip isActive={uiStore.showGyro} chipColor={theme.colors.chart.gyro} onClick={uiStore.toggleGyro}>
+            <HiddenCheckbox data-testid="toggle-gyro" type="checkbox" checked={uiStore.showGyro} onChange={uiStore.toggleGyro} />
+            <ToggleChipDot dotColor={theme.colors.chart.gyro} />Gyro
+          </ToggleChip>
+          <ToggleChip isActive={uiStore.showSetpoint} chipColor={theme.colors.chart.setpoint} onClick={uiStore.toggleSetpoint}>
+            <HiddenCheckbox data-testid="toggle-setpoint" type="checkbox" checked={uiStore.showSetpoint} onChange={uiStore.toggleSetpoint} />
+            <ToggleChipDot dotColor={theme.colors.chart.setpoint} />Setpoint
+          </ToggleChip>
+          <ToggleChip isActive={uiStore.showPidD} chipColor={theme.colors.chart.pidD} onClick={uiStore.togglePidD}>
+            <HiddenCheckbox data-testid="toggle-dterm" type="checkbox" checked={uiStore.showPidD} onChange={uiStore.togglePidD} />
+            <ToggleChipDot dotColor={theme.colors.chart.pidD} />D-term
+          </ToggleChip>
+          <ToggleChip isActive={uiStore.showMotors} chipColor={theme.colors.chart.motor1} onClick={uiStore.toggleMotors}>
+            <HiddenCheckbox data-testid="toggle-motors" type="checkbox" checked={uiStore.showMotors} onChange={uiStore.toggleMotors} />
+            <ToggleChipDot dotColor={theme.colors.chart.motor1} />Motors
+          </ToggleChip>
+          <ToggleChip isActive={uiStore.showThrottle} chipColor={theme.colors.chart.throttle} onClick={uiStore.toggleThrottle}>
+            <HiddenCheckbox data-testid="toggle-throttle" type="checkbox" checked={uiStore.showThrottle} onChange={uiStore.toggleThrottle} />
+            <ToggleChipDot dotColor={theme.colors.chart.throttle} />Throttle
+          </ToggleChip>
+          <ToggleChip isActive={uiStore.showIssues} onClick={uiStore.toggleIssues}>
+            <HiddenCheckbox data-testid="toggle-issues" type="checkbox" checked={uiStore.showIssues} onChange={uiStore.toggleIssues} />
             Issues
-          </ToggleLabel>
+          </ToggleChip>
         </ToggleBar>
       </AxisBar>
 
@@ -230,7 +231,6 @@ export const LogChart = observer(() => {
                 color: theme.colors.text.primary,
               }}
             />
-            <Legend wrapperStyle={{ paddingTop: 8, paddingLeft: 60 }} />
 
             {/* Issue reference lines */}
             {(() => {
@@ -338,6 +338,29 @@ export const LogChart = observer(() => {
           </AxisSwitchToast>
         )}
       </ChartContainer>
+
+      <ChartLegend>
+        {uiStore.showGyro && (
+          <LegendItem><LegendSwatch style={{ backgroundColor: theme.colors.chart.gyro }} />Gyro</LegendItem>
+        )}
+        {uiStore.showSetpoint && (
+          <LegendItem><LegendSwatch style={{ backgroundColor: theme.colors.chart.setpoint }} />Setpoint</LegendItem>
+        )}
+        {uiStore.showPidD && (
+          <LegendItem><LegendSwatch style={{ backgroundColor: theme.colors.chart.pidD }} />D-term</LegendItem>
+        )}
+        {uiStore.showMotors && (
+          <>
+            <LegendItem><LegendSwatch style={{ backgroundColor: theme.colors.chart.motor1 }} />M1</LegendItem>
+            <LegendItem><LegendSwatch style={{ backgroundColor: theme.colors.chart.motor2 }} />M2</LegendItem>
+            <LegendItem><LegendSwatch style={{ backgroundColor: theme.colors.chart.motor3 }} />M3</LegendItem>
+            <LegendItem><LegendSwatch style={{ backgroundColor: theme.colors.chart.motor4 }} />M4</LegendItem>
+          </>
+        )}
+        {uiStore.showThrottle && (
+          <LegendItem><LegendSwatch style={{ backgroundColor: theme.colors.chart.throttle }} />Throttle</LegendItem>
+        )}
+      </ChartLegend>
 
       <ZoomControls>
         <ZoomHeader>

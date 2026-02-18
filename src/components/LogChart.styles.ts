@@ -19,8 +19,8 @@ export const AxisBar = styled.div`
   display: flex;
   align-items: center;
   gap: 1rem;
-  padding: 1rem;
-  border-bottom: 1px solid ${p => p.theme.colors.border.main};
+  padding: 0.5rem 1rem;
+  background-color: ${p => p.theme.colors.background.section};
 `
 
 export const AxisLabel = styled.span`
@@ -65,19 +65,53 @@ export const ToggleBar = styled.div`
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.375rem;
 `
 
-export const ToggleLabel = styled.label`
+export const ToggleChip = styled.button<{ isActive: boolean; chipColor?: string }>`
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  color: ${p => p.theme.colors.text.primary};
+  gap: 0.25rem;
+  padding: 0.1875rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid ${p => p.isActive
+    ? (p.chipColor ?? p.theme.colors.border.focus)
+    : p.theme.colors.border.main};
+  background-color: ${p => p.isActive
+    ? (p.chipColor ? p.chipColor + '18' : p.theme.colors.background.selected)
+    : 'transparent'};
+  color: ${p => p.isActive
+    ? p.theme.colors.text.primary
+    : p.theme.colors.text.muted};
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover {
+    border-color: ${p => p.chipColor ?? p.theme.colors.border.focus};
+    color: ${p => p.theme.colors.text.primary};
+  }
 `
 
-export const StyledCheckbox = styled.input`
-  border-radius: 0.25rem;
+export const ToggleChipDot = styled.span<{ dotColor: string }>`
+  display: inline-block;
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 50%;
+  background-color: ${p => p.dotColor};
+`
+
+export const HiddenCheckbox = styled.input`
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 `
 
 export const IssueSummaryStrip = styled.div`
@@ -85,8 +119,7 @@ export const IssueSummaryStrip = styled.div`
   align-items: center;
   gap: 0.75rem;
   padding: 0.375rem 1rem;
-  border-bottom: 1px solid ${p => p.theme.colors.border.main};
-  background-color: ${p => p.theme.colors.background.section};
+  background-color: ${p => p.theme.colors.background.panel};
 `
 
 export const IssueSummaryLabel = styled.span`
@@ -183,8 +216,8 @@ export const HoverPopover = styled.div`
 
 export const ZoomControls = styled.div`
   flex-shrink: 0;
-  padding: 0.75rem 1rem;
-  border-top: 1px solid ${p => p.theme.colors.border.main};
+  padding: 0.5rem 1rem 0.75rem;
+  background-color: ${p => p.theme.colors.background.section};
 `
 
 export const ZoomHeader = styled.div`
@@ -211,4 +244,28 @@ export const ZoomResetBtn = styled.button`
   &:hover {
     color: ${p => p.theme.colors.text.linkHover};
   }
+`
+
+export const ChartLegend = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 0.5rem 1rem 1.2rem 3.75rem;
+  flex-wrap: wrap;
+`
+
+export const LegendItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  color: ${p => p.theme.colors.text.secondary};
+`
+
+export const LegendSwatch = styled.span`
+  display: inline-block;
+  width: 1rem;
+  height: 0.1875rem;
+  border-radius: 1px;
 `
