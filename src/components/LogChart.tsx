@@ -101,7 +101,7 @@ export const LogChart = observer(() => {
             data-testid={`axis-button-${axis}`}
             data-active={uiStore.selectedAxis === axis || undefined}
             isActive={uiStore.selectedAxis === axis}
-            onClick={() => uiStore.setAxis(axis)}
+            onClick={() => { analysisStore.selectIssue(null); uiStore.setAxis(axis) }}
           >
             {axis.charAt(0).toUpperCase() + axis.slice(1)}
           </AxisButton>

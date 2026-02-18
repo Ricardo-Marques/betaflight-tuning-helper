@@ -267,7 +267,10 @@ export function useChartInteractions(
       }
     }
 
-    if (nearbyClicks.length === 0) return
+    if (nearbyClicks.length === 0) {
+      if (analysisStore.selectedIssueId) analysisStore.selectIssue(null)
+      return
+    }
 
     nearbyClicks.sort((a, b) => (sevRank[a.issue.severity] ?? 2) - (sevRank[b.issue.severity] ?? 2))
 
