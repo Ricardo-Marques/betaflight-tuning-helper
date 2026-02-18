@@ -3,6 +3,7 @@ import { AnalysisWindow, DetectedIssue, Recommendation } from '../types/Analysis
 import { LogFrame } from '../types/LogFrame'
 import { QuadProfile } from '../types/QuadProfile'
 import { detectBounceback, extractAxisData, deriveSampleRate } from '../utils/SignalAnalysis'
+import { calculateStdDev } from '../utils/FrequencyAnalysis'
 
 /**
  * Detects bounceback after rapid stick movements and recommends D/P adjustments
@@ -27,19 +28,9 @@ export const BouncebackRule: TuningRule = {
     const sampleRate = deriveSampleRate(windowFrames)
     const scale = profile?.thresholds.bouncebackOvershoot ?? 1.0
 
-    // Log why detection might not run
-    console.debug(`${BouncebackRule.id} analyzing window:`, {
-      axis: window.axis,
-      maxSetpoint: window.metadata.maxSetpoint,
-      hasStickInput: window.metadata.hasStickInput,
-      avgThrottle: window.metadata.avgThrottle,
-      frameCount: windowFrames.length,
-    })
-
     const metrics = detectBounceback(windowFrames, window.axis, sampleRate)
 
     if (!metrics.detected) {
-      console.debug(`${BouncebackRule.id}: No issue detected`, metrics)
       return []
     }
 
@@ -192,13 +183,6 @@ export const BouncebackRule: TuningRule = {
 
     return recommendations
   },
-}
-
-function calculateStdDev(signal: number[]): number {
-  const mean = signal.reduce((sum, val) => sum + val, 0) / signal.length
-  const variance =
-    signal.reduce((sum, val) => sum + (val - mean) ** 2, 0) / signal.length
-  return Math.sqrt(variance)
 }
 
 // Re-export for use in other modules

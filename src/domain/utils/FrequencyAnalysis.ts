@@ -10,9 +10,17 @@ export function analyzeFrequency(
   signal: number[],
   sampleRate: number
 ): FrequencySpectrum {
+  // Guard: empty or trivially small signals
+  if (signal.length < 4 || sampleRate <= 0) {
+    return { frequencies: [], magnitudes: [], dominantFrequency: 0, dominantMagnitude: 0, bandEnergy: { low: 0, mid: 0, high: 0 } }
+  }
+
+  // Filter out NaN values (corrupted frames) to prevent silent analysis failure
+  const cleanSignal = signal.map(v => Number.isFinite(v) ? v : 0)
+
   // Ensure signal length is power of 2 for FFT
-  const fftSize = nextPowerOf2(Math.min(signal.length, 2048)) // Cap at 2048 for performance
-  const paddedSignal = padSignal(signal, fftSize)
+  const fftSize = nextPowerOf2(Math.min(cleanSignal.length, 2048)) // Cap at 2048 for performance
+  const paddedSignal = padSignal(cleanSignal, fftSize)
 
   // Remove DC component
   const mean = paddedSignal.reduce((sum, val) => sum + val, 0) / paddedSignal.length
@@ -175,6 +183,7 @@ function nextPowerOf2(n: number): number {
  * Calculates RMS (Root Mean Square) of a signal
  */
 export function calculateRMS(signal: number[]): number {
+  if (signal.length === 0) return 0
   const sumSquares = signal.reduce((sum, val) => sum + val * val, 0)
   return Math.sqrt(sumSquares / signal.length)
 }
@@ -183,6 +192,7 @@ export function calculateRMS(signal: number[]): number {
  * Calculates standard deviation
  */
 export function calculateStdDev(signal: number[]): number {
+  if (signal.length === 0) return 0
   const mean = signal.reduce((sum, val) => sum + val, 0) / signal.length
   const variance =
     signal.reduce((sum, val) => sum + (val - mean) ** 2, 0) / signal.length

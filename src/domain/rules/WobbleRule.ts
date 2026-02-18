@@ -30,19 +30,9 @@ export const WobbleRule: TuningRule = {
     const sampleRate = deriveSampleRate(windowFrames)
     const scale = profile?.thresholds.wobbleAmplitude ?? 1.0
 
-    // Log why detection might not run
-    console.debug(`${WobbleRule.id} analyzing window:`, {
-      axis: window.axis,
-      maxSetpoint: window.metadata.maxSetpoint,
-      hasStickInput: window.metadata.hasStickInput,
-      avgThrottle: window.metadata.avgThrottle,
-      frameCount: windowFrames.length,
-    })
-
     const metrics = detectMidThrottleWobble(windowFrames, window.axis, sampleRate)
 
     if (!metrics.detected) {
-      console.debug(`${WobbleRule.id}: No issue detected`, metrics)
       return []
     }
 

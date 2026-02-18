@@ -34,21 +34,6 @@ export const TrackingQualityRule: TuningRule = {
     const windowFrames = window.frameIndices.map(i => frames[i])
     const scale = profile?.thresholds.trackingError ?? 1.0
 
-    // Only log the first few and any with high error
-    const shouldLog = window.frameIndices[0] < 2000 || window.metadata.rmsSetpoint > 50
-
-    if (shouldLog) {
-      console.log(`${TrackingQualityRule.id} analyzing window:`, {
-        axis: window.axis,
-        windowStart: window.frameIndices[0],
-        maxSetpoint: window.metadata.maxSetpoint.toFixed(1),
-        rmsSetpoint: window.metadata.rmsSetpoint.toFixed(1),
-        hasStickInput: window.metadata.hasStickInput,
-        avgThrottle: window.metadata.avgThrottle.toFixed(0),
-        frameCount: windowFrames.length,
-      })
-    }
-
     const gyro = extractAxisData(windowFrames, 'gyroADC', window.axis)
     const setpoint = extractAxisData(windowFrames, 'setpoint', window.axis)
 
@@ -60,7 +45,6 @@ export const TrackingQualityRule: TuningRule = {
 
     // Avoid division by zero
     if (rmsSetpoint < 10) {
-      console.debug(`${TrackingQualityRule.id}: Setpoint too small, skipping`)
       return []
     }
 
@@ -74,18 +58,6 @@ export const TrackingQualityRule: TuningRule = {
     // SNR = how much larger the error is compared to background gyro activity
     const gyroStdDev = calculateStdDev(gyro)
     const signalToNoise = gyroStdDev > 0 ? rmsError / gyroStdDev : 10
-
-    // Log all windows with meaningful setpoint to find worst case
-    if (rmsSetpoint > 30) {
-      console.log(`${TrackingQualityRule.id} metrics (window ${window.frameIndices[0]}):`, {
-        axis: window.axis,
-        normalizedError: normalizedError.toFixed(2) + '%',
-        amplitudeRatio: amplitudeRatio.toFixed(2) + '%',
-        rmsError: rmsError.toFixed(2),
-        rmsSetpoint: rmsSetpoint.toFixed(2),
-        wouldDetect: normalizedError > 15 ? '🔴 YES' : '✅ NO (good tracking)',
-      })
-    }
 
     // Only skip if error is trivially small (< 5 deg/s RMS)
     // Don't rely solely on SNR since normalized error % is more reliable

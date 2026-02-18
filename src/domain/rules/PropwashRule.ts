@@ -35,19 +35,9 @@ export const PropwashRule: TuningRule = {
     const extendedFrames = frames.slice(extendedStartIdx, lastIdx + 1)
     const sampleRate = deriveSampleRate(extendedFrames)
 
-    // Log why detection might not run
-    console.debug(`${PropwashRule.id} analyzing window:`, {
-      axis: window.axis,
-      maxSetpoint: window.metadata.maxSetpoint,
-      hasStickInput: window.metadata.hasStickInput,
-      avgThrottle: window.metadata.avgThrottle,
-      frameCount: extendedFrames.length,
-    })
-
     const metrics = detectPropwash(extendedFrames, window.axis, sampleRate)
 
     if (!metrics.detected) {
-      console.debug(`${PropwashRule.id}: No issue detected`, metrics)
       return []
     }
 

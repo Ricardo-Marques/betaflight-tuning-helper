@@ -397,22 +397,6 @@ export class RuleEngine {
     const windowSize = Math.max(50, Math.floor((sampleRate * windowDurationMs) / 1000))
     const windowStep = Math.floor(windowSize / 2) // 50% overlap
 
-    console.log(`Window size: ${windowSize} frames (${windowDurationMs}ms at ${sampleRate}Hz)`)
-
-    // Debug: Scan entire log for maximum stick input (use reduce to avoid stack overflow on large logs)
-    const debugAxes: ('roll' | 'pitch' | 'yaw')[] = ['roll', 'pitch', 'yaw']
-    for (const axis of debugAxes) {
-      let maxSetpoint = 0
-      let maxRcCommand = 0
-      for (const f of frames) {
-        const sp = Math.abs(f.setpoint[axis])
-        const rc = Math.abs(f.rcCommand[axis])
-        if (sp > maxSetpoint) maxSetpoint = sp
-        if (rc > maxRcCommand) maxRcCommand = rc
-      }
-      console.log(`📊 ${axis.toUpperCase()} - Max setpoint: ${maxSetpoint.toFixed(1)}, Max rcCommand: ${maxRcCommand.toFixed(1)}`)
-    }
-
     const axes: ('roll' | 'pitch' | 'yaw')[] = ['roll', 'pitch', 'yaw']
 
     for (const axis of axes) {
@@ -438,19 +422,6 @@ export class RuleEngine {
         // Adjust threshold based on what we're using (setpoint in deg/s vs rcCommand in stick units)
         const hasStickInputThreshold = usingSetpoint ? 30 : 10 // Lower threshold for rcCommand
         const hasStickInput = rmsSetpoint > hasStickInputThreshold
-
-        // Debug: Log setpoint values for first few windows to diagnose
-        if (i < 5 && axis === 'roll') {
-          console.log(`Window ${i} setpoint sample (${axis}):`, {
-            setpoint_first5: rawSetpointValues.slice(0, 5),
-            rcCommand_first5: rawRcCommandValues.slice(0, 5),
-            maxSetpoint: maxSetpoint.toFixed(1),
-            rmsSetpoint: rmsSetpoint.toFixed(1),
-            threshold: hasStickInputThreshold,
-            hasStickInput,
-            source: usingSetpoint ? 'setpoint' : 'rcCommand'
-          })
-        }
 
         // Flight phase detection
         // Check for throttle drop within this window (propwash requires a transition)

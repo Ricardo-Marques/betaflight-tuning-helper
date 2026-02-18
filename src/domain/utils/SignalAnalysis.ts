@@ -344,7 +344,7 @@ export function detectMotorSaturation(frames: LogFrame[]): MotorSaturationMetric
   const variance =
     motorAverages.reduce((sum, avg) => sum + (avg - mean) ** 2, 0) / motorCount
   const stdDev = Math.sqrt(variance)
-  const asymmetry = stdDev / mean
+  const asymmetry = mean > 0 ? stdDev / mean : 0
 
   return {
     detected: saturationPercentage > 5, // More than 5% saturation is concerning
