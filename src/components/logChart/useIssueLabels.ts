@@ -15,6 +15,7 @@ export interface LabelEntry {
   fontSize: number
   fontWeight: string
   issues: DetectedIssue[]
+  onAxis: boolean
 }
 
 interface IssueLabelsResult {
@@ -94,6 +95,7 @@ export function useIssueLabels(
         fontSize: anySelected ? 11 : 9,
         fontWeight: anySelected ? 'bold' : 'normal',
         issues,
+        onAxis: entry.issue.axis === uiStore.selectedAxis,
       })
     }
 

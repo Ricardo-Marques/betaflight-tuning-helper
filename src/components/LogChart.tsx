@@ -156,7 +156,10 @@ export const LogChart = observer(() => {
                     }
                   }
                 }}
-                style={{ color: severityColor(issue.severity) }}
+                style={{
+                  color: severityColor(issue.severity),
+                  opacity: issue.axis !== uiStore.selectedAxis ? 0.35 : undefined,
+                }}
               >
                 <IssueDot style={{ backgroundColor: severityColor(issue.severity) }} />
                 {shortLabel(issue)}
@@ -275,7 +278,7 @@ export const LogChart = observer(() => {
               <ChartLabel
                 key={label.key}
                 data-testid="chart-label"
-                style={{ left: `${label.pxLeft}px`, color: label.color, fontSize: `${label.fontSize}px`, fontWeight: label.fontWeight }}
+                style={{ left: `${label.pxLeft}px`, color: label.color, fontSize: `${label.fontSize}px`, fontWeight: label.fontWeight, opacity: label.onAxis ? undefined : 0.3 }}
                 onMouseEnter={(e) => {
                   const sevRank: Record<string, number> = { high: 0, medium: 1, low: 2 }
                   const sorted = [...label.issues].sort((a, b) => (sevRank[a.severity] ?? 2) - (sevRank[b.severity] ?? 2))
@@ -291,6 +294,12 @@ export const LogChart = observer(() => {
         )}
 
         <HoverPopover ref={popoverRef} data-testid="issue-popover" style={{ display: 'none' }} />
+
+        {uiStore.axisHighlight && (
+          <AxisSwitchToast key={uiStore.axisHighlightKey} data-testid="axis-switch-toast">
+            Switched to {uiStore.axisHighlight} axis
+          </AxisSwitchToast>
+        )}
       </ChartContainer>
 
       <ZoomControls>
