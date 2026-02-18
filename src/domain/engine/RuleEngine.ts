@@ -399,13 +399,17 @@ export class RuleEngine {
 
     console.log(`Window size: ${windowSize} frames (${windowDurationMs}ms at ${sampleRate}Hz)`)
 
-    // Debug: Scan entire log for maximum stick input
+    // Debug: Scan entire log for maximum stick input (use reduce to avoid stack overflow on large logs)
     const debugAxes: ('roll' | 'pitch' | 'yaw')[] = ['roll', 'pitch', 'yaw']
     for (const axis of debugAxes) {
-      const allSetpoints = frames.map(f => Math.abs(f.setpoint[axis]))
-      const allRcCommands = frames.map(f => Math.abs(f.rcCommand[axis]))
-      const maxSetpoint = Math.max(...allSetpoints)
-      const maxRcCommand = Math.max(...allRcCommands)
+      let maxSetpoint = 0
+      let maxRcCommand = 0
+      for (const f of frames) {
+        const sp = Math.abs(f.setpoint[axis])
+        const rc = Math.abs(f.rcCommand[axis])
+        if (sp > maxSetpoint) maxSetpoint = sp
+        if (rc > maxRcCommand) maxRcCommand = rc
+      }
       console.log(`📊 ${axis.toUpperCase()} - Max setpoint: ${maxSetpoint.toFixed(1)}, Max rcCommand: ${maxRcCommand.toFixed(1)}`)
     }
 

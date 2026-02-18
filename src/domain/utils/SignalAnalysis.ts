@@ -334,12 +334,13 @@ export function detectMotorSaturation(frames: LogFrame[]): MotorSaturationMetric
 
   for (const frame of frames) {
     const motors = frame.motor
+    let frameSaturated = false
     for (let i = 0; i < motorCount; i++) {
       motorSums[i] += motors[i]
-      if (motors[i] >= 1990) {
+      if (!frameSaturated && motors[i] >= 1990) {
         // Consider 1990+ as saturated (allows for small margin)
         saturatedFrames++
-        break // Count frame once even if multiple motors saturated
+        frameSaturated = true // Count frame once but keep summing all motors
       }
     }
   }
