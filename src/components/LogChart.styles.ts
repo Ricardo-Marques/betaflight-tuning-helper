@@ -102,17 +102,6 @@ export const ToggleChipDot = styled.span<{ dotColor: string }>`
   background-color: ${p => p.dotColor};
 `
 
-export const HiddenCheckbox = styled.input`
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-`
 
 export const IssueSummaryStrip = styled.div`
   display: flex;

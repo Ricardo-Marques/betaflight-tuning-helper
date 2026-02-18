@@ -9,7 +9,7 @@ import {
 } from 'recharts'
 import {
   ChartWrapper, EmptyState, AxisBar, AxisLabel, AxisButton,
-  ToggleBar, ToggleChip, ToggleChipDot, HiddenCheckbox,
+  ToggleBar, ToggleChip, ToggleChipDot,
   IssueSummaryStrip, IssueSummaryLabel, IssueSummaryLink, IssuePillList, IssuePill, IssueDot,
   ChartContainer, LabelOverlay, ChartLabel, HoverPopover,
   ZoomControls, ZoomHeader, ZoomInfoLabel, ZoomResetBtn,
@@ -108,28 +108,22 @@ export const LogChart = observer(() => {
           </AxisButton>
         ))}
         <ToggleBar>
-          <ToggleChip isActive={uiStore.showGyro} chipColor={theme.colors.chart.gyro} onClick={uiStore.toggleGyro}>
-            <HiddenCheckbox data-testid="toggle-gyro" type="checkbox" checked={uiStore.showGyro} onChange={uiStore.toggleGyro} />
+          <ToggleChip data-testid="toggle-gyro" role="checkbox" aria-checked={uiStore.showGyro} isActive={uiStore.showGyro} chipColor={theme.colors.chart.gyro} onClick={uiStore.toggleGyro}>
             <ToggleChipDot dotColor={theme.colors.chart.gyro} />Gyro
           </ToggleChip>
-          <ToggleChip isActive={uiStore.showSetpoint} chipColor={theme.colors.chart.setpoint} onClick={uiStore.toggleSetpoint}>
-            <HiddenCheckbox data-testid="toggle-setpoint" type="checkbox" checked={uiStore.showSetpoint} onChange={uiStore.toggleSetpoint} />
+          <ToggleChip data-testid="toggle-setpoint" role="checkbox" aria-checked={uiStore.showSetpoint} isActive={uiStore.showSetpoint} chipColor={theme.colors.chart.setpoint} onClick={uiStore.toggleSetpoint}>
             <ToggleChipDot dotColor={theme.colors.chart.setpoint} />Setpoint
           </ToggleChip>
-          <ToggleChip isActive={uiStore.showPidD} chipColor={theme.colors.chart.pidD} onClick={uiStore.togglePidD}>
-            <HiddenCheckbox data-testid="toggle-dterm" type="checkbox" checked={uiStore.showPidD} onChange={uiStore.togglePidD} />
+          <ToggleChip data-testid="toggle-dterm" role="checkbox" aria-checked={uiStore.showPidD} isActive={uiStore.showPidD} chipColor={theme.colors.chart.pidD} onClick={uiStore.togglePidD}>
             <ToggleChipDot dotColor={theme.colors.chart.pidD} />D-term
           </ToggleChip>
-          <ToggleChip isActive={uiStore.showMotors} chipColor={theme.colors.chart.motor1} onClick={uiStore.toggleMotors}>
-            <HiddenCheckbox data-testid="toggle-motors" type="checkbox" checked={uiStore.showMotors} onChange={uiStore.toggleMotors} />
+          <ToggleChip data-testid="toggle-motors" role="checkbox" aria-checked={uiStore.showMotors} isActive={uiStore.showMotors} chipColor={theme.colors.chart.motor1} onClick={uiStore.toggleMotors}>
             <ToggleChipDot dotColor={theme.colors.chart.motor1} />Motors
           </ToggleChip>
-          <ToggleChip isActive={uiStore.showThrottle} chipColor={theme.colors.chart.throttle} onClick={uiStore.toggleThrottle}>
-            <HiddenCheckbox data-testid="toggle-throttle" type="checkbox" checked={uiStore.showThrottle} onChange={uiStore.toggleThrottle} />
+          <ToggleChip data-testid="toggle-throttle" role="checkbox" aria-checked={uiStore.showThrottle} isActive={uiStore.showThrottle} chipColor={theme.colors.chart.throttle} onClick={uiStore.toggleThrottle}>
             <ToggleChipDot dotColor={theme.colors.chart.throttle} />Throttle
           </ToggleChip>
-          <ToggleChip isActive={uiStore.showIssues} onClick={uiStore.toggleIssues}>
-            <HiddenCheckbox data-testid="toggle-issues" type="checkbox" checked={uiStore.showIssues} onChange={uiStore.toggleIssues} />
+          <ToggleChip data-testid="toggle-issues" role="checkbox" aria-checked={uiStore.showIssues} isActive={uiStore.showIssues} onClick={uiStore.toggleIssues}>
             Issues
           </ToggleChip>
         </ToggleBar>
