@@ -1,8 +1,29 @@
-# Betaflight Tuning Helper
+<p align="center">
+  <img src="public/logo.svg" width="200" alt="Betaflight Tuning Helper logo" />
+</p>
 
-**[Try it live](https://ricardo-marques.github.io/betaflight-tuning-helper/)**
+<h1 align="center">Betaflight Tuning Helper</h1>
+
+<p align="center">
+  <strong>Drop a Blackbox log, get specific tuning recommendations.</strong><br/>
+  <a href="https://ricardo-marques.github.io/betaflight-tuning-helper/">Try it live</a>
+</p>
 
 Client-side web app that analyzes Betaflight Blackbox logs and generates actionable tuning recommendations. No backend — everything runs in your browser.
+
+## Why This Exists
+
+PID tuning is one of the hardest parts of FPV. Most pilots either fly stock settings or spend hours in trial-and-error, changing one slider at a time and hoping for the best.
+
+Blackbox logs contain all the data needed to diagnose problems — oscillations, propwash, bounceback, noise — but interpreting raw gyro/motor traces is expert-level knowledge. Existing tools like Blackbox Explorer show you the data, but don't tell you *what to change*.
+
+This app bridges that gap. Drop a log file, and it will:
+
+- **Detect specific issues** (propwash, bounceback, noise, tracking errors, motor saturation, etc.)
+- **Recommend parameter changes** with rationale, risk assessment, and confidence scores
+- **Speak Betaflight** — all output uses 4.4/4.5 slider terminology, ready to apply in the Configurator
+
+Everything runs 100% client-side. No data leaves your browser, no account required.
 
 ## Features
 
@@ -102,7 +123,6 @@ export const MyRule: TuningRule = {
 - Multi-log BBL files: only the first log is parsed (most common case)
 - Files > 50MB may slow the browser
 - Simplified FFT (sufficient for tuning, not research-grade)
-- Cannot extract current PID values from the log itself
 
 ## License
 

@@ -30,6 +30,12 @@ const HeaderContent = styled.div`
   align-items: center;
 `
 
+const TitleRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+`
+
 const HeaderTitle = styled.h1`
   font-size: 1.5rem;
   font-weight: 700;
@@ -175,7 +181,50 @@ export const App = observer(() => {
       <Header data-testid="app-header">
         <HeaderContent>
           <div>
-            <HeaderTitle>Betaflight Tuning Helper</HeaderTitle>
+            <TitleRow>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" width="28" height="28">
+                <line x1="100" y1="100" x2="36" y2="36" stroke="#1e293b" strokeWidth="8" strokeLinecap="round"/>
+                <line x1="100" y1="100" x2="164" y2="36" stroke="#1e293b" strokeWidth="8" strokeLinecap="round"/>
+                <line x1="100" y1="100" x2="164" y2="164" stroke="#1e293b" strokeWidth="8" strokeLinecap="round"/>
+                <line x1="100" y1="100" x2="36" y2="164" stroke="#1e293b" strokeWidth="8" strokeLinecap="round"/>
+                <circle cx="36" cy="36" r="9" fill="#1e3a5f"/>
+                <circle cx="164" cy="36" r="9" fill="#1e3a5f"/>
+                <circle cx="164" cy="164" r="9" fill="#1e3a5f"/>
+                <circle cx="36" cy="164" r="9" fill="#1e3a5f"/>
+                <g>
+                  <ellipse cx="36" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85"/>
+                  <ellipse cx="36" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(120 36 36)"/>
+                  <ellipse cx="36" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(240 36 36)"/>
+                  <animateTransform attributeName="transform" type="rotate" from="0 36 36" to="360 36 36" dur="0.8s" repeatCount="indefinite"/>
+                </g>
+                <g>
+                  <ellipse cx="164" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85"/>
+                  <ellipse cx="164" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(120 164 36)"/>
+                  <ellipse cx="164" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(240 164 36)"/>
+                  <animateTransform attributeName="transform" type="rotate" from="360 164 36" to="0 164 36" dur="0.7s" repeatCount="indefinite"/>
+                </g>
+                <g>
+                  <ellipse cx="164" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85"/>
+                  <ellipse cx="164" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(120 164 164)"/>
+                  <ellipse cx="164" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(240 164 164)"/>
+                  <animateTransform attributeName="transform" type="rotate" from="0 164 164" to="360 164 164" dur="0.8s" repeatCount="indefinite"/>
+                </g>
+                <g>
+                  <ellipse cx="36" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85"/>
+                  <ellipse cx="36" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(120 36 164)"/>
+                  <ellipse cx="36" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(240 36 164)"/>
+                  <animateTransform attributeName="transform" type="rotate" from="360 36 164" to="0 36 164" dur="0.7s" repeatCount="indefinite"/>
+                </g>
+                <rect x="72" y="64" width="56" height="72" rx="8" fill="#2563eb"/>
+                <rect x="86" y="52" width="28" height="14" rx="3" fill="#334155" transform="rotate(-10 100 59)"/>
+                <circle cx="100" cy="59" r="5" fill="#1e293b" transform="rotate(-10 100 59)"/>
+                <circle cx="100" cy="59" r="3" fill="#0f172a" transform="rotate(-10 100 59)"/>
+                <circle cx="111" cy="54" r="2" fill="#ef4444" transform="rotate(-10 100 59)">
+                  <animate attributeName="opacity" values="1;0.3;1" dur="1.5s" repeatCount="indefinite"/>
+                </circle>
+              </svg>
+              <HeaderTitle>Betaflight Tuning Helper</HeaderTitle>
+            </TitleRow>
             <HeaderSubtitle>
               Analyze blackbox logs and get actionable tuning recommendations
             </HeaderSubtitle>
