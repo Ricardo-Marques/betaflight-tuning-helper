@@ -536,6 +536,32 @@ export const LogChart = observer(() => {
     }))
   }, [visibleFrames, uiStore.selectedAxis])
 
+  // Compute cross-axis Y domain so Y-axis stays constant when switching axes
+  const yDomain = useMemo((): [number, number] => {
+    if (visibleFrames.length === 0) return [0, 1]
+
+    let min = Infinity
+    let max = -Infinity
+
+    for (const frame of visibleFrames) {
+      for (const axis of ['roll', 'pitch', 'yaw'] as const) {
+        const g = frame.gyroADC[axis]
+        const s = frame.setpoint[axis]
+        const d = frame.pidD[axis]
+        if (g < min) min = g
+        if (g > max) max = g
+        if (s < min) min = s
+        if (s > max) max = s
+        if (d < min) min = d
+        if (d > max) max = d
+      }
+    }
+
+    const range = max - min
+    const margin = range * 0.05
+    return [min - margin, max + margin]
+  }, [visibleFrames])
+
   // Get issues in visible range, sorted by first visible occurrence time
   const visibleIssues = useMemo(() => {
     if (!analysisStore.isComplete || visibleFrames.length === 0) return []
@@ -977,6 +1003,8 @@ export const LogChart = observer(() => {
             <YAxis
               yAxisId="primary"
               width={50}
+              domain={yDomain}
+              allowDataOverflow
               label={{ value: 'deg/s', angle: -90, position: 'insideLeft' }}
               stroke={theme.colors.chart.axis}
             />
