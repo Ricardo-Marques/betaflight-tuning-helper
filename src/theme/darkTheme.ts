@@ -25,18 +25,18 @@ export const darkTheme: Theme = {
     },
     border: {
       main: '#374151',      // gray-700
-      subtle: '#1f2937',    // gray-800
+      subtle: '#374151',    // gray-700 (slightly brighter for visibility)
       focus: '#60a5fa',     // blue-400
     },
     severity: {
       high: '#f87171',      // red-400
-      highBg: '#451a1a',
+      highBg: '#5c2020',    // brighter red bg for better card contrast
       highText: '#fca5a5',  // red-300
       medium: '#fbbf24',    // amber-400
-      mediumBg: '#422006',
+      mediumBg: '#5c3a0e',  // brighter amber bg for better card contrast
       mediumText: '#fde68a', // amber-200
       low: '#60a5fa',       // blue-400
-      lowBg: '#172554',     // blue-950
+      lowBg: '#1e3a5f',     // brighter blue bg for better card contrast
       lowText: '#93c5fd',   // blue-300
     },
     chart: {
