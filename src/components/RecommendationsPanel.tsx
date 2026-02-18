@@ -2,17 +2,15 @@ import { useRef } from 'react'
 import { observer } from 'mobx-react-lite'
 import styled from '@emotion/styled'
 import { useAnalysisStore, useLogStore, useUIStore } from '../stores/RootStore'
-import { Recommendation, DetectedIssue, ParameterChange, Axis } from '../domain/types/Analysis'
+import { Recommendation, DetectedIssue, ParameterChange } from '../domain/types/Analysis'
 import { PidProfile, FilterSettings } from '../domain/types/LogFrame'
 import {
   generateCliCommands,
   PARAMETER_DISPLAY_NAMES,
-  getCliName,
   resolveChange,
   getPidValue,
   getGlobalValue,
 } from '../domain/utils/CliExport'
-import { RightPanelTab } from '../stores/UIStore'
 import { useObservableState, useComputed, useAutorun } from '../lib/mobx-reactivity'
 import { ISSUE_CHART_DESCRIPTIONS } from '../domain/issueChartDescriptions'
 
@@ -124,17 +122,30 @@ const Tab = styled.button<{ isActive: boolean }>`
   flex: 1;
   padding: 0.625rem 1rem;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: ${p => p.isActive ? 600 : 500};
   transition: color 0.15s;
   border: none;
   border-bottom: 2px solid ${p => p.isActive ? p.theme.colors.button.primary : 'transparent'};
   background: none;
   cursor: pointer;
   color: ${p => p.isActive ? p.theme.colors.text.link : p.theme.colors.text.muted};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
 
   &:hover {
     color: ${p => p.isActive ? p.theme.colors.text.link : p.theme.colors.text.primary};
   }
+`
+
+const TabBadge = styled.span<{ isActive: boolean }>`
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 0.0625rem 0.375rem;
+  border-radius: 9999px;
+  background-color: ${p => p.isActive ? p.theme.colors.button.primary : p.theme.colors.background.section};
+  color: ${p => p.isActive ? p.theme.colors.button.primaryText : p.theme.colors.text.muted};
 `
 
 const TabContent = styled.div`
@@ -143,23 +154,25 @@ const TabContent = styled.div`
 `
 
 const SummarySection = styled.div`
-  padding: 1rem;
-  border-bottom: 1px solid ${p => p.theme.colors.border.main};
-  background-color: ${p => p.theme.colors.background.section};
+  padding: 1.25rem 1rem;
 `
 
 const SummaryTitle = styled.h2`
-  font-size: 1.125rem;
+  font-size: 0.6875rem;
   font-weight: 700;
-  margin-bottom: 0.5rem;
-  color: ${p => p.theme.colors.text.heading};
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 1rem;
+  color: ${p => p.theme.colors.text.secondary};
 `
 
-const HealthBadge = styled.span<{ health: string }>`
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 500;
+const HealthHero = styled.div<{ health: string }>`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
   background-color: ${p => {
     switch (p.health) {
       case 'excellent': return p.theme.colors.health.excellentBg
@@ -168,6 +181,11 @@ const HealthBadge = styled.span<{ health: string }>`
       default: return p.theme.colors.health.criticalBg
     }
   }};
+`
+
+const HealthLabel = styled.span<{ health: string }>`
+  font-size: 1.125rem;
+  font-weight: 700;
   color: ${p => {
     switch (p.health) {
       case 'excellent': return p.theme.colors.health.excellentText
@@ -180,12 +198,38 @@ const HealthBadge = styled.span<{ health: string }>`
 
 const ProfileLabel = styled.span`
   font-size: 0.75rem;
-  color: ${p => p.theme.colors.text.muted};
+  color: ${p => p.theme.colors.text.secondary};
 `
 
-const SeverityCount = styled.p<{ severity: string }>`
-  font-size: 0.875rem;
+const SeverityRow = styled.div`
+  display: flex;
+  gap: 0.75rem;
+`
+
+const SeverityChip = styled.div<{ severity: string }>`
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.625rem;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  background-color: ${p =>
+    p.severity === 'high' ? p.theme.colors.severity.highBg
+    : p.severity === 'medium' ? p.theme.colors.severity.mediumBg
+    : p.theme.colors.severity.lowBg};
   color: ${p =>
+    p.severity === 'high' ? p.theme.colors.severity.highText
+    : p.severity === 'medium' ? p.theme.colors.severity.mediumText
+    : p.theme.colors.severity.lowText};
+`
+
+const SeverityDot = styled.span<{ severity: string }>`
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background-color: ${p =>
     p.severity === 'high' ? p.theme.colors.severity.high
     : p.severity === 'medium' ? p.theme.colors.severity.medium
     : p.theme.colors.severity.low};
@@ -193,31 +237,39 @@ const SeverityCount = styled.p<{ severity: string }>`
 
 const PrioritiesSection = styled.div`
   padding: 1rem;
-  border-bottom: 1px solid ${p => p.theme.colors.border.main};
-  background-color: ${p => p.theme.colors.severity.lowBg};
+  margin: 0 0.75rem 0.75rem;
+  border-radius: 0.5rem;
+  background-color: ${p => p.theme.colors.accent.indigoBg};
 `
 
 const PrioritiesTitle = styled.h3`
   font-size: 0.875rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
-  color: ${p => p.theme.colors.severity.lowText};
+  color: ${p => p.theme.colors.accent.indigoText};
 `
 
 const PriorityList = styled.ol`
   list-style-type: decimal;
   list-style-position: inside;
   font-size: 0.875rem;
-  color: ${p => p.theme.colors.severity.lowText};
+  color: ${p => p.theme.colors.text.primary};
 
   & > li + li {
-    margin-top: 0.25rem;
+    margin-top: 0.375rem;
+  }
+
+  & > li {
+    line-height: 1.4;
   }
 `
 
 const SeverityGroup = styled.div`
   padding: 1rem;
-  border-bottom: 1px solid ${p => p.theme.colors.border.main};
+
+  & + & {
+    border-top: 1px solid ${p => p.theme.colors.border.subtle};
+  }
 `
 
 const SeverityGroupTitle = styled.h3<{ severity: string }>`
@@ -247,29 +299,6 @@ const CliBarActions = styled.div`
   align-items: center;
   justify-content: flex-end;
   gap: 0.5rem;
-`
-
-const SpacedStack = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-`
-
-const FlexRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`
-
-const SmLabel = styled.span`
-  font-size: 0.875rem;
-  font-weight: 500;
-`
-
-const SpacedStackSm = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
 `
 
 const IssueList = styled.div`
@@ -310,10 +339,13 @@ const IssueCardWrapper = styled.div<{ severity: string; isSelected: boolean }>`
 `
 
 const SeverityBadge = styled.span<{ severity: string }>`
-  padding: 0.25rem 0.5rem;
+  padding: 0.125rem 0.5rem;
   border-radius: 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 500;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+  flex-shrink: 0;
   background-color: ${p =>
     p.severity === 'high' ? p.theme.colors.severity.highBg
     : p.severity === 'medium' ? p.theme.colors.severity.mediumBg
@@ -325,9 +357,10 @@ const SeverityBadge = styled.span<{ severity: string }>`
 `
 
 const IssueTitle = styled.h4`
-  font-weight: 500;
-  font-size: 0.875rem;
+  font-weight: 600;
+  font-size: 0.9375rem;
   color: ${p => p.theme.colors.text.primary};
+  line-height: 1.3;
 `
 
 const NavButton = styled.button`
@@ -359,9 +392,12 @@ const NavLabel = styled.span`
 const IssueMetrics = styled.div`
   font-size: 0.75rem;
   color: ${p => p.theme.colors.text.secondary};
+  padding-top: 0.375rem;
+  margin-top: 0.25rem;
+  border-top: 1px solid ${p => p.theme.colors.border.subtle};
 
   & > p + p {
-    margin-top: 0.25rem;
+    margin-top: 0.125rem;
   }
 `
 
@@ -610,7 +646,7 @@ const RecBadgeRow = styled.div`
 const ChangesList = styled.ul`
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0;
 `
 
 const RationaleBlock = styled.div`
@@ -624,24 +660,25 @@ const ExpectedLabel = styled.span`
 /* ---- Change Display ---- */
 
 const ChangeItem = styled.li`
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
+  padding: 0.375rem 0;
+
+  & + & {
+    border-top: 1px solid ${p => p.theme.colors.border.subtle};
+  }
 `
 
 const ChangeRow = styled.div`
   display: flex;
   align-items: baseline;
+  justify-content: space-between;
   gap: 0.5rem;
-  flex-wrap: wrap;
 `
 
 const ValueTransition = styled.span`
   display: flex;
   align-items: center;
   gap: 0.25rem;
-`
-
-const CliLine = styled.p`
-  margin-top: 0.125rem;
 `
 
 const ChangeParamName = styled.span`
@@ -665,14 +702,6 @@ const ChangeFallback = styled.span`
   font-family: monospace;
   font-weight: 700;
   color: ${p => p.theme.colors.text.link};
-`
-
-const CliSnippet = styled.code`
-  background-color: ${p => p.theme.colors.background.section};
-  padding: 0 0.25rem;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
-  color: ${p => p.theme.colors.text.secondary};
 `
 
 /* ---- Main Panel Component ---- */
@@ -800,19 +829,17 @@ export const RecommendationsPanel = observer(() => {
 
       {/* Tab Bar */}
       <TabBar>
-        {([
-          ['summary', 'Summary'],
-          ['issues', `Issues (${issueCount})`],
-          ['fixes', `Fixes (${recCount})`],
-        ] as [RightPanelTab, string][]).map(([tab, label]) => (
-          <Tab
-            key={tab}
-            isActive={activeTab === tab}
-            onClick={() => uiStore.setActiveRightTab(tab)}
-          >
-            {label}
-          </Tab>
-        ))}
+        <Tab isActive={activeTab === 'summary'} onClick={() => uiStore.setActiveRightTab('summary')}>
+          Summary
+        </Tab>
+        <Tab isActive={activeTab === 'issues'} onClick={() => uiStore.setActiveRightTab('issues')}>
+          Issues
+          {issueCount > 0 && <TabBadge isActive={activeTab === 'issues'}>{issueCount}</TabBadge>}
+        </Tab>
+        <Tab isActive={activeTab === 'fixes'} onClick={() => uiStore.setActiveRightTab('fixes')}>
+          Fixes
+          {recCount > 0 && <TabBadge isActive={activeTab === 'fixes'}>{recCount}</TabBadge>}
+        </Tab>
       </TabBar>
 
       {/* Tab Content */}
@@ -822,22 +849,26 @@ export const RecommendationsPanel = observer(() => {
           <>
             <SummarySection data-testid="analysis-summary">
               <SummaryTitle>Analysis Summary</SummaryTitle>
-              <SpacedStack>
-                <FlexRow>
-                  <SmLabel>Overall Health:</SmLabel>
-                  <HealthBadge data-testid="overall-health-badge" health={summary.overallHealth}>
-                    {summary.overallHealth.toUpperCase()}
-                  </HealthBadge>
-                </FlexRow>
-                <FlexRow>
-                  <ProfileLabel>Profile: {analysisStore.quadProfile.label}</ProfileLabel>
-                </FlexRow>
-                <SpacedStackSm>
-                  <SeverityCount severity="high">High: {summary.highIssueCount}</SeverityCount>
-                  <SeverityCount severity="medium">Medium: {summary.mediumIssueCount}</SeverityCount>
-                  <SeverityCount severity="low">Low: {summary.lowIssueCount}</SeverityCount>
-                </SpacedStackSm>
-              </SpacedStack>
+              <HealthHero health={summary.overallHealth}>
+                <HealthLabel
+                  data-testid="overall-health-badge"
+                  health={summary.overallHealth}
+                >
+                  {summary.overallHealth === 'needsWork' ? 'NEEDS WORK' : summary.overallHealth.toUpperCase()}
+                </HealthLabel>
+                <ProfileLabel>({analysisStore.quadProfile.label})</ProfileLabel>
+              </HealthHero>
+              <SeverityRow>
+                <SeverityChip severity="high">
+                  <SeverityDot severity="high" />{summary.highIssueCount} High
+                </SeverityChip>
+                <SeverityChip severity="medium">
+                  <SeverityDot severity="medium" />{summary.mediumIssueCount} Med
+                </SeverityChip>
+                <SeverityChip severity="low">
+                  <SeverityDot severity="low" />{summary.lowIssueCount} Low
+                </SeverityChip>
+              </SeverityRow>
             </SummarySection>
 
             {summary.topPriorities.length > 0 && (
@@ -1091,7 +1122,6 @@ function ChangeDisplay({ change, pidProfile, filterSettings }: {
 }) {
   const displayName = PARAMETER_DISPLAY_NAMES[change.parameter] ?? change.parameter
   const axisLabel = change.axis ? ` (${change.axis.charAt(0).toUpperCase() + change.axis.slice(1)})` : ''
-  const cliName = getCliName(change.parameter, change.axis as Axis | undefined)
 
   const { current, resolved } = computeTransition(change, pidProfile, filterSettings)
 
@@ -1108,7 +1138,7 @@ function ChangeDisplay({ change, pidProfile, filterSettings }: {
         {current !== undefined && resolved !== null ? (
           <ValueTransition>
             <ChangeValue direction={isIncrease ? 'increase' : isDecrease ? 'decrease' : 'neutral'}>
-              {isIncrease ? '\u2191' : isDecrease ? '\u2193' : ''} {current} → {resolved}
+              {current} {isIncrease ? '\u2192' : isDecrease ? '\u2192' : '\u2192'} {resolved} {isIncrease ? '\u2191' : isDecrease ? '\u2193' : ''}
             </ChangeValue>
           </ValueTransition>
         ) : (
@@ -1117,9 +1147,6 @@ function ChangeDisplay({ change, pidProfile, filterSettings }: {
           </ChangeFallback>
         )}
       </ChangeRow>
-      <CliLine>
-        <CliSnippet>set {cliName} = {resolved ?? change.recommendedChange}</CliSnippet>
-      </CliLine>
     </ChangeItem>
   )
 }
