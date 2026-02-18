@@ -74,7 +74,7 @@ const ResizeHandle = styled.div`
   width: 5px;
   flex-shrink: 0;
   cursor: col-resize;
-  background-color: transparent;
+  background-color: ${p => p.theme.colors.background.app};
   transition: background-color 0.15s, width 0.15s;
   z-index: 10;
   display: flex;
