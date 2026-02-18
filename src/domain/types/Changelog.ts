@@ -9,6 +9,6 @@ export interface ChangelogEntry {
 
 export interface ChangelogData {
   entries: ChangelogEntry[]
-  buildDate: string  // ISO date of the build
+  buildDate: string  // ISO datetime of the build (e.g. "2026-02-18T14:30:00.000Z")
   buildHash: string  // Short hash of HEAD at build time
 }

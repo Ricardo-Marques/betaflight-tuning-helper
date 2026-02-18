@@ -33,7 +33,7 @@ function buildChangelog(): ChangelogData {
     headHash = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim()
   } catch {
     // Git not available (e.g. built from tarball) — return empty
-    return { entries: [], buildDate: new Date().toISOString().slice(0, 10), buildHash: 'unknown' }
+    return { entries: [], buildDate: new Date().toISOString(), buildHash: 'unknown' }
   }
 
   const entries: ChangelogEntry[] = []
@@ -51,7 +51,7 @@ function buildChangelog(): ChangelogData {
 
   return {
     entries,
-    buildDate: new Date().toISOString().slice(0, 10),
+    buildDate: new Date().toISOString(),
     buildHash: headHash,
   }
 }

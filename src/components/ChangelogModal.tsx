@@ -92,7 +92,7 @@ const DateHeading = styled.h3`
 
 const EntryItem = styled.div`
   display: flex;
-  align-items: flex-start;
+  align-items: baseline;
   gap: 0.5rem;
   padding: 0.375rem 0;
 `
@@ -109,6 +109,9 @@ interface BadgeProps {
 
 const CategoryBadge = styled.span<BadgeProps>`
   flex-shrink: 0;
+  min-width: 5.25rem;
+  text-align: center;
+  display: inline-block;
   font-size: 0.625rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -116,7 +119,6 @@ const CategoryBadge = styled.span<BadgeProps>`
   padding: 0.125rem 0.375rem;
   border-radius: 0.25rem;
   line-height: 1.4;
-  margin-top: 0.125rem;
   background-color: ${p => {
     const key = categoryColors[p.category].bg
     const [group, prop] = key.split('.') as [string, string]
@@ -149,6 +151,13 @@ function formatDate(iso: string): string {
   const [year, month, day] = iso.split('-').map(Number)
   const date = new Date(year, month - 1, day)
   return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+}
+
+function formatBuildDate(iso: string): string {
+  const date = new Date(iso)
+  const datePart = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+  const timePart = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  return `${datePart} at ${timePart}`
 }
 
 function groupByDate(entries: ChangelogEntry[]): Array<[string, ChangelogEntry[]]> {
@@ -207,7 +216,7 @@ export const ChangelogModal = observer(() => {
           )}
         </ModalBody>
         <ModalFooter>
-          Build {changelogData.buildHash} &middot; {formatDate(changelogData.buildDate)}
+          Build {changelogData.buildHash} &middot; {formatBuildDate(changelogData.buildDate)}
         </ModalFooter>
       </ModalContainer>
     </Backdrop>
