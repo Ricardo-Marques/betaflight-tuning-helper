@@ -29,7 +29,7 @@ function buildChangelog(): ChangelogData {
   let raw = ''
   let headHash = 'unknown'
   try {
-    raw = execSync('git log --format="%H|%as|%s" --no-merges -100', { encoding: 'utf-8' })
+    raw = execSync('git log --format="%H|%as|%s" --no-merges', { encoding: 'utf-8' })
     headHash = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim()
   } catch {
     // Git not available (e.g. built from tarball) — return empty
