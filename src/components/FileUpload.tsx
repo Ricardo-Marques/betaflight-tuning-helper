@@ -3,16 +3,16 @@ import styled from '@emotion/styled'
 import { useStores } from '../stores/RootStore'
 import { useObservableState } from '../lib/mobx-reactivity'
 
-const UploadWrapper = styled.div`
+const UploadWrapper = styled.div<{ isIdle?: boolean }>`
   padding: 1rem;
   width: 100%;
-  max-width: 32rem;
+  max-width: ${p => p.isIdle ? '40rem' : '32rem'};
 `
 
 const Dropzone = styled.div<{ isDragging: boolean; compact?: boolean; noBorder?: boolean }>`
   border: ${p => p.noBorder ? 'none' : `2px dashed ${p.isDragging ? p.theme.colors.border.focus : p.compact ? 'transparent' : p.theme.colors.border.main}`};
-  border-radius: 0.5rem;
-  padding: ${p => p.compact || p.noBorder ? '0' : '2rem'};
+  border-radius: 0.75rem;
+  padding: ${p => p.compact || p.noBorder ? '0' : '3rem 2rem'};
   text-align: center;
   transition: border-color 0.15s, background-color 0.15s;
   background-color: ${p => p.isDragging ? p.theme.colors.severity.lowBg : 'transparent'};
@@ -24,8 +24,8 @@ const Dropzone = styled.div<{ isDragging: boolean; compact?: boolean; noBorder?:
 
 const UploadIcon = styled.svg`
   margin: 0 auto 1rem;
-  height: 3rem;
-  width: 3rem;
+  height: 4rem;
+  width: 4rem;
   color: ${p => p.theme.colors.text.muted};
 `
 
@@ -34,8 +34,8 @@ const IconWrapper = styled.div`
 `
 
 const UploadTitle = styled.p`
-  font-size: 1.125rem;
-  font-weight: 500;
+  font-size: 1.25rem;
+  font-weight: 600;
   color: ${p => p.theme.colors.text.primary};
   margin-bottom: 0.5rem;
 `
@@ -49,10 +49,10 @@ const UploadSubtext = styled.p`
 const UploadButton = styled.label`
   display: inline-flex;
   align-items: center;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  border-radius: 0.375rem;
+  padding: 0.625rem 1.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  border-radius: 0.5rem;
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
   color: ${p => p.theme.colors.button.primaryText};
   background-color: ${p => p.theme.colors.button.primary};
@@ -72,6 +72,42 @@ const FormatHint = styled.p`
   font-size: 0.75rem;
   color: ${p => p.theme.colors.text.muted};
   margin-top: 1rem;
+`
+
+const FeatureList = styled.div`
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid ${p => p.theme.colors.border.subtle};
+`
+
+const FeatureItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+  max-width: 9rem;
+`
+
+const FeatureIcon = styled.span`
+  font-size: 1.25rem;
+  line-height: 1;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  background-color: ${p => p.theme.colors.background.section};
+`
+
+const FeatureText = styled.span`
+  font-size: 0.75rem;
+  color: ${p => p.theme.colors.text.secondary};
+  text-align: center;
+  line-height: 1.3;
 `
 
 const ProgressBarTrack = styled.div`
@@ -198,7 +234,7 @@ export const FileUpload = observer(() => {
   }
 
   return (
-    <UploadWrapper>
+    <UploadWrapper isIdle={logStore.parseStatus === 'idle'}>
       <Dropzone
         data-testid="file-dropzone"
         isDragging={isDragging}
@@ -214,13 +250,26 @@ export const FileUpload = observer(() => {
               <UploadIcon
                 stroke="currentColor"
                 fill="none"
-                viewBox="0 0 48 48"
+                viewBox="0 0 24 24"
               >
                 <path
-                  d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                  strokeWidth={2}
+                  d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"
+                  strokeWidth={1.5}
                   strokeLinecap="round"
                   strokeLinejoin="round"
+                />
+                <path
+                  d="M14 2v6h6M9 15h6M9 11h3"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M12 18l3-3M12 18l-3-3"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  opacity="0.5"
                 />
               </UploadIcon>
             </IconWrapper>
@@ -238,6 +287,34 @@ export const FileUpload = observer(() => {
             <FormatHint>
               Supports .bbl, .bfl, .txt, .csv (Betaflight Blackbox)
             </FormatHint>
+            <FeatureList>
+              <FeatureItem>
+                <FeatureIcon>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                    <polyline points="1,12 4,5 7,8 10,2 15,7" />
+                  </svg>
+                </FeatureIcon>
+                <FeatureText>Detect oscillations, noise &amp; bounceback</FeatureText>
+              </FeatureItem>
+              <FeatureItem>
+                <FeatureIcon>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M2 14V6l4-4h4l4 4v8H2z" />
+                    <path d="M6 14v-4h4v4" />
+                  </svg>
+                </FeatureIcon>
+                <FeatureText>Get PID &amp; filter tuning recommendations</FeatureText>
+              </FeatureItem>
+              <FeatureItem>
+                <FeatureIcon>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="3" width="12" height="10" rx="1" />
+                    <path d="M5 7l2 2 4-4" />
+                  </svg>
+                </FeatureIcon>
+                <FeatureText>Export ready-to-paste CLI commands</FeatureText>
+              </FeatureItem>
+            </FeatureList>
           </>
         )}
 
