@@ -22,7 +22,7 @@ export const DTermNoiseRule: TuningRule = {
   description: 'Detects D-term amplifying high-frequency noise',
   baseConfidence: 0.85,
   issueTypes: ['dtermNoise'],
-  applicableAxes: ['roll', 'pitch'],
+  applicableAxes: ['roll', 'pitch', 'yaw'],
 
   condition: (window: AnalysisWindow, _frames: LogFrame[]): boolean => {
     // Noise visible during calm flight with throttle above idle

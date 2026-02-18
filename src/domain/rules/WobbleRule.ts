@@ -13,7 +13,7 @@ export const WobbleRule: TuningRule = {
   description: 'Detects oscillations during cruise/hover without pilot input',
   baseConfidence: 0.85,
   issueTypes: ['lowFrequencyOscillation', 'midThrottleWobble', 'highFrequencyNoise'],
-  applicableAxes: ['roll', 'pitch'],
+  applicableAxes: ['roll', 'pitch', 'yaw'],
 
   condition: (window: AnalysisWindow, _frames: LogFrame[]): boolean => {
     // Only analyze mid-throttle cruise without stick input

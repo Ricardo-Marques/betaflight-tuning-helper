@@ -22,7 +22,7 @@ export const HighThrottleOscillationRule: TuningRule = {
   description: 'Detects oscillations only at high throttle — TPA insufficient',
   baseConfidence: 0.85,
   issueTypes: ['highThrottleOscillation'],
-  applicableAxes: ['roll', 'pitch'],
+  applicableAxes: ['roll', 'pitch', 'yaw'],
 
   condition: (window: AnalysisWindow, _frames: LogFrame[]): boolean => {
     // Only analyze high-throttle windows

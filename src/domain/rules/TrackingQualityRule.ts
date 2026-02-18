@@ -15,7 +15,7 @@ export const TrackingQualityRule: TuningRule = {
   description: 'Measures how accurately gyro follows setpoint during active flight',
   baseConfidence: 0.75,
   issueTypes: ['underdamped', 'overdamped', 'lowFrequencyOscillation'],
-  applicableAxes: ['roll', 'pitch'],
+  applicableAxes: ['roll', 'pitch', 'yaw'],
 
   condition: (window: AnalysisWindow, _frames: LogFrame[]): boolean => {
     // Analyze active flight maneuvers - the gap other rules don't cover
