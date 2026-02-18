@@ -21,7 +21,15 @@
       "Bash(npx playwright test)",
       "Bash(npx playwright test:*)",
       "WebFetch(domain:theuavtech.com)",
-      "WebFetch(domain:oscarliang.com)"
+      "WebFetch(domain:oscarliang.com)",
+      "Bash(wc:*)",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(npx eslint:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm ls:*)",
+      "Bash(node -e:*)"
     ]
   }
 }
