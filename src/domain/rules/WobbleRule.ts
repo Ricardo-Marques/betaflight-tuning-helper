@@ -53,7 +53,7 @@ export const WobbleRule: TuningRule = {
     } else if (metrics.amplitude > 25 * scale) {
       severity = 'medium'
     } else if (metrics.amplitude > 15 * scale) {
-      severity = 'medium'
+      severity = 'low'
     } else {
       severity = 'low'
     }
@@ -90,6 +90,14 @@ export const WobbleRule: TuningRule = {
     const recommendations: Recommendation[] = []
 
     for (const issue of issues) {
+      if (
+        issue.type !== 'lowFrequencyOscillation' &&
+        issue.type !== 'midThrottleWobble' &&
+        issue.type !== 'highFrequencyNoise'
+      ) {
+        continue
+      }
+
       const amplitude = issue.metrics.amplitude || 0
       const band = issue.metrics.dominantBand
 
@@ -140,13 +148,13 @@ export const WobbleRule: TuningRule = {
             changes: [
               {
                 parameter: 'gyroFilterMultiplier',
-                recommendedChange: '+10',
-                explanation: 'Increase gyro filtering to reduce high-frequency noise input',
+                recommendedChange: '-10',
+                explanation: 'Lower gyro filter multiplier to reduce high-frequency noise input',
               },
               {
                 parameter: 'dtermFilterMultiplier',
-                recommendedChange: '+10',
-                explanation: 'Increase D-term filtering to prevent noise amplification',
+                recommendedChange: '-10',
+                explanation: 'Lower D-term filter multiplier to prevent noise amplification',
               },
             ],
             expectedImprovement: 'Smoother motors, reduced electrical noise, cooler ESCs',

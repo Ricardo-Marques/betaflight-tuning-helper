@@ -62,7 +62,7 @@ export const GyroNoiseRule: TuningRule = {
     } else if (gyroRMS > 10 * scale) {
       severity = 'medium'
     } else if (gyroRMS > 5 * scale) {
-      severity = 'medium'
+      severity = 'low'
     } else {
       severity = 'low'
     }
@@ -123,9 +123,9 @@ export const GyroNoiseRule: TuningRule = {
         priority: 8,
         confidence: issue.confidence,
         title: `Increase gyro filtering on ${issue.axis}`,
-        description: 'Excessive gyro noise floor — increase gyro filter strength',
+        description: 'Excessive gyro noise floor — lower the gyro filter cutoff for stronger filtering',
         rationale:
-          'Gyro noise passes through to PID calculations, causing motor noise and heat. Stronger filtering removes noise before it affects PIDs.',
+          'Gyro noise passes through to PID calculations, causing motor noise and heat. Lowering the filter multiplier lowers the cutoff frequency, blocking more noise before it affects PIDs.',
         risks: [
           'Adds phase delay, reducing responsiveness',
           'May cause "mushy" feel if overdone',
@@ -133,8 +133,8 @@ export const GyroNoiseRule: TuningRule = {
         changes: [
           {
             parameter: 'gyroFilterMultiplier',
-            recommendedChange: '+10',
-            explanation: 'Increase gyro filter multiplier for stronger noise suppression',
+            recommendedChange: '-10',
+            explanation: 'Lower gyro filter multiplier to block more high-frequency noise',
           },
         ],
         expectedImprovement: 'Cleaner gyro signal, quieter motors, reduced heat',

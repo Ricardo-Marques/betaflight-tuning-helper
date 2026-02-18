@@ -63,7 +63,7 @@ export const DTermNoiseRule: TuningRule = {
     } else if (dToGyroRatio > 1.0 * scale) {
       severity = 'medium'
     } else {
-      severity = 'medium'
+      severity = 'low'
     }
 
     const confidence = Math.min(0.95, 0.65 + highBandRatio * 0.3 + dToGyroRatio * 0.05)
@@ -100,9 +100,9 @@ export const DTermNoiseRule: TuningRule = {
         priority: 8,
         confidence: issue.confidence,
         title: `Increase D-term filtering on ${issue.axis}`,
-        description: 'D-term is amplifying high-frequency noise — increase D-term filter cutoff',
+        description: 'D-term is amplifying high-frequency noise — lower the D-term filter cutoff',
         rationale:
-          'The D-term differentiates the gyro signal, amplifying high-frequency noise. Stronger D-term filtering removes this noise before it reaches the motors.',
+          'The D-term differentiates the gyro signal, amplifying high-frequency noise. Lowering the D-term filter multiplier lowers the cutoff frequency, blocking more noise before it reaches the motors.',
         risks: [
           'Adds phase delay to the D-term response',
           'May reduce damping effectiveness at higher frequencies',
@@ -110,8 +110,8 @@ export const DTermNoiseRule: TuningRule = {
         changes: [
           {
             parameter: 'dtermFilterMultiplier',
-            recommendedChange: '+10',
-            explanation: 'Increase D-term filter multiplier for stronger noise suppression',
+            recommendedChange: '-10',
+            explanation: 'Lower D-term filter multiplier to block more high-frequency noise',
           },
         ],
         expectedImprovement: 'Quieter motors, reduced D-term noise without losing control',
