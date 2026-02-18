@@ -68,6 +68,37 @@ const HiddenInput = styled.input`
   display: none;
 `
 
+const ButtonRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: center;
+`
+
+const SampleButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  padding: 0.625rem 1.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  border: 1px solid ${p => p.theme.colors.border.main};
+  color: ${p => p.theme.colors.text.secondary};
+  background-color: transparent;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+
+  &:hover {
+    background-color: ${p => p.theme.colors.button.secondary};
+    color: ${p => p.theme.colors.text.primary};
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+`
+
 const FormatHint = styled.p`
   font-size: 0.75rem;
   color: ${p => p.theme.colors.text.muted};
@@ -101,6 +132,7 @@ const FeatureIcon = styled.span`
   justify-content: center;
   border-radius: 0.5rem;
   background-color: ${p => p.theme.colors.background.section};
+  color: ${p => p.theme.colors.text.secondary};
 `
 
 const FeatureText = styled.span`
@@ -203,6 +235,20 @@ const LinkButton = styled.button`
 export const FileUpload = observer(() => {
   const { logStore, uiStore, analysisStore } = useStores()
   const [isDragging, setIsDragging] = useObservableState(false)
+  const [loadingSample, setLoadingSample] = useObservableState(false)
+
+  const handleLoadSample = async (): Promise<void> => {
+    setLoadingSample(true)
+    try {
+      const response = await fetch(`${import.meta.env.BASE_URL}sample.BFL`)
+      const blob = await response.blob()
+      const file = new File([blob], 'sample.BFL', { type: 'application/octet-stream' })
+      uiStore.setZoom(0, 100)
+      logStore.uploadFile(file)
+    } finally {
+      setLoadingSample(false)
+    }
+  }
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
@@ -281,9 +327,18 @@ export const FileUpload = observer(() => {
               onChange={handleFileInput}
               id="file-upload"
             />
-            <UploadButton htmlFor="file-upload">
-              Select File
-            </UploadButton>
+            <ButtonRow>
+              <UploadButton htmlFor="file-upload">
+                Select File
+              </UploadButton>
+              <SampleButton
+                data-testid="load-sample-log"
+                disabled={loadingSample}
+                onClick={handleLoadSample}
+              >
+                {loadingSample ? 'Loading...' : 'Try sample log'}
+              </SampleButton>
+            </ButtonRow>
             <FormatHint>
               Supports .bbl, .bfl, .txt, .csv (Betaflight Blackbox)
             </FormatHint>

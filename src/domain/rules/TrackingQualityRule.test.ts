@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 function loadTestLog(): ReturnType<typeof parseBblBuffer> {
-  const bflPath = resolve(__dirname, '../../../testLogs/bflLog.BFL')
+  const bflPath = resolve(__dirname, '../../../test-logs/bflLog.BFL')
   const buffer = new Uint8Array(readFileSync(bflPath))
   return parseBblBuffer(buffer)
 }
