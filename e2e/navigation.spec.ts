@@ -85,25 +85,25 @@ test.describe('Navigation', () => {
     expect(counterAfter).not.toBe(counterBefore)
   })
 
-  test('toggle left panel hides and shows it', async ({ page }) => {
+  test('double-click resize handle hides and shows left panel', async ({ page }) => {
     const leftPanel = page.getByTestId('left-panel')
     await expect(leftPanel).toBeVisible()
 
-    await page.getByTestId('toggle-left-panel').click()
+    await page.getByTestId('resize-left-panel').dblclick()
     await expect(leftPanel).not.toBeVisible()
 
-    await page.getByTestId('toggle-left-panel').click()
+    await page.getByTestId('resize-left-panel').dblclick()
     await expect(leftPanel).toBeVisible()
   })
 
-  test('toggle right panel hides and shows it', async ({ page }) => {
+  test('double-click resize handle hides and shows right panel', async ({ page }) => {
     const rightPanel = page.getByTestId('right-panel')
     await expect(rightPanel).toBeVisible()
 
-    await page.getByTestId('toggle-right-panel').click()
+    await page.getByTestId('resize-right-panel').dblclick()
     await expect(rightPanel).not.toBeVisible()
 
-    await page.getByTestId('toggle-right-panel').click()
+    await page.getByTestId('resize-right-panel').dblclick()
     await expect(rightPanel).toBeVisible()
   })
 

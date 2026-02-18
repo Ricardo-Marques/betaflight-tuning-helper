@@ -1,5 +1,7 @@
 import { observer } from 'mobx-react-lite'
 import styled from '@emotion/styled'
+import { useRef } from 'react'
+import { runInAction } from 'mobx'
 import { LeftPanel } from './components/LeftPanel'
 import { LogChart } from './components/LogChart'
 import { RecommendationsPanel } from './components/RecommendationsPanel'
@@ -10,6 +12,7 @@ import { useUIStore, useLogStore, useAnalysisStore } from './stores/RootStore'
 import { useObservableState } from './lib/mobx-reactivity'
 import { getLastSeenBuild } from './lib/changelog/lastSeenBuild'
 import changelogData from 'virtual:changelog'
+import { MIN_PANEL_WIDTH, MAX_PANEL_WIDTH } from './stores/UIStore'
 
 const AppContainer = styled.div`
   height: 100vh;
@@ -22,31 +25,28 @@ const AppContainer = styled.div`
 const Header = styled.header`
   background-color: ${p => p.theme.colors.background.header};
   color: ${p => p.theme.colors.text.inverse};
-  padding: 1rem;
+  padding: 0.375rem 1rem;
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
   flex-shrink: 0;
-`
-
-const HeaderContent = styled.div`
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
 `
 
 const TitleRow = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
 `
 
 const HeaderTitle = styled.h1`
-  font-size: 1.5rem;
+  font-size: 1rem;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1;
 `
 
-const HeaderSubtitle = styled.p`
-  font-size: 0.875rem;
+const HeaderSubtitle = styled.span`
+  font-size: 0.75rem;
   color: ${p => p.theme.colors.text.headerSubtle};
 `
 
@@ -57,32 +57,53 @@ const MainContent = styled.div`
   position: relative;
 `
 
-const PanelToggleBtn = styled.button`
-  width: 1.5rem;
+const ChartArea = styled.div`
+  flex: 1;
+  position: relative;
+  background-color: ${p => p.theme.colors.background.panel};
+  min-width: 0;
+  overflow: hidden;
+`
+
+const ChartAreaInner = styled.div`
+  width: 100%;
+  height: 100%;
+`
+
+const ResizeHandle = styled.div`
+  width: 5px;
   flex-shrink: 0;
+  cursor: col-resize;
+  background-color: transparent;
+  transition: background-color 0.15s, width 0.15s;
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: ${p => p.theme.colors.button.secondary};
-  border: none;
-  border-left: 1px solid ${p => p.theme.colors.border.main};
-  border-right: 1px solid ${p => p.theme.colors.border.main};
-  transition: background-color 0.15s;
-  color: ${p => p.theme.colors.text.muted};
-  font-size: 0.75rem;
-  font-weight: 700;
-  user-select: none;
-  cursor: pointer;
 
-  &:hover {
-    background-color: ${p => p.theme.colors.button.secondaryHover};
+  &:hover,
+  &[data-dragging='true'] {
+    background-color: ${p => p.theme.colors.border.main};
+  }
+
+  &[data-collapsed='true'] {
+    width: 24px;
+    cursor: pointer;
+    background-color: ${p => p.theme.colors.button.secondary};
+    border-left: 1px solid ${p => p.theme.colors.border.main};
+    border-right: 1px solid ${p => p.theme.colors.border.main};
+
+    &:hover {
+      background-color: ${p => p.theme.colors.button.secondaryHover};
+    }
   }
 `
 
-const ChartArea = styled.div`
-  flex: 1;
-  background-color: ${p => p.theme.colors.background.panel};
-  min-width: 0;
+const HandleChevron = styled.span`
+  font-size: 0.75rem;
+  line-height: 1;
+  color: ${p => p.theme.colors.text.muted};
+  user-select: none;
 `
 
 const ReanalyzingOverlay = styled.div`
@@ -151,13 +172,13 @@ const ReanalyzingLabel = styled.span`
 `
 
 const LeftPanelWrapper = styled.div`
-  width: 20rem;
   flex-shrink: 0;
+  overflow: hidden;
 `
 
 const RightPanelWrapper = styled.div`
-  width: 480px;
   flex-shrink: 0;
+  overflow: hidden;
   background-color: ${p => p.theme.colors.background.panel};
   border-left: 1px solid ${p => p.theme.colors.border.main};
 `
@@ -231,12 +252,97 @@ const DropOverlayText = styled.p`
   box-shadow: 0 10px 25px rgb(0 0 0 / 0.3);
 `
 
+interface DragState {
+  side: 'left' | 'right'
+  originX: number
+  originWidth: number
+}
+
 export const App = observer(() => {
   const uiStore = useUIStore()
   const logStore = useLogStore()
   const analysisStore = useAnalysisStore()
   const [globalDragging, setGlobalDragging] = useObservableState(false)
   const dragCounter = { current: 0 }
+
+  // --- Resize handle drag logic (direct DOM during drag, commit to MobX on mouseup) ---
+  // ChartArea stays flex:1 so the layout is always correct (no dead space).
+  // ChartAreaInner is frozen at a fixed pixel width so Recharts' ResponsiveContainer
+  // never fires its ResizeObserver. ChartArea's overflow:hidden clips any overshoot.
+  const dragState = useRef<DragState | null>(null)
+  const lastWidth = useRef(0)
+  const leftHandleRef = useRef<HTMLDivElement>(null)
+  const rightHandleRef = useRef<HTMLDivElement>(null)
+  const leftPanelRef = useRef<HTMLDivElement>(null)
+  const rightPanelRef = useRef<HTMLDivElement>(null)
+  const chartInnerRef = useRef<HTMLDivElement>(null)
+
+  const clampWidth = (w: number): number =>
+    Math.max(MIN_PANEL_WIDTH, Math.min(MAX_PANEL_WIDTH, w))
+
+  const handleResizeMove = (e: MouseEvent): void => {
+    const state = dragState.current
+    if (!state) return
+    e.preventDefault()
+    const delta = e.clientX - state.originX
+    const raw = state.side === 'left'
+      ? state.originWidth + delta
+      : state.originWidth - delta
+    const clamped = clampWidth(raw)
+    lastWidth.current = clamped
+    const panel = state.side === 'left' ? leftPanelRef.current : rightPanelRef.current
+    if (panel) panel.style.width = clamped + 'px'
+  }
+
+  const handleResizeUp = (): void => {
+    const state = dragState.current
+    const handle = state?.side === 'left' ? leftHandleRef.current : rightHandleRef.current
+    if (handle) handle.removeAttribute('data-dragging')
+    document.removeEventListener('mousemove', handleResizeMove)
+    document.removeEventListener('mouseup', handleResizeUp)
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+    // Unfreeze chart inner so it follows its parent's size again
+    const inner = chartInnerRef.current
+    if (inner) inner.style.width = ''
+    // Clear panel inline override
+    const panel = state?.side === 'left' ? leftPanelRef.current : rightPanelRef.current
+    if (panel) panel.style.width = ''
+    if (state) {
+      runInAction(() => {
+        if (state.side === 'left') {
+          uiStore.setLeftPanelWidth(lastWidth.current)
+        } else {
+          uiStore.setRightPanelWidth(lastWidth.current)
+        }
+      })
+    }
+    dragState.current = null
+  }
+
+  const startResize = (side: 'left' | 'right', e: React.MouseEvent): void => {
+    e.preventDefault()
+    const originWidth = side === 'left' ? uiStore.leftPanelWidth : uiStore.rightPanelWidth
+    dragState.current = { side, originX: e.clientX, originWidth }
+    lastWidth.current = originWidth
+    const handle = side === 'left' ? leftHandleRef.current : rightHandleRef.current
+    if (handle) handle.setAttribute('data-dragging', 'true')
+    // Freeze chart inner at its current pixel width so Recharts doesn't re-render
+    const inner = chartInnerRef.current
+    if (inner) inner.style.width = inner.offsetWidth + 'px'
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', handleResizeMove)
+    document.addEventListener('mouseup', handleResizeUp)
+  }
+
+  const handleDoubleClick = (side: 'left' | 'right'): void => {
+    if (side === 'left') {
+      uiStore.toggleLeftPanel()
+    } else {
+      uiStore.toggleRightPanel()
+    }
+  }
 
   const handleGlobalDragEnter = (e: React.DragEvent) => {
     e.preventDefault()
@@ -287,58 +393,52 @@ export const App = observer(() => {
       )}
 
       <Header data-testid="app-header">
-        <HeaderContent>
-          <div>
-            <TitleRow>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" width="28" height="28">
-                <line x1="100" y1="100" x2="36" y2="36" stroke="#1e293b" strokeWidth="8" strokeLinecap="round"/>
-                <line x1="100" y1="100" x2="164" y2="36" stroke="#1e293b" strokeWidth="8" strokeLinecap="round"/>
-                <line x1="100" y1="100" x2="164" y2="164" stroke="#1e293b" strokeWidth="8" strokeLinecap="round"/>
-                <line x1="100" y1="100" x2="36" y2="164" stroke="#1e293b" strokeWidth="8" strokeLinecap="round"/>
-                <circle cx="36" cy="36" r="9" fill="#1e3a5f"/>
-                <circle cx="164" cy="36" r="9" fill="#1e3a5f"/>
-                <circle cx="164" cy="164" r="9" fill="#1e3a5f"/>
-                <circle cx="36" cy="164" r="9" fill="#1e3a5f"/>
-                <g>
-                  <ellipse cx="36" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85"/>
-                  <ellipse cx="36" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(120 36 36)"/>
-                  <ellipse cx="36" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(240 36 36)"/>
-                  <animateTransform attributeName="transform" type="rotate" from="0 36 36" to="360 36 36" dur="0.8s" repeatCount="indefinite"/>
-                </g>
-                <g>
-                  <ellipse cx="164" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85"/>
-                  <ellipse cx="164" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(120 164 36)"/>
-                  <ellipse cx="164" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(240 164 36)"/>
-                  <animateTransform attributeName="transform" type="rotate" from="360 164 36" to="0 164 36" dur="0.7s" repeatCount="indefinite"/>
-                </g>
-                <g>
-                  <ellipse cx="164" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85"/>
-                  <ellipse cx="164" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(120 164 164)"/>
-                  <ellipse cx="164" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(240 164 164)"/>
-                  <animateTransform attributeName="transform" type="rotate" from="0 164 164" to="360 164 164" dur="0.8s" repeatCount="indefinite"/>
-                </g>
-                <g>
-                  <ellipse cx="36" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85"/>
-                  <ellipse cx="36" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(120 36 164)"/>
-                  <ellipse cx="36" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(240 36 164)"/>
-                  <animateTransform attributeName="transform" type="rotate" from="360 36 164" to="0 36 164" dur="0.7s" repeatCount="indefinite"/>
-                </g>
-                <rect x="72" y="64" width="56" height="72" rx="8" fill="#2563eb"/>
-                <rect x="86" y="52" width="28" height="14" rx="3" fill="#334155" transform="rotate(0 100 59)"/>
-                <circle cx="100" cy="59" r="5" fill="#1e293b" transform="rotate(-10 100 59)"/>
-                <circle cx="100" cy="59" r="3" fill="#0f172a" transform="rotate(-10 100 59)"/>
-                <circle cx="111" cy="54" r="2" fill="#ef4444" transform="rotate(-10 100 59)">
-                  <animate attributeName="opacity" values="1;0.3;1" dur="1.5s" repeatCount="indefinite"/>
-                </circle>
-              </svg>
-              <HeaderTitle>Betaflight Tuning Helper</HeaderTitle>
-            </TitleRow>
-            <HeaderSubtitle>
-              Analyze blackbox logs and get actionable tuning recommendations
-            </HeaderSubtitle>
-          </div>
-          <ThemeToggle />
-        </HeaderContent>
+        <TitleRow>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" width="22" height="22">
+            <line x1="100" y1="100" x2="36" y2="36" stroke="#1e293b" strokeWidth="8" strokeLinecap="round"/>
+            <line x1="100" y1="100" x2="164" y2="36" stroke="#1e293b" strokeWidth="8" strokeLinecap="round"/>
+            <line x1="100" y1="100" x2="164" y2="164" stroke="#1e293b" strokeWidth="8" strokeLinecap="round"/>
+            <line x1="100" y1="100" x2="36" y2="164" stroke="#1e293b" strokeWidth="8" strokeLinecap="round"/>
+            <circle cx="36" cy="36" r="9" fill="#1e3a5f"/>
+            <circle cx="164" cy="36" r="9" fill="#1e3a5f"/>
+            <circle cx="164" cy="164" r="9" fill="#1e3a5f"/>
+            <circle cx="36" cy="164" r="9" fill="#1e3a5f"/>
+            <g>
+              <ellipse cx="36" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85"/>
+              <ellipse cx="36" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(120 36 36)"/>
+              <ellipse cx="36" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(240 36 36)"/>
+              <animateTransform attributeName="transform" type="rotate" from="0 36 36" to="360 36 36" dur="0.8s" repeatCount="indefinite"/>
+            </g>
+            <g>
+              <ellipse cx="164" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85"/>
+              <ellipse cx="164" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(120 164 36)"/>
+              <ellipse cx="164" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(240 164 36)"/>
+              <animateTransform attributeName="transform" type="rotate" from="360 164 36" to="0 164 36" dur="0.7s" repeatCount="indefinite"/>
+            </g>
+            <g>
+              <ellipse cx="164" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85"/>
+              <ellipse cx="164" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(120 164 164)"/>
+              <ellipse cx="164" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(240 164 164)"/>
+              <animateTransform attributeName="transform" type="rotate" from="0 164 164" to="360 164 164" dur="0.8s" repeatCount="indefinite"/>
+            </g>
+            <g>
+              <ellipse cx="36" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85"/>
+              <ellipse cx="36" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(120 36 164)"/>
+              <ellipse cx="36" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(240 36 164)"/>
+              <animateTransform attributeName="transform" type="rotate" from="360 36 164" to="0 36 164" dur="0.7s" repeatCount="indefinite"/>
+            </g>
+            <rect x="72" y="64" width="56" height="72" rx="8" fill="#2563eb"/>
+            <rect x="86" y="52" width="28" height="14" rx="3" fill="#334155" transform="rotate(0 100 59)"/>
+            <circle cx="100" cy="59" r="5" fill="#1e293b" transform="rotate(-10 100 59)"/>
+            <circle cx="100" cy="59" r="3" fill="#0f172a" transform="rotate(-10 100 59)"/>
+            <circle cx="111" cy="54" r="2" fill="#ef4444" transform="rotate(-10 100 59)">
+              <animate attributeName="opacity" values="1;0.3;1" dur="1.5s" repeatCount="indefinite"/>
+            </circle>
+          </svg>
+          <HeaderTitle>Betaflight Tuning Helper</HeaderTitle>
+          <HeaderSubtitle>Analyze blackbox logs and get actionable tuning recommendations</HeaderSubtitle>
+        </TitleRow>
+        <ThemeToggle />
       </Header>
 
       {!isLoaded ? (
@@ -363,33 +463,51 @@ export const App = observer(() => {
             </AnalysisOverlay>
           )}
           {uiStore.leftPanelOpen && (
-            <LeftPanelWrapper data-testid="left-panel">
+            <LeftPanelWrapper
+              ref={leftPanelRef}
+              data-testid="left-panel"
+              style={{ width: uiStore.leftPanelWidth }}
+            >
               <LeftPanel />
             </LeftPanelWrapper>
           )}
 
-          <PanelToggleBtn
-            data-testid="toggle-left-panel"
-            onClick={uiStore.toggleLeftPanel}
-            title={uiStore.leftPanelOpen ? 'Collapse left panel' : 'Expand left panel'}
+          <ResizeHandle
+            ref={leftHandleRef}
+            data-testid="resize-left-panel"
+            data-collapsed={!uiStore.leftPanelOpen}
+            onMouseDown={e => uiStore.leftPanelOpen ? startResize('left', e) : undefined}
+            onClick={() => !uiStore.leftPanelOpen && uiStore.toggleLeftPanel()}
+            onDoubleClick={() => uiStore.leftPanelOpen && handleDoubleClick('left')}
+            title={uiStore.leftPanelOpen ? 'Drag to resize left panel' : 'Open left panel'}
           >
-            {uiStore.leftPanelOpen ? '\u2039' : '\u203A'}
-          </PanelToggleBtn>
+            {!uiStore.leftPanelOpen && <HandleChevron>{'\u203A'}</HandleChevron>}
+          </ResizeHandle>
 
           <ChartArea>
-            <LogChart />
+            <ChartAreaInner ref={chartInnerRef}>
+              <LogChart />
+            </ChartAreaInner>
           </ChartArea>
 
-          <PanelToggleBtn
-            data-testid="toggle-right-panel"
-            onClick={uiStore.toggleRightPanel}
-            title={uiStore.rightPanelOpen ? 'Collapse right panel' : 'Expand right panel'}
+          <ResizeHandle
+            ref={rightHandleRef}
+            data-testid="resize-right-panel"
+            data-collapsed={!uiStore.rightPanelOpen}
+            onMouseDown={e => uiStore.rightPanelOpen ? startResize('right', e) : undefined}
+            onClick={() => !uiStore.rightPanelOpen && uiStore.toggleRightPanel()}
+            onDoubleClick={() => uiStore.rightPanelOpen && handleDoubleClick('right')}
+            title={uiStore.rightPanelOpen ? 'Drag to resize right panel' : 'Open right panel'}
           >
-            {uiStore.rightPanelOpen ? '\u203A' : '\u2039'}
-          </PanelToggleBtn>
+            {!uiStore.rightPanelOpen && <HandleChevron>{'\u2039'}</HandleChevron>}
+          </ResizeHandle>
 
           {uiStore.rightPanelOpen && (
-            <RightPanelWrapper data-testid="right-panel">
+            <RightPanelWrapper
+              ref={rightPanelRef}
+              data-testid="right-panel"
+              style={{ width: uiStore.rightPanelWidth }}
+            >
               <RecommendationsPanel />
             </RightPanelWrapper>
           )}
@@ -397,7 +515,9 @@ export const App = observer(() => {
       )}
 
       <Footer>
-        Betaflight Tuning Helper | Built for Betaflight 4.4/4.5
+        Betaflight Tuning Helper
+        <FooterDivider>|</FooterDivider>
+        Built for Betaflight 4.4/4.5
         <FooterDivider>|</FooterDivider>
         <WhatsNewButton onClick={uiStore.openChangelog}>
           What&apos;s New

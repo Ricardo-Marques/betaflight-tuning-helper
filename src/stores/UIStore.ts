@@ -6,6 +6,11 @@ export type RightPanelTab = 'summary' | 'issues' | 'fixes'
 /**
  * Store for UI state (axis selection, zoom, toggles, etc.)
  */
+export const MIN_PANEL_WIDTH = 300
+export const MAX_PANEL_WIDTH = 600
+const DEFAULT_PANEL_WIDTH = 352 // ~22rem
+const COLLAPSE_THRESHOLD = 80
+
 export class UIStore {
   selectedAxis: Axis = 'roll'
   zoomStart: number = 0
@@ -22,6 +27,8 @@ export class UIStore {
 
   leftPanelOpen: boolean = true
   rightPanelOpen: boolean = true
+  leftPanelWidth: number = DEFAULT_PANEL_WIDTH
+  rightPanelWidth: number = DEFAULT_PANEL_WIDTH
   activeRightTab: RightPanelTab = 'summary'
   changelogOpen: boolean = false
 
@@ -105,6 +112,24 @@ export class UIStore {
     this.rightPanelOpen = !this.rightPanelOpen
   }
 
+  setLeftPanelWidth = (px: number): void => {
+    if (px < COLLAPSE_THRESHOLD) {
+      this.leftPanelOpen = false
+      return
+    }
+    this.leftPanelOpen = true
+    this.leftPanelWidth = Math.max(MIN_PANEL_WIDTH, Math.min(MAX_PANEL_WIDTH, px))
+  }
+
+  setRightPanelWidth = (px: number): void => {
+    if (px < COLLAPSE_THRESHOLD) {
+      this.rightPanelOpen = false
+      return
+    }
+    this.rightPanelOpen = true
+    this.rightPanelWidth = Math.max(MIN_PANEL_WIDTH, Math.min(MAX_PANEL_WIDTH, px))
+  }
+
   setActiveRightTab = (tab: RightPanelTab): void => {
     this.activeRightTab = tab
   }
@@ -160,6 +185,8 @@ export class UIStore {
     this.showMotors = true
     this.showThrottle = false
     this.showIssues = true
+    this.leftPanelWidth = DEFAULT_PANEL_WIDTH
+    this.rightPanelWidth = DEFAULT_PANEL_WIDTH
     this.activeRightTab = 'summary'
     this.axisHighlight = null
   }
