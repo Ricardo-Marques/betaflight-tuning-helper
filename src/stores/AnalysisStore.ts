@@ -1,4 +1,4 @@
-import { makeObservable, observable, action, computed, runInAction } from 'mobx'
+import { makeAutoObservable, runInAction } from 'mobx'
 import { AnalysisResult, DetectedIssue, Recommendation, FlightSegment } from '../domain/types/Analysis'
 import { RuleEngine } from '../domain/engine/RuleEngine'
 import { QuadProfile, QuadSize, ThresholdScaling } from '../domain/types/QuadProfile'
@@ -26,7 +26,6 @@ const ANALYSIS_LEVEL_MULTIPLIER: Record<AnalysisLevel, number> = {
  * Store for analysis results and recommendations
  */
 export class AnalysisStore {
-  // Observable state
   analysisStatus: AnalysisStatus = 'idle'
   analysisProgress: number = 0
   analysisMessage: string = ''
@@ -40,7 +39,6 @@ export class AnalysisStore {
   isReanalyzing: boolean = false
   detectionResult: DetectionResult | null = null
 
-  // Dependencies
   private logStore: LogStore
   private ruleEngine: RuleEngine
 
@@ -48,98 +46,43 @@ export class AnalysisStore {
     this.logStore = logStore
     this.ruleEngine = new RuleEngine()
 
-    makeObservable(this, {
-      analysisStatus: observable,
-      analysisProgress: observable,
-      analysisMessage: observable,
-      result: observable,
-      selectedSegmentId: observable,
-      selectedIssueId: observable,
-      selectedOccurrenceIdx: observable,
-      selectedRecommendationId: observable,
-      quadProfile: observable,
-      analysisLevel: observable,
-      isReanalyzing: observable,
-      detectionResult: observable,
-      isComplete: computed,
-      issues: computed,
-      recommendations: computed,
-      segments: computed,
-      selectedSegment: computed,
-      selectedIssue: computed,
-      highSeverityIssues: computed,
-      highPriorityRecommendations: computed,
-      analyze: action,
-      reset: action,
-      selectSegment: action,
-      selectIssue: action,
-      selectRecommendation: action,
-      setQuadProfile: action,
-      setAnalysisLevel: action,
-    })
+    makeAutoObservable<this, 'logStore' | 'ruleEngine'>(this, { logStore: false, ruleEngine: false })
   }
 
-  /**
-   * Computed: Is analysis complete?
-   */
   get isComplete(): boolean {
     return this.result !== null
   }
 
-  /**
-   * Computed: All detected issues
-   */
   get issues(): DetectedIssue[] {
     return this.result?.issues ?? []
   }
 
-  /**
-   * Computed: All recommendations
-   */
   get recommendations(): Recommendation[] {
     return this.result?.recommendations ?? []
   }
 
-  /**
-   * Computed: Flight segments
-   */
   get segments(): FlightSegment[] {
     return this.result?.segments ?? []
   }
 
-  /**
-   * Computed: Currently selected segment
-   */
   get selectedSegment(): FlightSegment | undefined {
     if (!this.selectedSegmentId) return undefined
     return this.segments.find(s => s.id === this.selectedSegmentId)
   }
 
-  /**
-   * Computed: Currently selected issue
-   */
   get selectedIssue(): DetectedIssue | undefined {
     if (!this.selectedIssueId) return undefined
     return this.issues.find(i => i.id === this.selectedIssueId)
   }
 
-  /**
-   * Computed: High severity issues only
-   */
   get highSeverityIssues(): DetectedIssue[] {
     return this.issues.filter(i => i.severity === 'high')
   }
 
-  /**
-   * Computed: High-priority recommendations
-   */
   get highPriorityRecommendations(): Recommendation[] {
     return this.recommendations.filter(r => r.priority >= 7)
   }
 
-  /**
-   * Set quad profile manually (triggers re-analysis)
-   */
   setQuadProfile = (sizeId: QuadSize): void => {
     this.quadProfile = QUAD_PROFILES[sizeId]
     if (this.logStore.isLoaded) {
@@ -154,14 +97,9 @@ export class AnalysisStore {
     }
   }
 
-  /**
-   * Re-run analysis without clearing UI.
-   * Shows an overlay, defers heavy work so the UI paints the button change first.
-   */
   private reanalyze = (): void => {
     this.isReanalyzing = true
 
-    // Defer to next frame so the button highlight and overlay render first
     setTimeout(() => {
       const m = ANALYSIS_LEVEL_MULTIPLIER[this.analysisLevel]
       const scaledThresholds: ThresholdScaling = {
@@ -196,9 +134,6 @@ export class AnalysisStore {
     }, 0)
   }
 
-  /**
-   * Run analysis on loaded log
-   */
   analyze = async (): Promise<void> => {
     if (!this.logStore.isLoaded) {
       throw new Error('No log loaded')
@@ -212,7 +147,6 @@ export class AnalysisStore {
     })
 
     try {
-      // Auto-detect quad size if not manually overridden
       if (this.logStore.metadata && !this.detectionResult) {
         const detection = detectQuadSize(this.logStore.metadata)
         runInAction(() => {
@@ -221,7 +155,6 @@ export class AnalysisStore {
         })
       }
 
-      // Simulate async analysis (in reality, rule engine is sync but we want UI feedback)
       await new Promise(resolve => setTimeout(resolve, 100))
 
       runInAction(() => {
@@ -243,7 +176,6 @@ export class AnalysisStore {
         this.analysisMessage = 'Generating recommendations...'
       })
 
-      // Apply analysis level multiplier to profile thresholds
       const m = ANALYSIS_LEVEL_MULTIPLIER[this.analysisLevel]
       const scaledThresholds: ThresholdScaling = {
         gyroNoise: this.quadProfile.thresholds.gyroNoise * m,
@@ -260,21 +192,11 @@ export class AnalysisStore {
         thresholds: scaledThresholds,
       }
 
-      // Run actual analysis with scaled profile
       const result = this.ruleEngine.analyzeLog(
         this.logStore.frames,
         this.logStore.metadata!,
         scaledProfile
       )
-
-      // Log analysis results for debugging
-      console.log('Analysis complete:', {
-        totalFrames: this.logStore.frames.length,
-        duration: this.logStore.metadata!.duration,
-        issuesFound: result.issues.length,
-        recommendations: result.recommendations.length,
-        windows: result.segments.length,
-      })
 
       await new Promise(resolve => setTimeout(resolve, 100))
 
@@ -293,9 +215,6 @@ export class AnalysisStore {
     }
   }
 
-  /**
-   * Reset analysis state
-   */
   reset = (): void => {
     this.analysisStatus = 'idle'
     this.analysisProgress = 0
@@ -310,43 +229,27 @@ export class AnalysisStore {
     this.detectionResult = null
   }
 
-  /**
-   * Select a flight segment
-   */
   selectSegment = (segmentId: string | null): void => {
     this.selectedSegmentId = segmentId
   }
 
-  /**
-   * Select an issue and optionally a specific occurrence
-   */
   selectIssue = (issueId: string | null, occurrenceIdx?: number): void => {
     this.selectedIssueId = issueId
     this.selectedOccurrenceIdx = occurrenceIdx ?? null
   }
 
-  /**
-   * Select a recommendation (for scroll-highlight)
-   */
   selectRecommendation = (recId: string | null): void => {
     this.selectedRecommendationId = recId
   }
 
-  /**
-   * Get recommendations for a specific issue
-   */
   getRecommendationsForIssue(issueId: string): Recommendation[] {
     return this.recommendations.filter(
       r => r.issueId === issueId || r.relatedIssueIds?.includes(issueId)
     )
   }
 
-  /**
-   * Get issues in a time range
-   */
   getIssuesInTimeRange(startTime: number, endTime: number): DetectedIssue[] {
     return this.issues.filter(issue => {
-      // Check if any occurrence's marker (placed at tr[0]) falls within the visible range
       const occurrences = issue.occurrences ?? [issue.timeRange]
       return occurrences.some(
         tr => tr[0] >= startTime && tr[0] <= endTime

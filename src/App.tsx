@@ -1,12 +1,12 @@
 import { observer } from 'mobx-react-lite'
 import styled from '@emotion/styled'
-import { useCallback, useState } from 'react'
 import { LeftPanel } from './components/LeftPanel'
 import { LogChart } from './components/LogChart'
 import { RecommendationsPanel } from './components/RecommendationsPanel'
 import { FileUpload } from './components/FileUpload'
 import { ThemeToggle } from './components/ThemeToggle'
 import { useUIStore, useLogStore, useAnalysisStore } from './stores/RootStore'
+import { useObservableState } from './lib/mobx-reactivity'
 
 const AppContainer = styled.div`
   height: 100vh;
@@ -101,6 +101,11 @@ const ReanalyzingLabel = styled.span`
   border-radius: 0.5rem;
 `
 
+const LeftPanelWrapper = styled.div`
+  width: 20rem;
+  flex-shrink: 0;
+`
+
 const RightPanelWrapper = styled.div`
   width: 480px;
   flex-shrink: 0;
@@ -150,31 +155,31 @@ export const App = observer(() => {
   const uiStore = useUIStore()
   const logStore = useLogStore()
   const analysisStore = useAnalysisStore()
-  const [globalDragging, setGlobalDragging] = useState(false)
+  const [globalDragging, setGlobalDragging] = useObservableState(false)
   const dragCounter = { current: 0 }
 
-  const handleGlobalDragEnter = useCallback((e: React.DragEvent) => {
+  const handleGlobalDragEnter = (e: React.DragEvent) => {
     e.preventDefault()
     dragCounter.current++
     if (e.dataTransfer.types.includes('Files')) {
       setGlobalDragging(true)
     }
-  }, [])
+  }
 
-  const handleGlobalDragOver = useCallback((e: React.DragEvent) => {
+  const handleGlobalDragOver = (e: React.DragEvent) => {
     e.preventDefault()
-  }, [])
+  }
 
-  const handleGlobalDragLeave = useCallback((e: React.DragEvent) => {
+  const handleGlobalDragLeave = (e: React.DragEvent) => {
     e.preventDefault()
     dragCounter.current--
     if (dragCounter.current <= 0) {
       dragCounter.current = 0
       setGlobalDragging(false)
     }
-  }, [])
+  }
 
-  const handleGlobalDrop = useCallback((e: React.DragEvent) => {
+  const handleGlobalDrop = (e: React.DragEvent) => {
     e.preventDefault()
     dragCounter.current = 0
     setGlobalDragging(false)
@@ -184,7 +189,7 @@ export const App = observer(() => {
       uiStore.setZoom(0, 100)
       logStore.uploadFile(files[0])
     }
-  }, [logStore, uiStore])
+  }
 
   const isLoaded = logStore.isLoaded || logStore.parseStatus === 'parsing'
 
@@ -268,9 +273,9 @@ export const App = observer(() => {
             </ReanalyzingOverlay>
           )}
           {uiStore.leftPanelOpen && (
-            <div data-testid="left-panel" className="w-80 flex-shrink-0">
+            <LeftPanelWrapper data-testid="left-panel">
               <LeftPanel />
-            </div>
+            </LeftPanelWrapper>
           )}
 
           <PanelToggleBtn

@@ -1,7 +1,7 @@
 import { observer } from 'mobx-react-lite'
 import styled from '@emotion/styled'
 import { useStores } from '../stores/RootStore'
-import { useState, useCallback } from 'react'
+import { useObservableState } from '../lib/mobx-reactivity'
 
 const UploadWrapper = styled.div`
   padding: 1rem;
@@ -27,6 +27,10 @@ const UploadIcon = styled.svg`
   height: 3rem;
   width: 3rem;
   color: ${p => p.theme.colors.text.muted};
+`
+
+const IconWrapper = styled.div`
+  margin-bottom: 1rem;
 `
 
 const UploadTitle = styled.p`
@@ -58,6 +62,10 @@ const UploadButton = styled.label`
   &:hover {
     background-color: ${p => p.theme.colors.button.primaryHover};
   }
+`
+
+const HiddenInput = styled.input`
+  display: none;
 `
 
 const FormatHint = styled.p`
@@ -94,6 +102,20 @@ const StatusSubtext = styled.p`
   color: ${p => p.theme.colors.text.muted};
 `
 
+const Spinner = styled.div`
+  margin: 0 auto;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-bottom-color: #2563eb;
+  animation: spin 1s linear infinite;
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+`
+
 const ErrorIcon = styled.svg`
   margin: 0 auto 1rem;
   height: 3rem;
@@ -123,6 +145,10 @@ const MetadataBlock = styled.div`
   }
 `
 
+const MetadataLabel = styled.span`
+  font-weight: 500;
+`
+
 const LinkButton = styled.button`
   margin-top: 0.5rem;
   font-size: 0.75rem;
@@ -138,42 +164,36 @@ const LinkButton = styled.button`
 
 export const FileUpload = observer(() => {
   const { logStore, uiStore, analysisStore } = useStores()
-  const [isDragging, setIsDragging] = useState(false)
+  const [isDragging, setIsDragging] = useObservableState(false)
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(true)
-  }, [])
+  }
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
+  const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
-  }, [])
+  }
 
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault()
-      setIsDragging(false)
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
 
-      const files = Array.from(e.dataTransfer.files)
-      if (files.length > 0) {
-        uiStore.setZoom(0, 100)
-        logStore.uploadFile(files[0])
-      }
-    },
-    [logStore, uiStore]
-  )
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length > 0) {
+      uiStore.setZoom(0, 100)
+      logStore.uploadFile(files[0])
+    }
+  }
 
-  const handleFileInput = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = e.target.files
-      if (files && files.length > 0) {
-        uiStore.setZoom(0, 100)
-        logStore.uploadFile(files[0])
-      }
-    },
-    [logStore, uiStore]
-  )
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (files && files.length > 0) {
+      uiStore.setZoom(0, 100)
+      logStore.uploadFile(files[0])
+    }
+  }
 
   return (
     <UploadWrapper>
@@ -187,7 +207,7 @@ export const FileUpload = observer(() => {
       >
         {logStore.parseStatus === 'idle' && (
           <>
-            <div className="mb-4">
+            <IconWrapper>
               <UploadIcon
                 stroke="currentColor"
                 fill="none"
@@ -200,14 +220,13 @@ export const FileUpload = observer(() => {
                   strokeLinejoin="round"
                 />
               </UploadIcon>
-            </div>
+            </IconWrapper>
             <UploadTitle>Drop blackbox log here</UploadTitle>
             <UploadSubtext>or click to browse</UploadSubtext>
-            <input
+            <HiddenInput
               type="file"
               accept=".bbl,.bfl,.txt,.csv"
               onChange={handleFileInput}
-              className="hidden"
               id="file-upload"
             />
             <UploadButton htmlFor="file-upload">
@@ -221,9 +240,9 @@ export const FileUpload = observer(() => {
 
         {logStore.parseStatus === 'parsing' && (
           <>
-            <div className="mb-4">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            </div>
+            <IconWrapper>
+              <Spinner />
+            </IconWrapper>
             <StatusText data-testid="parse-status-text">
               Parsing log...
             </StatusText>
@@ -237,16 +256,16 @@ export const FileUpload = observer(() => {
         {logStore.parseStatus === 'success' && logStore.metadata && (
           <MetadataBlock data-testid="parse-success-text">
             <p>
-              <span className="font-medium">Duration:</span>{' '}
+              <MetadataLabel>Duration:</MetadataLabel>{' '}
               {logStore.metadata.duration.toFixed(1)}s
             </p>
             <p>
-              <span className="font-medium">Loop Rate:</span>{' '}
+              <MetadataLabel>Loop Rate:</MetadataLabel>{' '}
               {(logStore.metadata.looptime / 1000).toFixed(1)}kHz
             </p>
             {logStore.metadata.craftName && (
               <p>
-                <span className="font-medium">Craft:</span>{' '}
+                <MetadataLabel>Craft:</MetadataLabel>{' '}
                 {logStore.metadata.craftName}
               </p>
             )}
@@ -261,7 +280,7 @@ export const FileUpload = observer(() => {
 
         {logStore.parseStatus === 'error' && (
           <>
-            <div className="mb-4">
+            <IconWrapper>
               <ErrorIcon
                 fill="none"
                 stroke="currentColor"
@@ -274,7 +293,7 @@ export const FileUpload = observer(() => {
                   d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </ErrorIcon>
-            </div>
+            </IconWrapper>
             <ErrorTitle data-testid="parse-error-text">Parse failed</ErrorTitle>
             <ErrorDetail>{logStore.parseError}</ErrorDetail>
             <LinkButton

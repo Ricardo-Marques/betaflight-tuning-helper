@@ -36,6 +36,17 @@ export function GlobalStyles() {
         .attention-pulse {
           animation: attention-pulse 0.7s ease-out;
         }
+
+        @keyframes dim-fade {
+          0% { opacity: 1; }
+          10% { opacity: 0.35; }
+          75% { opacity: 0.35; }
+          100% { opacity: 1; }
+        }
+
+        .dim-siblings > *:not(.selected-item) {
+          animation: dim-fade 1.5s ease-out forwards;
+        }
       `}
     />
   )

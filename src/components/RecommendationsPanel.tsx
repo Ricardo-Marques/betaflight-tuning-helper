@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
+import { useRef } from 'react'
 import { observer } from 'mobx-react-lite'
 import styled from '@emotion/styled'
 import { useAnalysisStore, useLogStore, useUIStore } from '../stores/RootStore'
@@ -13,6 +13,7 @@ import {
   getGlobalValue,
 } from '../domain/utils/CliExport'
 import { RightPanelTab } from '../stores/UIStore'
+import { useObservableState, useComputed, useAutorun } from '../lib/mobx-reactivity'
 
 // Per-axis PID params that use resolveChange with isPerAxisPid=true
 const PER_AXIS_PID_PARAMS = new Set([
@@ -238,6 +239,50 @@ const FixesSection = styled.div`
   padding: 1rem;
 `
 
+/* ---- New styled components replacing Tailwind ---- */
+
+const CliBarActions = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+`
+
+const SpacedStack = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+`
+
+const FlexRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`
+
+const SmLabel = styled.span`
+  font-size: 0.875rem;
+  font-weight: 500;
+`
+
+const SpacedStackSm = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+`
+
+const IssueList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+`
+
+const RecList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+`
+
 /* ---- Issue Card ---- */
 
 const IssueCardWrapper = styled.div<{ severity: string; isSelected: boolean }>`
@@ -346,6 +391,24 @@ const LinkedRecBorder = styled.div`
   & > button + button {
     margin-top: 0.25rem;
   }
+`
+
+const CardHeader = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+`
+
+const OccurrenceNav = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+`
+
+const MetricLabel = styled.span`
+  font-weight: 500;
 `
 
 /* ---- Recommendation Card ---- */
@@ -496,7 +559,55 @@ const LinkedIssueLink = styled.button`
   }
 `
 
+const RecCardHeader = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+`
+
+const RecBadgeRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`
+
+const ChangesList = styled.ul`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+`
+
+const RationaleBlock = styled.div`
+  margin-bottom: 0.5rem;
+`
+
+const ExpectedLabel = styled.span`
+  font-weight: 500;
+`
+
 /* ---- Change Display ---- */
+
+const ChangeItem = styled.li`
+  font-size: 0.875rem;
+`
+
+const ChangeRow = styled.div`
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+`
+
+const ValueTransition = styled.span`
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+`
+
+const CliLine = styled.p`
+  margin-top: 0.125rem;
+`
 
 const ChangeParamName = styled.span`
   font-weight: 500;
@@ -535,30 +646,30 @@ export const RecommendationsPanel = observer(() => {
   const analysisStore = useAnalysisStore()
   const logStore = useLogStore()
   const uiStore = useUIStore()
-  const [copied, setCopied] = useState(false)
-  const [cliExpanded, setCliExpanded] = useState(false)
+  const [copied, setCopied] = useObservableState(false)
+  const [cliExpanded, setCliExpanded] = useObservableState(false)
 
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const pidProfile = logStore.metadata?.pidProfile
   const filterSettings = logStore.metadata?.filterSettings
 
-  const cliCommands = useMemo(() => {
+  const cliCommands = useComputed(() => {
     if (!analysisStore.isComplete) return ''
     const { recommendations } = analysisStore.result!
     return generateCliCommands(recommendations, pidProfile, filterSettings)
-  }, [analysisStore.isComplete, analysisStore.result, pidProfile, filterSettings])
+  })
 
-  const commandCount = useMemo(() => {
+  const commandCount = useComputed(() => {
     return (cliCommands.match(/^set /gm) || []).length
-  }, [cliCommands])
+  })
 
-  const unresolvedCount = useMemo(() => {
+  const unresolvedCount = useComputed(() => {
     return (cliCommands.match(/current value unknown/gm) || []).length
-  }, [cliCommands])
+  })
 
   // Group issues by severity
-  const issuesBySeverity = useMemo(() => {
+  const issuesBySeverity = useComputed(() => {
     const groups: Record<string, DetectedIssue[]> = {}
     for (const issue of analysisStore.issues) {
       const sev = issue.severity
@@ -566,10 +677,10 @@ export const RecommendationsPanel = observer(() => {
       groups[sev].push(issue)
     }
     return groups
-  }, [analysisStore.issues])
+  })
 
   // Auto-scroll to selected issue (wait for Issues tab to render)
-  useEffect(() => {
+  useAutorun(() => {
     const id = analysisStore.selectedIssueId
     if (!id || !scrollRef.current || uiStore.activeRightTab !== 'issues') return
     requestAnimationFrame(() => {
@@ -578,9 +689,9 @@ export const RecommendationsPanel = observer(() => {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' })
       }
     })
-  }, [analysisStore.selectedIssueId, uiStore.activeRightTab])
+  })
 
-  const navigateToRec = useCallback((recId: string) => {
+  const navigateToRec = (recId: string) => {
     uiStore.setActiveRightTab('fixes')
     // Wait for tab switch to render, then scroll
     requestAnimationFrame(() => {
@@ -592,9 +703,9 @@ export const RecommendationsPanel = observer(() => {
         setTimeout(() => analysisStore.selectRecommendation(null), 2000)
       }
     })
-  }, [analysisStore, uiStore])
+  }
 
-  const handleCopy = useCallback(async () => {
+  const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(cliCommands)
       setCopied(true)
@@ -602,7 +713,7 @@ export const RecommendationsPanel = observer(() => {
     } catch {
       // Fallback: select text for manual copy
     }
-  }, [cliCommands])
+  }
 
   if (!analysisStore.isComplete) {
     return (
@@ -633,7 +744,7 @@ export const RecommendationsPanel = observer(() => {
             <CliLabel>
               {commandCount} CLI command{commandCount !== 1 ? 's' : ''}{unresolvedCount > 0 ? ` (${unresolvedCount} need manual values)` : ''}
             </CliLabel>
-            <div className="flex items-center justify-end gap-2">
+            <CliBarActions>
               <CliPreviewToggle onClick={() => setCliExpanded(!cliExpanded)}>
                 {cliExpanded ? 'Hide' : 'Preview'}
               </CliPreviewToggle>
@@ -644,7 +755,7 @@ export const RecommendationsPanel = observer(() => {
               >
                 {copied ? 'Copied!' : 'Copy'}
               </CopyButton>
-            </div>
+            </CliBarActions>
           </CliBarInner>
           {cliExpanded && (
             <CliPreview>{cliCommands}</CliPreview>
@@ -676,22 +787,22 @@ export const RecommendationsPanel = observer(() => {
           <>
             <SummarySection data-testid="analysis-summary">
               <SummaryTitle>Analysis Summary</SummaryTitle>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">Overall Health:</span>
+              <SpacedStack>
+                <FlexRow>
+                  <SmLabel>Overall Health:</SmLabel>
                   <HealthBadge data-testid="overall-health-badge" health={summary.overallHealth}>
                     {summary.overallHealth.toUpperCase()}
                   </HealthBadge>
-                </div>
-                <div className="flex items-center gap-2">
+                </FlexRow>
+                <FlexRow>
                   <ProfileLabel>Profile: {analysisStore.quadProfile.label}</ProfileLabel>
-                </div>
-                <div className="space-y-1">
+                </FlexRow>
+                <SpacedStackSm>
                   <SeverityCount severity="high">High: {summary.highIssueCount}</SeverityCount>
                   <SeverityCount severity="medium">Medium: {summary.mediumIssueCount}</SeverityCount>
                   <SeverityCount severity="low">Low: {summary.lowIssueCount}</SeverityCount>
-                </div>
-              </div>
+                </SpacedStackSm>
+              </SpacedStack>
             </SummarySection>
 
             {summary.topPriorities.length > 0 && (
@@ -718,11 +829,11 @@ export const RecommendationsPanel = observer(() => {
                   <SeverityGroupTitle severity={sev}>
                     {severityLabels[sev]}
                   </SeverityGroupTitle>
-                  <div key={analysisStore.selectedIssueId ?? ''} className={`space-y-3${analysisStore.selectedIssueId ? ' dim-siblings' : ''}`}>
+                  <IssueList key={analysisStore.selectedIssueId ?? ''} className={analysisStore.selectedIssueId ? 'dim-siblings' : undefined}>
                     {issues.map(issue => (
                       <IssueCard key={issue.id} issue={issue} onNavigateToRec={navigateToRec} />
                     ))}
-                  </div>
+                  </IssueList>
                 </SeverityGroup>
               )
             })}
@@ -737,7 +848,7 @@ export const RecommendationsPanel = observer(() => {
         {/* Fixes Tab */}
         {activeTab === 'fixes' && (
           <FixesSection data-testid="recommendations-section">
-            <div key={analysisStore.selectedRecommendationId ?? ''} className={`space-y-4${analysisStore.selectedRecommendationId ? ' dim-siblings' : ''}`}>
+            <RecList key={analysisStore.selectedRecommendationId ?? ''} className={analysisStore.selectedRecommendationId ? 'dim-siblings' : undefined}>
               {analysisStore.recommendations.map(rec => (
                 <RecommendationCard
                   key={rec.id}
@@ -746,7 +857,7 @@ export const RecommendationsPanel = observer(() => {
                   filterSettings={filterSettings}
                 />
               ))}
-            </div>
+            </RecList>
             {recCount === 0 && (
               <NoItemsText>
                 <p>No recommendations</p>
@@ -763,79 +874,70 @@ const IssueCard = observer(({ issue, onNavigateToRec }: { issue: DetectedIssue; 
   const analysisStore = useAnalysisStore()
   const uiStore = useUIStore()
   const logStore = useLogStore()
-  const [occIdx, setOccIdx] = useState(0)
+  const [occIdx, setOccIdx] = useObservableState(0)
 
   // Sync local occurrence index when selected externally (e.g. clicking chart pill)
-  const storeOccIdx = analysisStore.selectedOccurrenceIdx
   const isSelected = analysisStore.selectedIssueId === issue.id
-  useEffect(() => {
-    if (isSelected && storeOccIdx != null && storeOccIdx !== occIdx) {
+  useAutorun(() => {
+    const storeOccIdx = analysisStore.selectedOccurrenceIdx
+    if (analysisStore.selectedIssueId === issue.id && storeOccIdx != null && storeOccIdx !== occIdx) {
       setOccIdx(storeOccIdx)
     }
-  }, [isSelected, storeOccIdx]) // eslint-disable-line react-hooks/exhaustive-deps
+  })
 
   const occurrences = issue.occurrences ?? [issue.timeRange]
   const hasMultiple = occurrences.length > 1
   const linkedRecs = analysisStore.getRecommendationsForIssue(issue.id)
 
-  const zoomToOccurrence = useCallback(
-    (idx: number) => {
-      analysisStore.selectIssue(issue.id, idx)
+  const zoomToOccurrence = (idx: number) => {
+    analysisStore.selectIssue(issue.id, idx)
 
-      const frames = logStore.frames
-      if (frames.length > 0) {
-        const tr = occurrences[idx]
-        const occTime = tr[0]
+    const frames = logStore.frames
+    if (frames.length > 0) {
+      const tr = occurrences[idx]
+      const occTime = tr[0]
 
-        // Check if this occurrence is already visible in the current view
-        const startFrame = Math.floor((uiStore.zoomStart / 100) * frames.length)
-        const endFrame = Math.min(frames.length - 1, Math.ceil((uiStore.zoomEnd / 100) * frames.length))
-        const viewStart = frames[startFrame]?.time ?? 0
-        const viewEnd = frames[endFrame]?.time ?? Infinity
-        if (occTime >= viewStart && occTime <= viewEnd) return
+      // Check if this occurrence is already visible in the current view
+      const startFrame = Math.floor((uiStore.zoomStart / 100) * frames.length)
+      const endFrame = Math.min(frames.length - 1, Math.ceil((uiStore.zoomEnd / 100) * frames.length))
+      const viewStart = frames[startFrame]?.time ?? 0
+      const viewEnd = frames[endFrame]?.time ?? Infinity
+      if (occTime >= viewStart && occTime <= viewEnd) return
 
-        // Occurrence is off-screen — navigate to center it
-        let lo = 0, hi = frames.length - 1
-        while (lo < hi) {
-          const mid = (lo + hi) >> 1
-          if (frames[mid].time < occTime) lo = mid + 1
-          else hi = mid
-        }
-        const centerPct = (lo / frames.length) * 100
-        const halfDur = (uiStore.zoomEnd - uiStore.zoomStart) / 2
-        let newStart = centerPct - halfDur
-        let newEnd = centerPct + halfDur
-        if (newStart < 0) { newEnd -= newStart; newStart = 0 }
-        if (newEnd > 100) { newStart -= newEnd - 100; newEnd = 100 }
-        uiStore.animateZoom(Math.max(0, newStart), Math.min(100, newEnd))
+      // Occurrence is off-screen — navigate to center it
+      let lo = 0, hi = frames.length - 1
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1
+        if (frames[mid].time < occTime) lo = mid + 1
+        else hi = mid
       }
-    },
-    [analysisStore, uiStore, logStore, issue, occurrences]
-  )
+      const centerPct = (lo / frames.length) * 100
+      const halfDur = (uiStore.zoomEnd - uiStore.zoomStart) / 2
+      let newStart = centerPct - halfDur
+      let newEnd = centerPct + halfDur
+      if (newStart < 0) { newEnd -= newStart; newStart = 0 }
+      if (newEnd > 100) { newStart -= newEnd - 100; newEnd = 100 }
+      uiStore.animateZoom(Math.max(0, newStart), Math.min(100, newEnd))
+    }
+  }
 
-  const handleClick = useCallback(() => {
+  const handleClick = () => {
     zoomToOccurrence(occIdx)
-  }, [zoomToOccurrence, occIdx])
+  }
 
-  const handlePrev = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation()
-      const next = Math.max(0, occIdx - 1)
-      setOccIdx(next)
-      zoomToOccurrence(next)
-    },
-    [occIdx, zoomToOccurrence]
-  )
+  const handlePrev = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const next = Math.max(0, occIdx - 1)
+    setOccIdx(next)
+    zoomToOccurrence(next)
+  }
 
-  const handleNext = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation()
-      const next = Math.min(occurrences.length - 1, occIdx + 1)
-      setOccIdx(next)
-      zoomToOccurrence(next)
-    },
-    [occIdx, occurrences.length, zoomToOccurrence]
-  )
+  const handleNext = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const next = Math.min(occurrences.length - 1, occIdx + 1)
+    setOccIdx(next)
+    zoomToOccurrence(next)
+  }
 
   return (
     <IssueCardWrapper
@@ -846,16 +948,16 @@ const IssueCard = observer(({ issue, onNavigateToRec }: { issue: DetectedIssue; 
       onClick={handleClick}
       className={isSelected ? 'attention-pulse selected-item' : ''}
     >
-      <div className="flex items-start justify-between mb-2">
+      <CardHeader>
         <IssueTitle>{issue.description}</IssueTitle>
         <SeverityBadge severity={issue.severity}>
           {issue.severity.toUpperCase()}
         </SeverityBadge>
-      </div>
+      </CardHeader>
 
       {/* Occurrence navigator */}
       {hasMultiple && (
-        <div className="flex items-center gap-2 mb-2">
+        <OccurrenceNav>
           <NavButton onClick={handlePrev} disabled={occIdx === 0}>
             &lt;
           </NavButton>
@@ -865,33 +967,33 @@ const IssueCard = observer(({ issue, onNavigateToRec }: { issue: DetectedIssue; 
           <NavButton onClick={handleNext} disabled={occIdx === occurrences.length - 1}>
             &gt;
           </NavButton>
-        </div>
+        </OccurrenceNav>
       )}
 
       <IssueMetrics>
         <p>
-          <span className="font-medium">Axis:</span> {issue.axis}
+          <MetricLabel>Axis:</MetricLabel> {issue.axis}
         </p>
         {issue.metrics.overshoot !== undefined && (
           <p>
-            <span className="font-medium">Overshoot:</span>{' '}
+            <MetricLabel>Overshoot:</MetricLabel>{' '}
             {issue.metrics.overshoot.toFixed(1)}°
           </p>
         )}
         {issue.metrics.frequency !== undefined && (
           <p>
-            <span className="font-medium">Frequency:</span>{' '}
+            <MetricLabel>Frequency:</MetricLabel>{' '}
             {issue.metrics.frequency.toFixed(1)} Hz
           </p>
         )}
         {issue.metrics.amplitude !== undefined && (
           <p>
-            <span className="font-medium">Amplitude:</span>{' '}
+            <MetricLabel>Amplitude:</MetricLabel>{' '}
             {issue.metrics.amplitude.toFixed(1)}°/s
           </p>
         )}
         <p>
-          <span className="font-medium">Confidence:</span>{' '}
+          <MetricLabel>Confidence:</MetricLabel>{' '}
           {(issue.confidence * 100).toFixed(0)}%
         </p>
       </IssueMetrics>
@@ -935,27 +1037,27 @@ function ChangeDisplay({ change, pidProfile, filterSettings }: {
   const isDecrease = resolved !== null && current !== undefined && resolved < current
 
   return (
-    <li className="text-sm">
-      <div className="flex items-baseline gap-2 flex-wrap">
+    <ChangeItem>
+      <ChangeRow>
         <ChangeParamName>
           {displayName}{axisLabel}
         </ChangeParamName>
         {current !== undefined && resolved !== null ? (
-          <span className="flex items-center gap-1">
+          <ValueTransition>
             <ChangeValue direction={isIncrease ? 'increase' : isDecrease ? 'decrease' : 'neutral'}>
               {isIncrease ? '\u2191' : isDecrease ? '\u2193' : ''} {current} → {resolved}
             </ChangeValue>
-          </span>
+          </ValueTransition>
         ) : (
           <ChangeFallback>
             {change.recommendedChange}
           </ChangeFallback>
         )}
-      </div>
-      <p className="mt-0.5">
+      </ChangeRow>
+      <CliLine>
         <CliSnippet>set {cliName} = {resolved ?? change.recommendedChange}</CliSnippet>
-      </p>
-    </li>
+      </CliLine>
+    </ChangeItem>
   )
 }
 
@@ -970,7 +1072,7 @@ const RecommendationCard = observer(
     const isHighlighted = analysisStore.selectedRecommendationId === recommendation.id
 
     // Collect all linked issue IDs (primary + related)
-    const linkedIssueIds = useMemo(() => {
+    const linkedIssueIds = useComputed(() => {
       const ids: string[] = []
       if (recommendation.issueId) ids.push(recommendation.issueId)
       if (recommendation.relatedIssueIds) {
@@ -979,12 +1081,12 @@ const RecommendationCard = observer(
         }
       }
       return ids
-    }, [recommendation.issueId, recommendation.relatedIssueIds])
+    })
 
-    const navigateToIssue = useCallback((issueId: string) => {
+    const navigateToIssue = (issueId: string) => {
       analysisStore.selectIssue(issueId, 0)
       uiStore.setActiveRightTab('issues')
-    }, [analysisStore, uiStore])
+    }
 
     return (
       <RecCardWrapper
@@ -992,17 +1094,17 @@ const RecommendationCard = observer(
         isHighlighted={isHighlighted}
         className={isHighlighted ? 'attention-pulse selected-item' : ''}
       >
-        <div className="flex items-start justify-between mb-2">
+        <RecCardHeader>
           <RecTitle>{recommendation.title}</RecTitle>
-          <div className="flex items-center gap-2">
+          <RecBadgeRow>
             <PriorityBadge>
               Priority: {recommendation.priority}
             </PriorityBadge>
             <ConfidenceLabel>
               {(recommendation.confidence * 100).toFixed(0)}%
             </ConfidenceLabel>
-          </div>
-        </div>
+          </RecBadgeRow>
+        </RecCardHeader>
 
         <RecDescription>
           {recommendation.description}
@@ -1012,7 +1114,7 @@ const RecommendationCard = observer(
         {recommendation.changes.length > 0 && (
           <ChangesBlock>
             <ChangesTitle>Recommended Changes:</ChangesTitle>
-            <ul className="space-y-2">
+            <ChangesList>
               {recommendation.changes.map((change, idx) => (
                 <ChangeDisplay
                   key={idx}
@@ -1021,20 +1123,20 @@ const RecommendationCard = observer(
                   filterSettings={filterSettings}
                 />
               ))}
-            </ul>
+            </ChangesList>
           </ChangesBlock>
         )}
 
         {/* Rationale */}
-        <div className="mb-2">
+        <RationaleBlock>
           <RationaleLabel>Why this helps</RationaleLabel>
           <RationaleText>{recommendation.rationale}</RationaleText>
-        </div>
+        </RationaleBlock>
 
         {/* Expected Improvement */}
         <ExpectedBlock>
           <ExpectedText>
-            <span className="font-medium">Expected:</span>{' '}
+            <ExpectedLabel>Expected:</ExpectedLabel>{' '}
             {recommendation.expectedImprovement}
           </ExpectedText>
         </ExpectedBlock>

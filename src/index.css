@@ -1,7 +1,3 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 * {
   box-sizing: border-box;
 }
@@ -25,16 +21,4 @@ body {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
-}
-
-/* Dim siblings — animated fade that auto-restores after 1.5s */
-@keyframes dim-fade {
-  0% { opacity: 1; }
-  10% { opacity: 0.35; }
-  75% { opacity: 0.35; }
-  100% { opacity: 1; }
-}
-
-.dim-siblings > *:not(.selected-item) {
-  animation: dim-fade 1.5s ease-out forwards;
 }

@@ -61,6 +61,52 @@ const ReasoningText = styled.p`
   white-space: nowrap;
 `
 
+const HelpIconWrapper = styled.span`
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.375rem;
+  cursor: help;
+
+  &:hover > [data-tooltip] {
+    display: block;
+  }
+`
+
+const HelpIcon = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: ${p => p.theme.colors.text.muted};
+  border: 1px solid ${p => p.theme.colors.text.muted};
+  line-height: 1;
+`
+
+const HelpTooltip = styled.div`
+  display: none;
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  width: 200px;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 400;
+  line-height: 1.4;
+  color: ${p => p.theme.colors.text.primary};
+  background-color: ${p => p.theme.colors.chart.tooltipBg};
+  border: 1px solid ${p => p.theme.colors.chart.tooltipBorder};
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+  pointer-events: none;
+`
+
 const ANALYSIS_LEVELS: { id: AnalysisLevel; label: string; description: string }[] = [
   { id: 'basic', label: 'Basic', description: 'Relaxed — only flags clear problems' },
   { id: 'average', label: 'Average', description: 'Balanced — good starting point' },
@@ -107,7 +153,15 @@ export const ProfileSelector = observer(() => {
       </SelectorWrapper>
       <SelectorWrapper>
         <SelectorHeader>
-          <SelectorTitle>Analysis Level</SelectorTitle>
+          <SelectorTitle>
+            Analysis Level
+            <HelpIconWrapper>
+              <HelpIcon>?</HelpIcon>
+              <HelpTooltip data-tooltip>
+                Controls how sensitive the analysis is. Basic only flags obvious problems, Average is a good default, and Expert catches subtle issues too.
+              </HelpTooltip>
+            </HelpIconWrapper>
+          </SelectorTitle>
         </SelectorHeader>
         <ButtonGroup>
           {ANALYSIS_LEVELS.map(level => (

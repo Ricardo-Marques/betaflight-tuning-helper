@@ -2,7 +2,8 @@ import { observer } from 'mobx-react-lite'
 import styled from '@emotion/styled'
 import { useTheme } from '@emotion/react'
 import { useLogStore, useUIStore, useAnalysisStore } from '../stores/RootStore'
-import { useMemo, useState, useCallback, useRef, useEffect } from 'react'
+import { useRef, useEffect, useCallback } from 'react'
+import { useObservableState, useComputed, useAutorun } from '../lib/mobx-reactivity'
 import {
   LineChart,
   Line,
@@ -67,12 +68,23 @@ const AxisButton = styled.button<{ isActive: boolean }>`
   }
 `
 
+const ToggleBar = styled.div`
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`
+
 const ToggleLabel = styled.label`
   display: flex;
   align-items: center;
   gap: 0.5rem;
   font-size: 0.875rem;
   color: ${p => p.theme.colors.text.primary};
+`
+
+const StyledCheckbox = styled.input`
+  border-radius: 0.25rem;
 `
 
 const IssueSummaryStrip = styled.div`
@@ -87,6 +99,13 @@ const IssueSummaryStrip = styled.div`
 const IssueSummaryLabel = styled.span`
   font-size: 0.75rem;
   color: ${p => p.theme.colors.text.muted};
+`
+
+const IssuePillList = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 `
 
 const IssuePill = styled.button`
@@ -155,53 +174,18 @@ const HoverPopover = styled.div`
   max-width: 20rem;
 `
 
-const PopoverTitle = styled.p`
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: ${p => p.theme.colors.text.primary};
-`
-
-const SeverityBadgeInline = styled.span<{ severity: string }>`
-  padding: 0.125rem 0.375rem;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  flex-shrink: 0;
-  background-color: ${p =>
-    p.severity === 'high' ? p.theme.colors.severity.highBg
-    : p.severity === 'medium' ? p.theme.colors.severity.mediumBg
-    : p.theme.colors.severity.lowBg};
-  color: ${p =>
-    p.severity === 'high' ? p.theme.colors.severity.highText
-    : p.severity === 'medium' ? p.theme.colors.severity.mediumText
-    : p.theme.colors.severity.lowText};
-`
-
-const PopoverMeta = styled.p`
-  font-size: 0.75rem;
-  color: ${p => p.theme.colors.text.muted};
-  margin-bottom: 0.25rem;
-`
-
-const PopoverDivider = styled.hr`
-  border: none;
-  border-top: 1px solid ${p => p.theme.colors.border.main};
-  margin: 0.5rem 0;
-`
-
-const PopoverMetrics = styled.div`
-  font-size: 0.75rem;
-  color: ${p => p.theme.colors.text.secondary};
-
-  & > p + p {
-    margin-top: 0.125rem;
-  }
-`
 
 const ZoomControls = styled.div`
   flex-shrink: 0;
   padding: 0.75rem 1rem;
   border-top: 1px solid ${p => p.theme.colors.border.main};
+`
+
+const ZoomHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
 `
 
 const ZoomInfoLabel = styled.span`
@@ -312,7 +296,6 @@ function RangeSlider({ start, end, onChange }: {
       if (!dragType.current) return
       e.preventDefault()
       const pct = pctFromEvent(e.clientX)
-      const { startVal, endVal, x: originX } = dragOrigin.current
 
       if (dragType.current === 'start') {
         onChange(Math.min(pct, end - MIN_WINDOW), end)
@@ -321,10 +304,10 @@ function RangeSlider({ start, end, onChange }: {
       } else if (dragType.current === 'fill') {
         const trackRect = trackRef.current?.getBoundingClientRect()
         if (!trackRect) return
-        const pxDelta = e.clientX - originX
+        const pxDelta = e.clientX - dragOrigin.current.x
         const pctDelta = (pxDelta / trackRect.width) * 100
-        let newStart = startVal + pctDelta
-        let newEnd = endVal + pctDelta
+        let newStart = dragOrigin.current.startVal + pctDelta
+        let newEnd = dragOrigin.current.endVal + pctDelta
         if (newStart < 0) { newEnd -= newStart; newStart = 0 }
         if (newEnd > 100) { newStart -= newEnd - 100; newEnd = 100 }
         onChange(Math.max(0, newStart), Math.min(100, newEnd))
@@ -413,19 +396,22 @@ export const LogChart = observer(() => {
   const uiStore = useUIStore()
   const analysisStore = useAnalysisStore()
   const theme = useTheme()
-  const [hoveredIssues, setHoveredIssues] = useState<HoveredIssues | null>(null)
-  const [forcedPopover, setForcedPopover] = useState<HoveredIssues | null>(null)
   const forcedPopoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [showGlow, setShowGlow] = useState(false)
+  const popoverRef = useRef<HTMLDivElement>(null)
+  const hoveredIssuesRef = useRef<HoveredIssues | null>(null)
+  const hoverClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [showGlow, setShowGlow] = useObservableState(false)
   const glowTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dragStartX = useRef<number | null>(null)
   const dragStartZoom = useRef<{ start: number; end: number } | null>(null)
   const isDragging = useRef(false)
   const didDrag = useRef(false)
+  const [isDraggingObs, setIsDraggingObs] = useObservableState(false)
+  const lastZoomCommit = useRef(0)
   const chartContainerRef = useRef<HTMLDivElement>(null)
 
   // Track container width for label overlap calculations
-  const [containerWidth, setContainerWidth] = useState(0)
+  const [containerWidth, setContainerWidth] = useObservableState(0)
   useEffect(() => {
     const el = chartContainerRef.current
     if (!el) return
@@ -436,7 +422,7 @@ export const LogChart = observer(() => {
     })
     ro.observe(el)
     return () => ro.disconnect()
-  }, [logStore.isLoaded])
+  }, [logStore.isLoaded]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const severityColor = (severity: string) =>
     severity === 'high'
@@ -445,81 +431,150 @@ export const LogChart = observer(() => {
       ? theme.colors.severity.medium
       : theme.colors.severity.low
 
+  // Imperatively update the issue hover popover — no React re-render
+  const updateHoverPopover = (hovered: HoveredIssues | null): void => {
+    hoveredIssuesRef.current = hovered
+    const el = popoverRef.current
+    if (!el) return
+    if (!hovered) {
+      el.style.display = 'none'
+      return
+    }
+    el.style.display = ''
+    // Position to the RIGHT of cursor so it doesn't overlap the Recharts tooltip (which renders left)
+    el.style.left = `${hovered.x + 20}px`
+    // Smart vertical positioning: prefer above cursor, flip below if not enough space
+    const spaceAbove = hovered.y - 12
+    // Render off-screen first to measure height
+    el.style.top = '-9999px'
+    el.style.bottom = ''
+    el.style.visibility = 'hidden'
+
+    // Build inner HTML
+    const sevBgColor = (s: string): string =>
+      s === 'high' ? theme.colors.severity.highBg
+        : s === 'medium' ? theme.colors.severity.mediumBg
+        : theme.colors.severity.lowBg
+    const sevTextColor = (s: string): string =>
+      s === 'high' ? theme.colors.severity.highText
+        : s === 'medium' ? theme.colors.severity.mediumText
+        : theme.colors.severity.lowText
+
+    const parts: string[] = []
+    hovered.issues.forEach((issue, idx) => {
+      const isSelected = issue.id === analysisStore.selectedIssueId
+      const borderStyle = isSelected
+        ? `border-left:3px solid ${severityColor(issue.severity)};padding-left:0.5rem;margin-left:-0.25rem`
+        : ''
+      const divider = idx > 0 ? `<hr style="border:none;border-top:1px solid ${theme.colors.border.main};margin:0.5rem 0"/>` : ''
+      const metrics: string[] = []
+      if (issue.metrics.overshoot !== undefined) metrics.push(`<p>Overshoot: ${issue.metrics.overshoot.toFixed(1)}</p>`)
+      if (issue.metrics.frequency !== undefined) metrics.push(`<p>Frequency: ${issue.metrics.frequency.toFixed(1)} Hz</p>`)
+      if (issue.metrics.amplitude !== undefined) metrics.push(`<p>Amplitude: ${issue.metrics.amplitude.toFixed(1)} deg/s</p>`)
+      parts.push(`${divider}<div style="${borderStyle}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;margin-bottom:0.25rem">
+          <p style="font-size:0.875rem;font-weight:${isSelected ? 700 : 500};color:${theme.colors.text.primary}">${issue.description}</p>
+          <span style="padding:0.125rem 0.375rem;border-radius:0.25rem;font-size:0.75rem;font-weight:500;flex-shrink:0;background-color:${sevBgColor(issue.severity)};color:${sevTextColor(issue.severity)}">${issue.severity.toUpperCase()}</span>
+        </div>
+        <p style="font-size:0.75rem;color:${theme.colors.text.muted};margin-bottom:0.25rem">Axis: ${issue.axis}</p>
+        <div style="font-size:0.75rem;color:${theme.colors.text.secondary}">${metrics.join('')}</div>
+      </div>`)
+    })
+    if (hovered.issues.length > 1) {
+      parts.push(`<hr style="border:none;border-top:1px solid ${theme.colors.border.main};margin:0.5rem 0"/>
+        <p style="font-size:0.75rem;color:${theme.colors.text.muted};font-style:italic">Click to cycle through issues</p>`)
+    }
+    el.innerHTML = parts.join('')
+    // Measure actual height and apply final position
+    const popoverHeight = el.offsetHeight
+    el.style.visibility = ''
+    if (spaceAbove >= popoverHeight) {
+      // Position above cursor
+      el.style.top = ''
+      el.style.bottom = `${window.innerHeight - hovered.y + 12}px`
+    } else {
+      // Not enough space above — position below cursor
+      el.style.bottom = ''
+      el.style.top = `${hovered.y + 12}px`
+    }
+  }
+
+  // Rebuild popover innerHTML in-place (no repositioning) to update selected-issue highlight
+  const refreshPopoverContent = (): void => {
+    const hovered = hoveredIssuesRef.current
+    const el = popoverRef.current
+    if (!hovered || !el || el.style.display === 'none') return
+
+    const sevBgColor = (s: string): string =>
+      s === 'high' ? theme.colors.severity.highBg
+        : s === 'medium' ? theme.colors.severity.mediumBg
+        : theme.colors.severity.lowBg
+    const sevTextColor = (s: string): string =>
+      s === 'high' ? theme.colors.severity.highText
+        : s === 'medium' ? theme.colors.severity.mediumText
+        : theme.colors.severity.lowText
+
+    const parts: string[] = []
+    hovered.issues.forEach((issue, idx) => {
+      const isSelected = issue.id === analysisStore.selectedIssueId
+      const borderStyle = isSelected
+        ? `border-left:3px solid ${severityColor(issue.severity)};padding-left:0.5rem;margin-left:-0.25rem`
+        : ''
+      const divider = idx > 0 ? `<hr style="border:none;border-top:1px solid ${theme.colors.border.main};margin:0.5rem 0"/>` : ''
+      const metrics: string[] = []
+      if (issue.metrics.overshoot !== undefined) metrics.push(`<p>Overshoot: ${issue.metrics.overshoot.toFixed(1)}</p>`)
+      if (issue.metrics.frequency !== undefined) metrics.push(`<p>Frequency: ${issue.metrics.frequency.toFixed(1)} Hz</p>`)
+      if (issue.metrics.amplitude !== undefined) metrics.push(`<p>Amplitude: ${issue.metrics.amplitude.toFixed(1)} deg/s</p>`)
+      parts.push(`${divider}<div style="${borderStyle}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;margin-bottom:0.25rem">
+          <p style="font-size:0.875rem;font-weight:${isSelected ? 700 : 500};color:${theme.colors.text.primary}">${issue.description}</p>
+          <span style="padding:0.125rem 0.375rem;border-radius:0.25rem;font-size:0.75rem;font-weight:500;flex-shrink:0;background-color:${sevBgColor(issue.severity)};color:${sevTextColor(issue.severity)}">${issue.severity.toUpperCase()}</span>
+        </div>
+        <p style="font-size:0.75rem;color:${theme.colors.text.muted};margin-bottom:0.25rem">Axis: ${issue.axis}</p>
+        <div style="font-size:0.75rem;color:${theme.colors.text.secondary}">${metrics.join('')}</div>
+      </div>`)
+    })
+    if (hovered.issues.length > 1) {
+      parts.push(`<hr style="border:none;border-top:1px solid ${theme.colors.border.main};margin:0.5rem 0"/>
+        <p style="font-size:0.75rem;color:${theme.colors.text.muted};font-style:italic">Click to cycle through issues</p>`)
+    }
+    el.innerHTML = parts.join('')
+  }
+
   // Flash glow when selected issue changes, then fade after 1.5s
-  useEffect(() => {
+  useAutorun(() => {
     if (analysisStore.selectedIssueId) {
+      // Read selectedOccurrenceIdx to track it as a dependency
+      void analysisStore.selectedOccurrenceIdx
       setShowGlow(true)
       if (glowTimer.current) clearTimeout(glowTimer.current)
       glowTimer.current = setTimeout(() => setShowGlow(false), 1500)
     } else {
       setShowGlow(false)
     }
-    return () => { if (glowTimer.current) clearTimeout(glowTimer.current) }
-  }, [analysisStore.selectedIssueId, analysisStore.selectedOccurrenceIdx])
-
-  // Show forced popover for 2 seconds when an issue is selected
-  useEffect(() => {
-    if (forcedPopoverTimer.current) clearTimeout(forcedPopoverTimer.current)
-    const issueId = analysisStore.selectedIssueId
-    const occIdx = analysisStore.selectedOccurrenceIdx
-    if (!issueId || occIdx == null || !chartContainerRef.current || chartData.length < 2 || containerWidth === 0) {
-      setForcedPopover(null)
-      return
-    }
-    const issue = visibleIssues.find(i => i.id === issueId)
-    if (!issue) { setForcedPopover(null); return }
-    const times = issue.occurrences ?? [issue.timeRange]
-    const occ = times[occIdx]
-    if (!occ) { setForcedPopover(null); return }
-
-    const timeStart = chartData[0].time
-    const timeEnd = chartData[chartData.length - 1].time
-    const timeSpan = timeEnd - timeStart
-    const t = occ[0] / 1000000
-    if (t < timeStart || t > timeEnd) { setForcedPopover(null); return }
-
-    const plotWidth = containerWidth - CHART_MARGIN_LEFT - CHART_MARGIN_RIGHT
-    const pxLeft = CHART_MARGIN_LEFT + ((t - timeStart) / timeSpan) * plotWidth
-    const rect = chartContainerRef.current.getBoundingClientRect()
-    // Collect all stacked issues at this position
-    const sevRank: Record<string, number> = { high: 0, medium: 1, low: 2 }
-    const stacked = visibleIssues.filter(vi => {
-      const viTimes = vi.occurrences ?? [vi.timeRange]
-      return viTimes.some(tr => Math.abs(tr[0] / 1000000 - t) < (timeSpan * 0.005))
-    }).sort((a, b) => (sevRank[a.severity] ?? 2) - (sevRank[b.severity] ?? 2))
-    const issues = stacked.length > 0 ? stacked : [issue]
-
-    setForcedPopover({
-      issues,
-      x: rect.left + 16 + pxLeft, // 16 = 1rem padding
-      y: rect.top + 30,
-    })
-    setHoveredIssues(null)
-    forcedPopoverTimer.current = setTimeout(() => setForcedPopover(null), 2000)
-    return () => { if (forcedPopoverTimer.current) clearTimeout(forcedPopoverTimer.current) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [analysisStore.selectedIssueId, analysisStore.selectedOccurrenceIdx])
+  })
 
   // Derive window duration from zoom range
   const zoomDuration = uiStore.zoomEnd - uiStore.zoomStart
 
   // Calculate visible frame range based on zoom
-  const visibleFrames = useMemo(() => {
+  const visibleFrames = useComputed(() => {
     if (logStore.frames.length === 0) return []
 
     const totalFrames = logStore.frames.length
     const startIdx = Math.floor((uiStore.zoomStart / 100) * totalFrames)
     const endIdx = Math.ceil((uiStore.zoomEnd / 100) * totalFrames)
 
-    // Downsample for performance (max 2000 points)
+    // Downsample: fewer points while dragging for snappier panning
+    const maxPoints = isDraggingObs ? 500 : 2000
     const visibleRange = logStore.frames.slice(startIdx, endIdx)
-    const step = Math.max(1, Math.floor(visibleRange.length / 2000))
+    const step = Math.max(1, Math.floor(visibleRange.length / maxPoints))
 
     return visibleRange.filter((_, i) => i % step === 0)
-  }, [logStore.frames, uiStore.zoomStart, uiStore.zoomEnd])
+  })
 
   // Transform frames to chart data
-  const chartData = useMemo(() => {
+  const chartData = useComputed(() => {
     return visibleFrames.map(frame => ({
       time: frame.time / 1000000, // Convert to seconds
       gyro: frame.gyroADC[uiStore.selectedAxis],
@@ -534,10 +589,10 @@ export const LogChart = observer(() => {
       motor4: frame.motor[3],
       throttle: frame.throttle,
     }))
-  }, [visibleFrames, uiStore.selectedAxis])
+  })
 
   // Compute cross-axis Y domain so Y-axis stays constant when switching axes
-  const yDomain = useMemo((): [number, number] => {
+  const yDomain = useComputed((): [number, number] => {
     if (visibleFrames.length === 0) return [0, 1]
 
     let min = Infinity
@@ -560,10 +615,10 @@ export const LogChart = observer(() => {
     const range = max - min
     const margin = range * 0.05
     return [min - margin, max + margin]
-  }, [visibleFrames])
+  })
 
   // Get issues in visible range, sorted by first visible occurrence time
-  const visibleIssues = useMemo(() => {
+  const visibleIssues = useComputed(() => {
     if (!analysisStore.isComplete || visibleFrames.length === 0) return []
 
     const startTime = visibleFrames[0].time
@@ -580,7 +635,7 @@ export const LogChart = observer(() => {
       if (timeDiff !== 0) return timeDiff
       return (sevRank[a.severity] ?? 2) - (sevRank[b.severity] ?? 2)
     })
-  }, [analysisStore.isComplete, visibleFrames, analysisStore.issues])
+  })
 
   // Compute visible issue labels with overlap prevention
   // Each label has: pixel position, display text, color, and list of stacked issues for popover
@@ -597,7 +652,7 @@ export const LogChart = observer(() => {
     issues: DetectedIssue[]
   }
 
-  const visibleLabels: LabelEntry[] = useMemo(() => {
+  const visibleLabels: LabelEntry[] = useComputed(() => {
     if (visibleIssues.length === 0 || containerWidth === 0 || chartData.length < 2) return []
 
     const MIN_GAP = 60
@@ -658,103 +713,203 @@ export const LogChart = observer(() => {
     flush()
 
     return result
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visibleIssues, containerWidth, chartData, analysisStore.selectedIssueId, analysisStore.selectedOccurrenceIdx, uiStore.showIssues])
+  })
+
+  // Show forced popover for 2 seconds when an issue is selected (only if no hover popover active)
+  useAutorun(() => {
+    if (forcedPopoverTimer.current) clearTimeout(forcedPopoverTimer.current)
+    const issueId = analysisStore.selectedIssueId
+    const occIdx = analysisStore.selectedOccurrenceIdx
+    if (!issueId || occIdx == null || !chartContainerRef.current || chartData.length < 2 || containerWidth === 0) {
+      // Only clear if not hovering
+      if (!hoveredIssuesRef.current) updateHoverPopover(null)
+      return
+    }
+
+    // If hover popover is already showing, just refresh its content (update selected highlight)
+    if (hoveredIssuesRef.current) {
+      refreshPopoverContent()
+      return
+    }
+
+    const issue = visibleIssues.find(i => i.id === issueId)
+    if (!issue) { updateHoverPopover(null); return }
+    const times = issue.occurrences ?? [issue.timeRange]
+    const occ = times[occIdx]
+    if (!occ) { updateHoverPopover(null); return }
+
+    const timeStart = chartData[0].time
+    const timeEnd = chartData[chartData.length - 1].time
+    const timeSpan = timeEnd - timeStart
+    const t = occ[0] / 1000000
+    if (t < timeStart || t > timeEnd) { updateHoverPopover(null); return }
+
+    const plotWidth = containerWidth - CHART_MARGIN_LEFT - CHART_MARGIN_RIGHT
+    const pxLeft = CHART_MARGIN_LEFT + ((t - timeStart) / timeSpan) * plotWidth
+    const rect = chartContainerRef.current.getBoundingClientRect()
+    // Collect all stacked issues at this position
+    const sevRank: Record<string, number> = { high: 0, medium: 1, low: 2 }
+    const stacked = visibleIssues.filter(vi => {
+      const viTimes = vi.occurrences ?? [vi.timeRange]
+      return viTimes.some(tr => Math.abs(tr[0] / 1000000 - t) < (timeSpan * 0.005))
+    }).sort((a, b) => (sevRank[a.severity] ?? 2) - (sevRank[b.severity] ?? 2))
+    const issues = stacked.length > 0 ? stacked : [issue]
+
+    updateHoverPopover({
+      issues,
+      x: rect.left + 16 + pxLeft, // 16 = 1rem padding
+      y: rect.top + 30,
+    })
+    forcedPopoverTimer.current = setTimeout(() => {
+      // Only auto-dismiss if no hover popover took over
+      if (!hoveredIssuesRef.current) updateHoverPopover(null)
+    }, 2000)
+  })
+
+  // Pending zoom values during drag — applied via rAF to avoid per-mousemove re-renders
+  const pendingZoom = useRef<{ start: number; end: number } | null>(null)
 
   // Handle chart mouse move for issue hover detection + drag-to-pan
-  const handleChartMouseMove = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (_state: any, event: React.MouseEvent) => {
-      // Drag-to-pan: convert pixel delta to percentage shift
-      if (isDragging.current && dragStartX.current != null && dragStartZoom.current && chartContainerRef.current) {
-        const rect = chartContainerRef.current.getBoundingClientRect()
-        const pxDelta = event.clientX - dragStartX.current
-        const { start: origStart, end: origEnd } = dragStartZoom.current
-        const dur = origEnd - origStart
-        // Convert pixel movement to percentage of total log
-        const pctDelta = -(pxDelta / rect.width) * dur
-        let newStart = origStart + pctDelta
-        let newEnd = origEnd + pctDelta
-        // Clamp
-        if (newStart < 0) { newEnd -= newStart; newStart = 0 }
-        if (newEnd > 100) { newStart -= newEnd - 100; newEnd = 100 }
-        newStart = Math.max(0, newStart)
-        newEnd = Math.min(100, newEnd)
-        if (Math.abs(pxDelta) > 3) didDrag.current = true
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleChartMouseMove = (_state: any, event: React.MouseEvent) => {
+    // Drag-to-pan: throttled zoom commits
+    if (isDragging.current && dragStartX.current != null && dragStartZoom.current && chartContainerRef.current) {
+      const pxDelta = event.clientX - dragStartX.current
+      if (Math.abs(pxDelta) > 3) {
+        if (!didDrag.current) {
+          didDrag.current = true
+          updateHoverPopover(null)
+          if (hoverClearTimer.current) { clearTimeout(hoverClearTimer.current); hoverClearTimer.current = null }
+        }
+        if (!isDraggingObs) setIsDraggingObs(true)
+      }
+
+      const rect = chartContainerRef.current.getBoundingClientRect()
+      const { start: origStart, end: origEnd } = dragStartZoom.current
+      const dur = origEnd - origStart
+      const pctDelta = -(pxDelta / rect.width) * dur
+      let newStart = origStart + pctDelta
+      let newEnd = origEnd + pctDelta
+      if (newStart < 0) { newEnd -= newStart; newStart = 0 }
+      if (newEnd > 100) { newStart -= newEnd - 100; newEnd = 100 }
+      newStart = Math.max(0, newStart)
+      newEnd = Math.min(100, newEnd)
+      pendingZoom.current = { start: newStart, end: newEnd }
+
+      // Commit zoom at most once per 80ms to keep Recharts re-renders manageable
+      const now = performance.now()
+      if (now - lastZoomCommit.current > 80) {
+        lastZoomCommit.current = now
         uiStore.setZoom(newStart, newEnd)
-        setHoveredIssues(null)
-        return
       }
+      return
+    }
 
-      if (!_state?.activeLabel || visibleIssues.length === 0) {
-        setHoveredIssues(null)
-        return
+    if (!_state?.activeLabel || visibleIssues.length === 0) {
+      if (hoveredIssuesRef.current && !hoverClearTimer.current) {
+        hoverClearTimer.current = setTimeout(() => {
+          hoverClearTimer.current = null
+          updateHoverPopover(null)
+        }, 100)
       }
+      return
+    }
 
-      const cursorTime = _state.activeLabel as number
-      const visibleTimeRange =
-        chartData.length > 1
-          ? chartData[chartData.length - 1].time - chartData[0].time
-          : 1
-      const threshold = visibleTimeRange * 0.015
+    const cursorTime = _state.activeLabel as number
+    const visibleTimeRange =
+      chartData.length > 1
+        ? chartData[chartData.length - 1].time - chartData[0].time
+        : 1
+    const threshold = visibleTimeRange * 0.015
 
-      const nearby: DetectedIssue[] = []
+    const nearby: DetectedIssue[] = []
 
-      for (const issue of visibleIssues) {
-        const times = issue.occurrences ?? [issue.timeRange]
-        for (const tr of times) {
-          const occTime = tr[0] / 1000000
-          if (Math.abs(occTime - cursorTime) < threshold) {
-            nearby.push(issue)
-            break // one match per issue is enough
-          }
+    for (const issue of visibleIssues) {
+      const times = issue.occurrences ?? [issue.timeRange]
+      for (const tr of times) {
+        const occTime = tr[0] / 1000000
+        if (Math.abs(occTime - cursorTime) < threshold) {
+          nearby.push(issue)
+          break // one match per issue is enough
         }
       }
+    }
 
-      if (nearby.length > 0) {
-        const sevRank: Record<string, number> = { high: 0, medium: 1, low: 2 }
-        nearby.sort((a, b) => (sevRank[a.severity] ?? 2) - (sevRank[b.severity] ?? 2))
-        setHoveredIssues({
-          issues: nearby,
-          x: event.clientX,
-          y: event.clientY,
-        })
-      } else {
-        setHoveredIssues(null)
+    if (nearby.length > 0) {
+      if (hoverClearTimer.current) {
+        clearTimeout(hoverClearTimer.current)
+        hoverClearTimer.current = null
       }
-    },
-    [visibleIssues, chartData, uiStore]
-  )
+      const sevRank: Record<string, number> = { high: 0, medium: 1, low: 2 }
+      nearby.sort((a, b) => (sevRank[a.severity] ?? 2) - (sevRank[b.severity] ?? 2))
+      // Only rebuild innerHTML when the issue set changes — otherwise just reposition
+      const prevIds = hoveredIssuesRef.current?.issues.map(i => i.id).join(',')
+      const nextIds = nearby.map(i => i.id).join(',')
+      if (prevIds !== nextIds) {
+        updateHoverPopover({ issues: nearby, x: event.clientX, y: event.clientY })
+      } else if (popoverRef.current) {
+        // Reposition only — use smart vertical positioning
+        const el = popoverRef.current
+        el.style.left = `${event.clientX + 20}px`
+        const popoverHeight = el.offsetHeight
+        const spaceAbove = event.clientY - 12
+        if (spaceAbove >= popoverHeight) {
+          el.style.top = ''
+          el.style.bottom = `${window.innerHeight - event.clientY + 12}px`
+        } else {
+          el.style.bottom = ''
+          el.style.top = `${event.clientY + 12}px`
+        }
+      }
+    } else {
+      if (hoveredIssuesRef.current && !hoverClearTimer.current) {
+        hoverClearTimer.current = setTimeout(() => {
+          hoverClearTimer.current = null
+          updateHoverPopover(null)
+        }, 100)
+      }
+    }
+  }
 
-  const handleChartMouseLeave = useCallback(() => {
-    setHoveredIssues(null)
+  const handleChartMouseLeave = () => {
+    if (hoverClearTimer.current) { clearTimeout(hoverClearTimer.current); hoverClearTimer.current = null }
+    updateHoverPopover(null)
     if (isDragging.current) {
       isDragging.current = false
       didDrag.current = false
+      setIsDraggingObs(false)
       dragStartX.current = null
       dragStartZoom.current = null
+      // Flush any pending zoom
+      if (pendingZoom.current) {
+        uiStore.setZoom(pendingZoom.current.start, pendingZoom.current.end)
+        pendingZoom.current = null
+      }
     }
-  }, [])
+  }
 
   // Drag-to-pan handlers
-  const handleChartMouseDown = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (_state: any, event: React.MouseEvent) => {
-      isDragging.current = true
-      didDrag.current = false
-      dragStartX.current = event.clientX
-      dragStartZoom.current = { start: uiStore.zoomStart, end: uiStore.zoomEnd }
-    },
-    [uiStore]
-  )
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleChartMouseDown = (_state: any, event: React.MouseEvent) => {
+    isDragging.current = true
+    didDrag.current = false
+    dragStartX.current = event.clientX
+    dragStartZoom.current = { start: uiStore.zoomStart, end: uiStore.zoomEnd }
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleChartMouseUp = useCallback((state: any) => {
+  const handleChartMouseUp = (state: any) => {
     const wasDrag = didDrag.current
     isDragging.current = false
     didDrag.current = false
+    setIsDraggingObs(false)
     dragStartX.current = null
     dragStartZoom.current = null
+    // Flush any pending zoom
+    if (pendingZoom.current) {
+      uiStore.setZoom(pendingZoom.current.start, pendingZoom.current.end)
+      pendingZoom.current = null
+    }
 
     // If it was a real drag, the panning already happened in onMouseMove
     if (wasDrag) return
@@ -798,17 +953,16 @@ export const LogChart = observer(() => {
     }
 
     analysisStore.selectIssue(pick.issue.id, pick.occIdx)
+    // Refresh popover content to update selected-issue highlight
+    refreshPopoverContent()
     uiStore.setActiveRightTab('issues')
     if (!uiStore.rightPanelOpen) uiStore.toggleRightPanel()
-  }, [chartData, uiStore, visibleIssues, analysisStore])
+  }
 
   // Range slider change handler
-  const handleRangeChange = useCallback(
-    (newStart: number, newEnd: number) => {
-      uiStore.setZoom(newStart, newEnd)
-    },
-    [uiStore]
-  )
+  const handleRangeChange = (newStart: number, newEnd: number) => {
+    uiStore.setZoom(newStart, newEnd)
+  }
 
   // Scroll-to-zoom: wheel up zooms in, wheel down zooms out
   useEffect(() => {
@@ -838,7 +992,7 @@ export const LogChart = observer(() => {
     }
     el.addEventListener('wheel', handleWheel, { passive: false })
     return () => el.removeEventListener('wheel', handleWheel)
-  }, [uiStore, logStore.isLoaded])
+  }, [uiStore, logStore.isLoaded]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Compute zoom info for display
   const totalDuration = logStore.duration
@@ -870,65 +1024,60 @@ export const LogChart = observer(() => {
           </AxisButton>
         ))}
 
-        <div className="ml-auto flex items-center gap-2">
+        <ToggleBar>
           <ToggleLabel>
-            <input
+            <StyledCheckbox
               data-testid="toggle-gyro"
               type="checkbox"
               checked={uiStore.showGyro}
               onChange={uiStore.toggleGyro}
-              className="rounded"
             />
             Gyro
           </ToggleLabel>
           <ToggleLabel>
-            <input
+            <StyledCheckbox
               data-testid="toggle-setpoint"
               type="checkbox"
               checked={uiStore.showSetpoint}
               onChange={uiStore.toggleSetpoint}
-              className="rounded"
             />
             Setpoint
           </ToggleLabel>
           <ToggleLabel>
-            <input
+            <StyledCheckbox
               data-testid="toggle-dterm"
               type="checkbox"
               checked={uiStore.showPidD}
               onChange={uiStore.togglePidD}
-              className="rounded"
             />
             D-term
           </ToggleLabel>
           <ToggleLabel>
-            <input
+            <StyledCheckbox
               data-testid="toggle-motors"
               type="checkbox"
               checked={uiStore.showMotors}
               onChange={uiStore.toggleMotors}
-              className="rounded"
             />
             Motors
           </ToggleLabel>
           <ToggleLabel>
-            <input
+            <StyledCheckbox
               data-testid="toggle-issues"
               type="checkbox"
               checked={uiStore.showIssues}
               onChange={uiStore.toggleIssues}
-              className="rounded"
             />
             Issues
           </ToggleLabel>
-        </div>
+        </ToggleBar>
       </AxisBar>
 
       {/* Issue summary strip */}
       {uiStore.showIssues && visibleIssues.length > 0 && (
         <IssueSummaryStrip data-testid="issues-in-view">
           <IssueSummaryLabel>{visibleIssues.length} issue{visibleIssues.length !== 1 ? 's' : ''} in view</IssueSummaryLabel>
-          <div className="flex items-center gap-2 flex-wrap">
+          <IssuePillList>
             {visibleIssues.map(issue => (
               <IssuePill
                 key={issue.id}
@@ -973,7 +1122,7 @@ export const LogChart = observer(() => {
                 {issue.type}
               </IssuePill>
             ))}
-          </div>
+          </IssuePillList>
         </IssueSummaryStrip>
       )}
 
@@ -1013,7 +1162,7 @@ export const LogChart = observer(() => {
               hide
             />
             <Tooltip
-              active={hoveredIssues ? false : undefined}
+              active={isDraggingObs ? false : undefined}
               contentStyle={{
                 backgroundColor: theme.colors.chart.tooltipBg,
                 border: `1px solid ${theme.colors.chart.tooltipBorder}`,
@@ -1204,11 +1353,10 @@ export const LogChart = observer(() => {
                   const sorted = [...label.issues].sort(
                     (a, b) => (sevRank[a.severity] ?? 2) - (sevRank[b.severity] ?? 2)
                   )
-                  setForcedPopover(null)
-                  if (forcedPopoverTimer.current) clearTimeout(forcedPopoverTimer.current)
-                  setHoveredIssues({ issues: sorted, x: e.clientX, y: e.clientY })
+                  if (forcedPopoverTimer.current) { clearTimeout(forcedPopoverTimer.current); forcedPopoverTimer.current = null }
+                  updateHoverPopover({ issues: sorted, x: e.clientX, y: e.clientY })
                 }}
-                onMouseLeave={() => setHoveredIssues(null)}
+                onMouseLeave={() => updateHoverPopover(null)}
               >
                 {label.text}
               </ChartLabel>
@@ -1216,71 +1364,17 @@ export const LogChart = observer(() => {
           </LabelOverlay>
         )}
 
-        {/* Issue hover/forced popover */}
-        {(() => {
-          const activePopover = hoveredIssues || forcedPopover
-          if (!activePopover) return null
-          return (
-            <HoverPopover
-              data-testid="issue-popover"
-              style={{
-                left: activePopover.x + 12,
-                top: activePopover.y - 10,
-              }}
-            >
-              {activePopover.issues.map((issue, idx) => {
-                const isSelected = issue.id === analysisStore.selectedIssueId
-                return (
-                  <div
-                    key={issue.id}
-                    style={isSelected ? {
-                      borderLeft: `3px solid ${severityColor(issue.severity)}`,
-                      paddingLeft: '0.5rem',
-                      marginLeft: '-0.25rem',
-                    } : undefined}
-                  >
-                    {idx > 0 && <PopoverDivider />}
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <PopoverTitle style={isSelected ? { fontWeight: 700 } : undefined}>
-                        {issue.description}
-                      </PopoverTitle>
-                      <SeverityBadgeInline severity={issue.severity}>
-                        {issue.severity.toUpperCase()}
-                      </SeverityBadgeInline>
-                    </div>
-                    <PopoverMeta>
-                      Axis: {issue.axis}
-                    </PopoverMeta>
-                    <PopoverMetrics>
-                      {issue.metrics.overshoot !== undefined && (
-                        <p>Overshoot: {issue.metrics.overshoot.toFixed(1)}</p>
-                      )}
-                      {issue.metrics.frequency !== undefined && (
-                        <p>Frequency: {issue.metrics.frequency.toFixed(1)} Hz</p>
-                      )}
-                      {issue.metrics.amplitude !== undefined && (
-                        <p>Amplitude: {issue.metrics.amplitude.toFixed(1)} deg/s</p>
-                      )}
-                    </PopoverMetrics>
-                  </div>
-                )
-              })}
-              {activePopover.issues.length > 1 && (
-                <>
-                  <PopoverDivider />
-                  <PopoverMeta style={{ marginBottom: 0, fontStyle: 'italic' }}>
-                    Click to cycle through issues
-                  </PopoverMeta>
-                </>
-              )}
-            </HoverPopover>
-          )
-        })()}
+        {/* Issue hover popover — always mounted, managed imperatively */}
+        <HoverPopover
+          ref={popoverRef}
+          data-testid="issue-popover"
+          style={{ display: 'none' }}
+        />
       </ChartContainer>
 
       {/* Zoom controls */}
       <ZoomControls>
-        <div className="flex items-center justify-between mb-1">
+        <ZoomHeader>
           <ZoomInfoLabel>
             {zoomLevel.toFixed(1)}x ({windowSec.toFixed(1)}s window)
           </ZoomInfoLabel>
@@ -1290,7 +1384,7 @@ export const LogChart = observer(() => {
           >
             Reset
           </ZoomResetBtn>
-        </div>
+        </ZoomHeader>
         <RangeSlider
           start={uiStore.zoomStart}
           end={uiStore.zoomEnd}

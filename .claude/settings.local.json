@@ -29,7 +29,14 @@
       "Bash(pnpm build:*)",
       "Bash(pnpm test:*)",
       "Bash(pnpm ls:*)",
-      "Bash(node -e:*)"
+      "Bash(node -e:*)",
+      "Bash(timeout 15 pnpm dev:*)",
+      "Bash(npx kill-port:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "Bash(netstat:*)",
+      "Bash(xargs:*)",
+      "Bash(npx kill-port 5173 5174)"
     ]
   }
 }

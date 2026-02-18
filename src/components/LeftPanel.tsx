@@ -43,6 +43,11 @@ const ProgressMessage = styled.p`
   text-align: center;
 `
 
+const SegmentsScrollArea = styled.div`
+  flex: 1;
+  overflow-y: auto;
+`
+
 const SegmentsWrapper = styled.div`
   padding: 1rem;
 `
@@ -52,6 +57,12 @@ const SegmentsTitle = styled.h3`
   font-weight: 700;
   color: ${p => p.theme.colors.text.primary};
   margin-bottom: 0.75rem;
+`
+
+const SegmentList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 `
 
 const SegmentCard = styled.button<{ isSelected: boolean }>`
@@ -119,6 +130,10 @@ const LogInfoText = styled.div`
   }
 `
 
+const InfoLabel = styled.span`
+  font-weight: 500;
+`
+
 export const LeftPanel = observer(() => {
   const logStore = useLogStore()
   const analysisStore = useAnalysisStore()
@@ -144,10 +159,10 @@ export const LeftPanel = observer(() => {
       {logStore.isLoaded && <ProfileSelector />}
 
       {analysisStore.isComplete && analysisStore.segments.length > 0 && (
-        <div className="flex-1 overflow-y-auto">
+        <SegmentsScrollArea>
           <SegmentsWrapper>
             <SegmentsTitle>Flight Segments</SegmentsTitle>
-            <div data-testid="flight-segments" className="space-y-2">
+            <SegmentList data-testid="flight-segments">
               {analysisStore.segments.map(segment => (
                 <SegmentCard
                   key={segment.id}
@@ -179,9 +194,9 @@ export const LeftPanel = observer(() => {
                   <SegmentDesc>{segment.description}</SegmentDesc>
                 </SegmentCard>
               ))}
-            </div>
+            </SegmentList>
           </SegmentsWrapper>
-        </div>
+        </SegmentsScrollArea>
       )}
 
       {logStore.isLoaded && logStore.metadata && (
@@ -189,23 +204,23 @@ export const LeftPanel = observer(() => {
           <LogInfoTitle>Log Info</LogInfoTitle>
           <LogInfoText>
             <p>
-              <span className="font-medium">Firmware:</span>{' '}
+              <InfoLabel>Firmware:</InfoLabel>{' '}
               {logStore.metadata.firmwareType} {logStore.metadata.firmwareVersion}
             </p>
             <p>
-              <span className="font-medium">Loop Rate:</span>{' '}
+              <InfoLabel>Loop Rate:</InfoLabel>{' '}
               {(logStore.metadata.looptime / 1000).toFixed(1)}kHz
             </p>
             <p>
-              <span className="font-medium">Duration:</span>{' '}
+              <InfoLabel>Duration:</InfoLabel>{' '}
               {logStore.metadata.duration.toFixed(1)}s
             </p>
             <p>
-              <span className="font-medium">Motors:</span> {logStore.metadata.motorCount}
+              <InfoLabel>Motors:</InfoLabel> {logStore.metadata.motorCount}
             </p>
             {logStore.metadata.debugMode && (
               <p>
-                <span className="font-medium">Debug:</span>{' '}
+                <InfoLabel>Debug:</InfoLabel>{' '}
                 {logStore.metadata.debugMode}
               </p>
             )}
