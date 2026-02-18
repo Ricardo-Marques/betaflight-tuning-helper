@@ -23,6 +23,7 @@ export class UIStore {
   leftPanelOpen: boolean = true
   rightPanelOpen: boolean = true
   activeRightTab: RightPanelTab = 'summary'
+  changelogOpen: boolean = false
 
   private _animationFrameId: number | null = null
 
@@ -89,6 +90,14 @@ export class UIStore {
 
   setActiveRightTab = (tab: RightPanelTab): void => {
     this.activeRightTab = tab
+  }
+
+  openChangelog = (): void => {
+    this.changelogOpen = true
+  }
+
+  closeChangelog = (): void => {
+    this.changelogOpen = false
   }
 
   animateZoom = (targetStart: number, targetEnd: number, duration: number = 300): void => {

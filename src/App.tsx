@@ -5,8 +5,11 @@ import { LogChart } from './components/LogChart'
 import { RecommendationsPanel } from './components/RecommendationsPanel'
 import { FileUpload } from './components/FileUpload'
 import { ThemeToggle } from './components/ThemeToggle'
+import { ChangelogModal } from './components/ChangelogModal'
 import { useUIStore, useLogStore, useAnalysisStore } from './stores/RootStore'
 import { useObservableState } from './lib/mobx-reactivity'
+import { getLastSeenBuild } from './lib/changelog/lastSeenBuild'
+import changelogData from 'virtual:changelog'
 
 const AppContainer = styled.div`
   height: 100vh;
@@ -120,6 +123,37 @@ const Footer = styled.footer`
   padding: 0.5rem;
   text-align: center;
   flex-shrink: 0;
+`
+
+const FooterDivider = styled.span`
+  margin: 0 0.5rem;
+  opacity: 0.5;
+`
+
+const WhatsNewButton = styled.button`
+  position: relative;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: ${p => p.theme.colors.text.muted};
+  transition: color 0.15s;
+
+  &:hover {
+    color: ${p => p.theme.colors.text.link};
+  }
+`
+
+const NewDot = styled.span`
+  position: absolute;
+  top: -2px;
+  right: -8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: ${p => p.theme.colors.accent.indigo};
+  animation: attention-pulse 2s ease-in-out infinite;
 `
 
 const FullScreenUpload = styled.div`
@@ -308,7 +342,13 @@ export const App = observer(() => {
 
       <Footer>
         Betaflight Tuning Helper | Built for Betaflight 4.4/4.5
+        <FooterDivider>|</FooterDivider>
+        <WhatsNewButton onClick={uiStore.openChangelog}>
+          What&apos;s New
+          {getLastSeenBuild() !== changelogData.buildHash && <NewDot />}
+        </WhatsNewButton>
       </Footer>
+      <ChangelogModal />
     </AppContainer>
   )
 })
