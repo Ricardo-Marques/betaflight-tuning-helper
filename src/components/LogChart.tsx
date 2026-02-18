@@ -585,6 +585,8 @@ export const LogChart = observer(() => {
 
     const entries: { key: string; px: number; isSelected: boolean; sev: number; issue: DetectedIssue }[] = []
     for (const issue of visibleIssues) {
+      // When issues hidden, only build labels for the selected issue
+      if (!uiStore.showIssues && issue.id !== analysisStore.selectedIssueId) continue
       const times = issue.occurrences ?? [issue.timeRange]
       const isIssueSelected = issue.id === analysisStore.selectedIssueId
       for (let idx = 0; idx < times.length; idx++) {
@@ -631,7 +633,7 @@ export const LogChart = observer(() => {
 
     return result
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visibleIssues, containerWidth, chartData, analysisStore.selectedIssueId, analysisStore.selectedOccurrenceIdx])
+  }, [visibleIssues, containerWidth, chartData, analysisStore.selectedIssueId, analysisStore.selectedOccurrenceIdx, uiStore.showIssues])
 
   // Handle chart mouse move for issue hover detection + drag-to-pan
   const handleChartMouseMove = useCallback(
@@ -883,11 +885,21 @@ export const LogChart = observer(() => {
             />
             Motors
           </ToggleLabel>
+          <ToggleLabel>
+            <input
+              data-testid="toggle-issues"
+              type="checkbox"
+              checked={uiStore.showIssues}
+              onChange={uiStore.toggleIssues}
+              className="rounded"
+            />
+            Issues
+          </ToggleLabel>
         </div>
       </AxisBar>
 
       {/* Issue summary strip */}
-      {visibleIssues.length > 0 && (
+      {uiStore.showIssues && visibleIssues.length > 0 && (
         <IssueSummaryStrip data-testid="issues-in-view">
           <IssueSummaryLabel>{visibleIssues.length} issue{visibleIssues.length !== 1 ? 's' : ''} in view</IssueSummaryLabel>
           <div className="flex items-center gap-2 flex-wrap">
@@ -963,9 +975,14 @@ export const LogChart = observer(() => {
               tickFormatter={(value: number) => value.toFixed(1)}
             />
             <YAxis
+              yAxisId="primary"
               width={50}
               label={{ value: 'deg/s', angle: -90, position: 'insideLeft' }}
               stroke={theme.colors.chart.axis}
+            />
+            <YAxis
+              yAxisId="motor"
+              hide
             />
             <Tooltip
               active={hoveredIssues ? false : undefined}
@@ -984,6 +1001,8 @@ export const LogChart = observer(() => {
               const sevRank: Record<string, number> = { high: 0, medium: 1, low: 2 }
               const allLines: { x: number; issue: DetectedIssue; idx: number; isSelected: boolean; sev: number }[] = []
               for (const issue of visibleIssues) {
+                // When issues hidden, only include the selected issue
+                if (!uiStore.showIssues && issue.id !== analysisStore.selectedIssueId) continue
                 const times = issue.occurrences ?? [issue.timeRange]
                 const isIssueSelected = issue.id === analysisStore.selectedIssueId
                 for (let idx = 0; idx < times.length; idx++) {
@@ -1024,6 +1043,7 @@ export const LogChart = observer(() => {
                     <ReferenceLine
                       key={`issue-glow-${l.issue.id}-${l.idx}`}
                       x={l.x}
+                      yAxisId="primary"
                       stroke={severityColor(l.issue.severity)}
                       strokeWidth={10}
                       strokeOpacity={0.25}
@@ -1035,6 +1055,7 @@ export const LogChart = observer(() => {
                   <ReferenceLine
                     key={`issue-${l.issue.id}-${l.idx}`}
                     x={l.x}
+                    yAxisId="primary"
                     stroke={severityColor(l.issue.severity)}
                     strokeWidth={showAsSelected ? 3.5 : 1.5}
                     strokeDasharray={showAsSelected ? undefined : '4 3'}
@@ -1049,6 +1070,7 @@ export const LogChart = observer(() => {
               <Line
                 type="monotone"
                 dataKey="gyro"
+                yAxisId="primary"
                 stroke={theme.colors.chart.gyro}
                 strokeWidth={2}
                 dot={false}
@@ -1061,6 +1083,7 @@ export const LogChart = observer(() => {
               <Line
                 type="monotone"
                 dataKey="setpoint"
+                yAxisId="primary"
                 stroke={theme.colors.chart.setpoint}
                 strokeWidth={2}
                 dot={false}
@@ -1074,6 +1097,7 @@ export const LogChart = observer(() => {
               <Line
                 type="monotone"
                 dataKey="pidD"
+                yAxisId="primary"
                 stroke={theme.colors.chart.pidD}
                 strokeWidth={1.5}
                 dot={false}
@@ -1087,6 +1111,7 @@ export const LogChart = observer(() => {
                 <Line
                   type="monotone"
                   dataKey="motor1"
+                  yAxisId="motor"
                   stroke={theme.colors.chart.motor1}
                   strokeWidth={1}
                   dot={false}
@@ -1097,6 +1122,7 @@ export const LogChart = observer(() => {
                 <Line
                   type="monotone"
                   dataKey="motor2"
+                  yAxisId="motor"
                   stroke={theme.colors.chart.motor2}
                   strokeWidth={1}
                   dot={false}
@@ -1107,6 +1133,7 @@ export const LogChart = observer(() => {
                 <Line
                   type="monotone"
                   dataKey="motor3"
+                  yAxisId="motor"
                   stroke={theme.colors.chart.motor3}
                   strokeWidth={1}
                   dot={false}
@@ -1117,6 +1144,7 @@ export const LogChart = observer(() => {
                 <Line
                   type="monotone"
                   dataKey="motor4"
+                  yAxisId="motor"
                   stroke={theme.colors.chart.motor4}
                   strokeWidth={1}
                   dot={false}

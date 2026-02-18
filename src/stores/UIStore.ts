@@ -19,6 +19,7 @@ export class UIStore {
   showPidD: boolean = false
   showMotors: boolean = true
   showThrottle: boolean = true
+  showIssues: boolean = true
 
   // UI panels
   leftPanelOpen: boolean = true
@@ -41,6 +42,7 @@ export class UIStore {
       showPidD: observable,
       showMotors: observable,
       showThrottle: observable,
+      showIssues: observable,
       leftPanelOpen: observable,
       rightPanelOpen: observable,
       activeRightTab: observable,
@@ -54,6 +56,7 @@ export class UIStore {
       togglePidD: action,
       toggleMotors: action,
       toggleThrottle: action,
+      toggleIssues: action,
       toggleLeftPanel: action,
       toggleRightPanel: action,
       setActiveRightTab: action,
@@ -137,6 +140,10 @@ export class UIStore {
     this.showThrottle = !this.showThrottle
   }
 
+  toggleIssues = (): void => {
+    this.showIssues = !this.showIssues
+  }
+
   /**
    * Toggle left panel
    */
@@ -207,6 +214,7 @@ export class UIStore {
     this.showPidD = false
     this.showMotors = true
     this.showThrottle = true
+    this.showIssues = true
     this.activeRightTab = 'summary'
   }
 }
