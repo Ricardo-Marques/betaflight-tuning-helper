@@ -789,6 +789,7 @@ const IssueCard = observer(({ issue, onNavigateToRec }: { issue: DetectedIssue; 
   return (
     <IssueCardWrapper
       data-issue-id={issue.id}
+      data-selected={isSelected || undefined}
       severity={issue.severity}
       isSelected={isSelected}
       onClick={handleClick}

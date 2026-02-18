@@ -182,6 +182,7 @@ export const LeftPanel = observer(() => {
                 <SegmentCard
                   key={segment.id}
                   data-testid={`segment-${segment.id}`}
+                  data-selected={analysisStore.selectedSegmentId === segment.id || undefined}
                   isSelected={analysisStore.selectedSegmentId === segment.id}
                   onClick={() => {
                     analysisStore.selectSegment(segment.id)

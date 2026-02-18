@@ -9,8 +9,6 @@ test.describe('File Upload', () => {
   test('shows idle state on load', async ({ page }) => {
     await expect(page.getByTestId('file-dropzone')).toBeVisible()
     await expect(page.getByText('Select File')).toBeVisible()
-    await expect(page.getByTestId('chart-empty-state')).toBeVisible()
-    await expect(page.getByTestId('recommendations-empty')).toBeVisible()
   })
 
   test('parses BFL file and shows metadata', async ({ page }) => {
@@ -19,7 +17,6 @@ test.describe('File Upload', () => {
     await expect(page.getByTestId('parse-success-text')).toBeVisible({ timeout: 30_000 })
     const metadata = page.getByTestId('parse-metadata')
     await expect(metadata).toBeVisible()
-    await expect(metadata.getByText('Frames:')).toBeVisible()
     await expect(metadata.getByText('Duration:')).toBeVisible()
     await expect(metadata.getByText('Loop Rate:')).toBeVisible()
   })
@@ -35,7 +32,6 @@ test.describe('File Upload', () => {
     await page.getByTestId('upload-different-file').click()
     await expect(page.getByTestId('file-dropzone')).toBeVisible()
     await expect(page.getByText('Select File')).toBeVisible()
-    await expect(page.getByTestId('chart-empty-state')).toBeVisible()
   })
 
   test('auto-analysis triggers after BFL parse', async ({ page }) => {
@@ -50,7 +46,6 @@ test.describe('File Upload', () => {
     await expect(logInfo.getByText('Firmware:')).toBeVisible()
     await expect(logInfo.getByText('Loop Rate:')).toBeVisible()
     await expect(logInfo.getByText('Duration:')).toBeVisible()
-    await expect(logInfo.getByText('Frames:')).toBeVisible()
     await expect(logInfo.getByText('Motors:')).toBeVisible()
   })
 

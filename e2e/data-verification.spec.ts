@@ -21,6 +21,7 @@ const VALID_CLI_PARAMS = new Set([
   'rpm_filter_harmonics', 'rpm_filter_min_hz',
   'dshot_idle_value',
   'tpa_rate', 'tpa_breakpoint',
+  'iterm_relax_cutoff',
 ])
 
 const VALID_ISSUE_TYPES = new Set([
@@ -38,6 +39,8 @@ async function metricText(card: ReturnType<Page['locator']>, label: string): Pro
 
 /** Extract structured issue data from all issue cards on the page */
 async function extractIssues(page: Page) {
+  // Issues are on the Issues tab (default tab is Summary)
+  await page.locator('button').filter({ hasText: /^Issues/ }).click()
   const cards = page.locator('[data-issue-id]')
   const count = await cards.count()
   const issues: {
@@ -93,9 +96,6 @@ test.describe('Data Verification', () => {
 
   test('at least 3 distinct issue types detected', async ({ page }) => {
     const issues = await extractIssues(page)
-    // Extract issue types from descriptions — multi-occurrence issues have "(×N)" suffix
-    // The type appears as the reference line label on the chart; descriptions are human-readable
-    // but we can check diversity by unique description prefixes (before the "(×N)")
     const uniqueDescriptions = new Set(
       issues.map(i => i.description.replace(/\s*\(×\d+\)$/, ''))
     )
@@ -137,28 +137,30 @@ test.describe('Data Verification', () => {
   })
 
   test('summary issue counts match actual severity distribution', async ({ page }) => {
+    // Read summary counts first (Summary tab is default)
+    const summary = page.getByTestId('analysis-summary')
+
+    const highText = await summary.getByText(/^High:/).textContent()
+    const mediumText = await summary.getByText(/^Medium:/).textContent()
+    const lowText = await summary.getByText(/^Low:/).textContent()
+
+    const parsedHigh = parseInt(highText!.replace('High:', '').trim())
+    const parsedMedium = parseInt(mediumText!.replace('Medium:', '').trim())
+    const parsedLow = parseInt(lowText!.replace('Low:', '').trim())
+
+    // Then switch to Issues tab to count actual issues
     const issues = await extractIssues(page)
     const highCount = issues.filter(i => i.severity === 'HIGH').length
     const mediumCount = issues.filter(i => i.severity === 'MEDIUM').length
     const lowCount = issues.filter(i => i.severity === 'LOW').length
 
-    const summary = page.getByTestId('analysis-summary')
-
-    // RuleEngine: criticalIssueCount = high, majorIssueCount = medium, minorIssueCount = medium+low
-    const criticalText = await summary.getByText('Critical Issues:').textContent()
-    const majorText = await summary.getByText('Major Issues:').textContent()
-    const minorText = await summary.getByText('Minor Issues:').textContent()
-
-    const criticalCount = parseInt(criticalText!.replace('Critical Issues:', '').trim())
-    const majorCount = parseInt(majorText!.replace('Major Issues:', '').trim())
-    const minorCount = parseInt(minorText!.replace('Minor Issues:', '').trim())
-
-    expect(criticalCount).toBe(highCount)
-    expect(majorCount).toBe(mediumCount)
-    expect(minorCount).toBe(mediumCount + lowCount)
+    expect(parsedHigh).toBe(highCount)
+    expect(parsedMedium).toBe(mediumCount)
+    expect(parsedLow).toBe(lowCount)
   })
 
   test('each severity group contains only matching issues', async ({ page }) => {
+    await page.locator('button').filter({ hasText: /^Issues/ }).click()
     for (const sev of ['high', 'medium', 'low'] as const) {
       const group = page.getByTestId(`severity-group-${sev}`)
       if (await group.count() === 0) continue
@@ -176,7 +178,7 @@ test.describe('Data Verification', () => {
 
   test('CLI commands reference only valid Betaflight parameters', async ({ page }) => {
     const cli = page.getByTestId('cli-commands-section')
-    await cli.locator('details summary').click()
+    await cli.getByText('Preview').click()
     const pre = cli.locator('pre')
     const cliText = await pre.textContent()
 
@@ -194,18 +196,20 @@ test.describe('Data Verification', () => {
 
   test('CLI commands end with save', async ({ page }) => {
     const cli = page.getByTestId('cli-commands-section')
-    await cli.locator('details summary').click()
+    await cli.getByText('Preview').click()
     const cliText = await cli.locator('pre').textContent()
     const lines = cliText!.trim().split('\n').filter(l => l.trim().length > 0)
     expect(lines[lines.length - 1].trim()).toBe('save')
   })
 
-  test('all "See:" links point to visible recommendations', async ({ page }) => {
-    const seeLinks = page.locator('[data-issue-id]').locator('button').filter({ hasText: /^See:/ })
-    const linkCount = await seeLinks.count()
+  test('all "Fix:" links point to visible recommendations', async ({ page }) => {
+    await page.locator('button').filter({ hasText: /^Issues/ }).click()
+    const fixLinks = page.locator('[data-issue-id]').locator('button').filter({ hasText: /^Fix:/ })
+    const linkCount = await fixLinks.count()
     if (linkCount === 0) return
 
-    // Get all recommendation titles
+    // Switch to Fixes tab to get recommendation titles
+    await page.locator('button').filter({ hasText: /^Fixes/ }).click()
     const recSection = page.getByTestId('recommendations-section')
     const recCards = recSection.locator('[data-rec-id]')
     const recTitles: string[] = []
@@ -215,10 +219,11 @@ test.describe('Data Verification', () => {
       recTitles.push(title!.trim())
     }
 
-    // Each "See: X" link should match a recommendation title
+    // Switch back to Issues tab to read links
+    await page.locator('button').filter({ hasText: /^Issues/ }).click()
     for (let i = 0; i < linkCount; i++) {
-      const linkText = await seeLinks.nth(i).textContent()
-      const recTitle = linkText!.replace('See:', '').trim()
+      const linkText = await fixLinks.nth(i).textContent()
+      const recTitle = linkText!.replace('Fix:', '').trim()
       expect(recTitles).toContain(recTitle)
     }
   })
@@ -241,7 +246,8 @@ test.describe('Data Verification', () => {
       priorityTexts.push((await items.nth(i).textContent())!.trim())
     }
 
-    // These should match recommendation titles from the section
+    // Switch to Fixes tab to get recommendation titles
+    await page.locator('button').filter({ hasText: /^Fixes/ }).click()
     const recSection = page.getByTestId('recommendations-section')
     const recCards = recSection.locator('[data-rec-id]')
     const recTitles: string[] = []
@@ -256,6 +262,8 @@ test.describe('Data Verification', () => {
   })
 
   test('recommendation priorities are in descending order', async ({ page }) => {
+    // Switch to Fixes tab
+    await page.locator('button').filter({ hasText: /^Fixes/ }).click()
     const recSection = page.getByTestId('recommendations-section')
     const recCards = recSection.locator('[data-rec-id]')
     const count = await recCards.count()
@@ -275,6 +283,7 @@ test.describe('Data Verification', () => {
   })
 
   test('multi-occurrence issue count matches navigator', async ({ page }) => {
+    await page.locator('button').filter({ hasText: /^Issues/ }).click()
     // Find all issues with (×N) in their description
     const cards = page.locator('[data-issue-id]')
     const count = await cards.count()

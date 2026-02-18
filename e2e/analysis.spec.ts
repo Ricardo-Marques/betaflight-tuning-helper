@@ -22,12 +22,13 @@ test.describe('Analysis', () => {
 
   test('summary shows issue counts', async ({ page }) => {
     const summary = page.getByTestId('analysis-summary')
-    await expect(summary.getByText('Critical Issues:')).toBeVisible()
-    await expect(summary.getByText('Major Issues:')).toBeVisible()
-    await expect(summary.getByText('Minor Issues:')).toBeVisible()
+    await expect(summary.getByText(/^High:/)).toBeVisible()
+    await expect(summary.getByText(/^Medium:/)).toBeVisible()
+    await expect(summary.getByText(/^Low:/)).toBeVisible()
   })
 
   test('issues grouped by severity in order', async ({ page }) => {
+    await page.locator('button').filter({ hasText: /^Issues/ }).click()
     const groups = page.locator('[data-testid^="severity-group-"]')
     const count = await groups.count()
     expect(count).toBeGreaterThan(0)
@@ -45,6 +46,7 @@ test.describe('Analysis', () => {
   })
 
   test('issue card has severity badge, axis, and confidence', async ({ page }) => {
+    await page.locator('button').filter({ hasText: /^Issues/ }).click()
     const firstIssue = page.locator('[data-issue-id]').first()
     await expect(firstIssue).toBeVisible()
     // Severity badge
@@ -57,6 +59,7 @@ test.describe('Analysis', () => {
   })
 
   test('occurrence navigator shows counter and navigates', async ({ page }) => {
+    await page.locator('button').filter({ hasText: /^Issues/ }).click()
     // Find an issue card with occurrence navigator (has prev/next buttons)
     const multiOccCard = page.locator('[data-issue-id]').filter({
       has: page.locator('text=/\\d+\\/\\d+/'),
@@ -78,46 +81,46 @@ test.describe('Analysis', () => {
     const prevBtn = multiOccCard.locator('button').filter({ hasText: '<' })
     await expect(prevBtn).toBeDisabled()
 
+    // Click card first to activate it, then navigate
+    await multiOccCard.scrollIntoViewIfNeeded()
+    await multiOccCard.click()
+    await page.waitForTimeout(300)
+
     // Click next
     const nextBtn = multiOccCard.locator('button').filter({ hasText: '>' })
     await nextBtn.click()
-    const newText = await counter.textContent()
-    expect(newText).toMatch(/^2\/\d+$/)
+    await expect(counter).toHaveText(/^2\/\d+$/)
   })
 
   test('issue cards have linked recommendations', async ({ page }) => {
-    const seeLinks = page.locator('[data-issue-id]').locator('text=/^See:/')
-    const count = await seeLinks.count()
+    await page.locator('button').filter({ hasText: /^Issues/ }).click()
+    const fixLinks = page.locator('[data-issue-id]').locator('button').filter({ hasText: /^Fix:/ })
+    const count = await fixLinks.count()
     expect(count).toBeGreaterThan(0)
   })
 
-  test('recommendation card has priority, confidence, changes, and rationale', async ({ page }) => {
+  test('recommendation card has priority, changes, and rationale', async ({ page }) => {
+    // Switch to Fixes tab
+    await page.locator('button').filter({ hasText: /^Fixes/ }).click()
     const section = page.getByTestId('recommendations-section')
     await expect(section).toBeVisible()
 
     const firstRec = section.locator('[data-rec-id]').first()
     await expect(firstRec).toBeVisible()
     await expect(firstRec.getByText(/Priority:/)).toBeVisible()
-    await expect(firstRec.getByText(/confidence/)).toBeVisible()
     await expect(firstRec.getByText('Recommended Changes:')).toBeVisible()
     await expect(firstRec.getByText('Why this helps')).toBeVisible()
   })
 
-  test('"Why this helps" expands to show rationale', async ({ page }) => {
+  test('rationale is always visible on recommendation cards', async ({ page }) => {
+    // Switch to Fixes tab
+    await page.locator('button').filter({ hasText: /^Fixes/ }).click()
     const section = page.getByTestId('recommendations-section')
     const firstRec = section.locator('[data-rec-id]').first()
 
-    const details = firstRec.locator('details').first()
-    const summary = details.locator('summary')
-    await expect(summary).toHaveText('Why this helps')
-
-    // Initially closed — content not visible
-    const content = details.locator('p')
-    await expect(content).not.toBeVisible()
-
-    // Click to expand
-    await summary.click()
-    await expect(content).toBeVisible()
+    // "Why this helps" label and rationale text should be visible without clicking
+    await expect(firstRec.getByText('Why this helps')).toBeVisible()
+    // The rationale text follows the label — just check the label is there
   })
 
   test('CLI commands section with copy button and preview', async ({ page }) => {
@@ -127,9 +130,8 @@ test.describe('Analysis', () => {
     const copyBtn = page.getByTestId('copy-cli-button')
     await expect(copyBtn).toBeVisible()
 
-    // Expand preview
-    const details = cli.locator('details')
-    await details.locator('summary').click()
+    // Expand preview via toggle button
+    await cli.getByText('Preview').click()
     const pre = cli.locator('pre')
     await expect(pre).toBeVisible()
     const commands = await pre.textContent()

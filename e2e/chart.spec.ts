@@ -24,13 +24,13 @@ test.describe('Chart', () => {
     const pitchBtn = page.getByTestId('axis-button-pitch')
 
     // Roll active by default
-    await expect(rollBtn).toHaveClass(/bg-blue-600/)
-    await expect(pitchBtn).not.toHaveClass(/bg-blue-600/)
+    await expect(rollBtn).toHaveAttribute('data-active', 'true')
+    await expect(pitchBtn).not.toHaveAttribute('data-active')
 
     // Click Pitch
     await pitchBtn.click()
-    await expect(pitchBtn).toHaveClass(/bg-blue-600/)
-    await expect(rollBtn).not.toHaveClass(/bg-blue-600/)
+    await expect(pitchBtn).toHaveAttribute('data-active', 'true')
+    await expect(rollBtn).not.toHaveAttribute('data-active')
   })
 
   test('toggling Gyro off decreases line count', async ({ page }) => {
@@ -53,45 +53,28 @@ test.describe('Chart', () => {
     expect(linesAfter).toBeGreaterThan(linesBefore)
   })
 
-  test('zoom start slider updates label', async ({ page }) => {
-    // First reduce duration so start slider has room to move
-    await page.getByTestId('zoom-duration-slider').fill('50')
-    await page.waitForTimeout(300)
+  test('zoom slider changes zoom level', async ({ page }) => {
+    const slider = page.getByTestId('zoom-level-slider')
+    const valueBefore = parseFloat(await slider.inputValue())
+    expect(valueBefore).toBeCloseTo(1, 0) // starts at 1x
 
-    const slider = page.getByTestId('zoom-start-slider')
-    const label = page.locator('text=/Start:/')
-
-    const before = await label.textContent()
-    await slider.fill('20')
+    await slider.fill('5')
     await page.waitForTimeout(300)
-    const after = await label.textContent()
-    expect(after).not.toBe(before)
+    const valueAfter = parseFloat(await slider.inputValue())
+    expect(valueAfter).toBeCloseTo(5, 0)
   })
 
-  test('zoom duration slider updates label', async ({ page }) => {
-    const slider = page.getByTestId('zoom-duration-slider')
-    const label = page.locator('text=/Window:/')
-
-    const before = await label.textContent()
-    await slider.fill('30')
-    await page.waitForTimeout(300)
-    const after = await label.textContent()
-    expect(after).not.toBe(before)
-  })
-
-  test('reset zoom returns sliders to defaults', async ({ page }) => {
+  test('reset zoom returns to 1x', async ({ page }) => {
     // Zoom in first
-    await page.getByTestId('zoom-duration-slider').fill('30')
+    await page.getByTestId('zoom-level-slider').fill('5')
     await page.waitForTimeout(300)
 
     // Reset
     await page.getByTestId('zoom-reset-button').click()
     await page.waitForTimeout(500)
 
-    const startVal = await page.getByTestId('zoom-start-slider').inputValue()
-    const durVal = await page.getByTestId('zoom-duration-slider').inputValue()
-    expect(parseFloat(startVal)).toBe(0)
-    expect(parseFloat(durVal)).toBe(100)
+    const val = parseFloat(await page.getByTestId('zoom-level-slider').inputValue())
+    expect(val).toBeCloseTo(1, 0)
   })
 
   test('issue markers are present on chart', async ({ page }) => {
@@ -102,14 +85,14 @@ test.describe('Chart', () => {
 
   test('scroll-wheel zooms chart', async ({ page }) => {
     const container = page.getByTestId('chart-container')
-    const durBefore = parseFloat(await page.getByTestId('zoom-duration-slider').inputValue())
+    const valBefore = parseFloat(await page.getByTestId('zoom-level-slider').inputValue())
 
     // Scroll up (zoom in)
     await container.hover()
     await page.mouse.wheel(0, -300)
     await page.waitForTimeout(500)
 
-    const durAfter = parseFloat(await page.getByTestId('zoom-duration-slider').inputValue())
-    expect(durAfter).toBeLessThan(durBefore)
+    const valAfter = parseFloat(await page.getByTestId('zoom-level-slider').inputValue())
+    expect(valAfter).toBeGreaterThan(valBefore)
   })
 })
