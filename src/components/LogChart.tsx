@@ -1,4 +1,6 @@
 import { observer } from 'mobx-react-lite'
+import styled from '@emotion/styled'
+import { useTheme } from '@emotion/react'
 import { useLogStore, useUIStore, useAnalysisStore } from '../stores/RootStore'
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react'
 import {
@@ -20,10 +22,184 @@ interface HoveredIssue {
   y: number
 }
 
+const ChartWrapper = styled.div`
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  color: ${p => p.theme.colors.text.primary};
+`
+
+const EmptyState = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: ${p => p.theme.colors.text.muted};
+`
+
+const AxisBar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid ${p => p.theme.colors.border.main};
+`
+
+const AxisLabel = styled.span`
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: ${p => p.theme.colors.text.primary};
+`
+
+const AxisButton = styled.button<{ isActive: boolean }>`
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background-color 0.15s, color 0.15s;
+  border: none;
+  cursor: pointer;
+  color: ${p => p.isActive ? p.theme.colors.button.primaryText : p.theme.colors.text.primary};
+  background-color: ${p => p.isActive ? p.theme.colors.button.primary : p.theme.colors.button.secondary};
+
+  &:hover {
+    background-color: ${p => p.isActive ? p.theme.colors.button.primaryHover : p.theme.colors.button.secondaryHover};
+  }
+`
+
+const ToggleLabel = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: ${p => p.theme.colors.text.primary};
+`
+
+const IssueSummaryStrip = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.375rem 1rem;
+  border-bottom: 1px solid ${p => p.theme.colors.border.main};
+  background-color: ${p => p.theme.colors.background.section};
+`
+
+const IssueSummaryLabel = styled.span`
+  font-size: 0.75rem;
+  color: ${p => p.theme.colors.text.muted};
+`
+
+const IssuePill = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+`
+
+const IssueDot = styled.span`
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+`
+
+const ChartContainer = styled.div`
+  flex: 1;
+  padding: 1rem;
+  position: relative;
+  cursor: grab;
+  user-select: none;
+
+  &:active {
+    cursor: grabbing;
+  }
+`
+
+const HoverPopover = styled.div`
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  background-color: ${p => p.theme.colors.background.panel};
+  border: 1px solid ${p => p.theme.colors.border.main};
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  padding: 0.75rem;
+  max-width: 20rem;
+`
+
+const PopoverTitle = styled.p`
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: ${p => p.theme.colors.text.primary};
+`
+
+const SeverityBadgeInline = styled.span<{ severity: string }>`
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  flex-shrink: 0;
+  background-color: ${p =>
+    p.severity === 'high' ? p.theme.colors.severity.highBg
+    : p.severity === 'medium' ? p.theme.colors.severity.mediumBg
+    : p.theme.colors.severity.lowBg};
+  color: ${p =>
+    p.severity === 'high' ? p.theme.colors.severity.highText
+    : p.severity === 'medium' ? p.theme.colors.severity.mediumText
+    : p.theme.colors.severity.lowText};
+`
+
+const PopoverMeta = styled.p`
+  font-size: 0.75rem;
+  color: ${p => p.theme.colors.text.muted};
+  margin-bottom: 0.25rem;
+`
+
+const PopoverMetrics = styled.div`
+  font-size: 0.75rem;
+  color: ${p => p.theme.colors.text.secondary};
+
+  & > p + p {
+    margin-top: 0.125rem;
+  }
+`
+
+const ZoomControls = styled.div`
+  padding: 0.75rem 1rem;
+  border-top: 1px solid ${p => p.theme.colors.border.main};
+`
+
+const ZoomLabel = styled.span`
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: ${p => p.theme.colors.text.secondary};
+`
+
+const ZoomResetBtn = styled.button`
+  font-size: 0.875rem;
+  color: ${p => p.theme.colors.text.link};
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+
+  &:hover {
+    color: ${p => p.theme.colors.text.linkHover};
+  }
+`
+
 export const LogChart = observer(() => {
   const logStore = useLogStore()
   const uiStore = useUIStore()
   const analysisStore = useAnalysisStore()
+  const theme = useTheme()
   const [hoveredIssue, setHoveredIssue] = useState<HoveredIssue | null>(null)
   const [showGlow, setShowGlow] = useState(false)
   const glowTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -275,41 +451,37 @@ export const LogChart = observer(() => {
 
   if (!logStore.isLoaded) {
     return (
-      <div data-testid="chart-empty-state" className="flex items-center justify-center h-full text-gray-500">
+      <EmptyState data-testid="chart-empty-state">
         <p>Upload a log file to view data</p>
-      </div>
+      </EmptyState>
     )
   }
 
   const severityColor = (severity: string) =>
     severity === 'high'
-      ? '#dc2626'
+      ? theme.colors.severity.high
       : severity === 'medium'
-      ? '#f59e0b'
-      : '#3b82f6'
+      ? theme.colors.severity.medium
+      : theme.colors.severity.low
 
   return (
-    <div className="h-full flex flex-col">
+    <ChartWrapper>
       {/* Axis selector */}
-      <div data-testid="axis-selector" className="flex items-center gap-4 p-4 border-b">
-        <span className="text-sm font-medium text-gray-700">Axis:</span>
+      <AxisBar data-testid="axis-selector">
+        <AxisLabel>Axis:</AxisLabel>
         {(['roll', 'pitch', 'yaw'] as const).map(axis => (
-          <button
+          <AxisButton
             key={axis}
             data-testid={`axis-button-${axis}`}
+            isActive={uiStore.selectedAxis === axis}
             onClick={() => uiStore.setAxis(axis)}
-            className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-              uiStore.selectedAxis === axis
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
           >
             {axis.charAt(0).toUpperCase() + axis.slice(1)}
-          </button>
+          </AxisButton>
         ))}
 
         <div className="ml-auto flex items-center gap-2">
-          <label className="flex items-center gap-2 text-sm">
+          <ToggleLabel>
             <input
               data-testid="toggle-gyro"
               type="checkbox"
@@ -318,8 +490,8 @@ export const LogChart = observer(() => {
               className="rounded"
             />
             Gyro
-          </label>
-          <label className="flex items-center gap-2 text-sm">
+          </ToggleLabel>
+          <ToggleLabel>
             <input
               data-testid="toggle-setpoint"
               type="checkbox"
@@ -328,8 +500,8 @@ export const LogChart = observer(() => {
               className="rounded"
             />
             Setpoint
-          </label>
-          <label className="flex items-center gap-2 text-sm">
+          </ToggleLabel>
+          <ToggleLabel>
             <input
               data-testid="toggle-dterm"
               type="checkbox"
@@ -338,8 +510,8 @@ export const LogChart = observer(() => {
               className="rounded"
             />
             D-term
-          </label>
-          <label className="flex items-center gap-2 text-sm">
+          </ToggleLabel>
+          <ToggleLabel>
             <input
               data-testid="toggle-motors"
               type="checkbox"
@@ -348,17 +520,17 @@ export const LogChart = observer(() => {
               className="rounded"
             />
             Motors
-          </label>
+          </ToggleLabel>
         </div>
-      </div>
+      </AxisBar>
 
-      {/* B2: Issue summary strip */}
+      {/* Issue summary strip */}
       {visibleIssues.length > 0 && (
-        <div className="flex items-center gap-3 px-4 py-1.5 border-b bg-gray-50">
-          <span className="text-xs text-gray-500">{visibleIssues.length} issue{visibleIssues.length !== 1 ? 's' : ''} in view</span>
+        <IssueSummaryStrip>
+          <IssueSummaryLabel>{visibleIssues.length} issue{visibleIssues.length !== 1 ? 's' : ''} in view</IssueSummaryLabel>
           <div className="flex items-center gap-2 flex-wrap">
             {visibleIssues.map(issue => (
-              <button
+              <IssuePill
                 key={issue.id}
                 onClick={() => {
                   analysisStore.selectIssue(issue.id, 0)
@@ -376,22 +548,18 @@ export const LogChart = observer(() => {
                     }
                   }
                 }}
-                className="flex items-center gap-1 text-xs hover:underline"
                 style={{ color: severityColor(issue.severity) }}
               >
-                <span
-                  className="inline-block w-2 h-2 rounded-full"
-                  style={{ backgroundColor: severityColor(issue.severity) }}
-                />
+                <IssueDot style={{ backgroundColor: severityColor(issue.severity) }} />
                 {issue.type}
-              </button>
+              </IssuePill>
             ))}
           </div>
-        </div>
+        </IssueSummaryStrip>
       )}
 
       {/* Chart */}
-      <div data-testid="chart-container" ref={chartContainerRef} className="flex-1 p-4 relative cursor-grab active:cursor-grabbing select-none">
+      <ChartContainer data-testid="chart-container" ref={chartContainerRef}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={chartData}
@@ -400,27 +568,28 @@ export const LogChart = observer(() => {
             onMouseUp={handleChartMouseUp}
             onMouseLeave={handleChartMouseLeave}
           >
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <CartesianGrid strokeDasharray="3 3" stroke={theme.colors.chart.grid} />
             <XAxis
               dataKey="time"
               type="number"
               domain={['dataMin', 'dataMax']}
               height={50}
               label={{ value: 'Time (s)', position: 'insideBottom', offset: -2 }}
-              stroke="#6b7280"
+              stroke={theme.colors.chart.axis}
               tick={{ dy: 4 }}
               tickFormatter={(value: number) => value.toFixed(1)}
             />
             <YAxis
               label={{ value: 'deg/s', angle: -90, position: 'insideLeft' }}
-              stroke="#6b7280"
+              stroke={theme.colors.chart.axis}
             />
             <Tooltip
               active={hoveredIssue ? false : undefined}
               contentStyle={{
-                backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                border: '1px solid #e5e7eb',
+                backgroundColor: theme.colors.chart.tooltipBg,
+                border: `1px solid ${theme.colors.chart.tooltipBorder}`,
                 borderRadius: '6px',
+                color: theme.colors.text.primary,
               }}
             />
             <Legend wrapperStyle={{ paddingTop: 8 }} />
@@ -469,7 +638,7 @@ export const LogChart = observer(() => {
               <Line
                 type="monotone"
                 dataKey="gyro"
-                stroke="#3b82f6"
+                stroke={theme.colors.chart.gyro}
                 strokeWidth={2}
                 dot={false}
                 name="Gyro"
@@ -481,7 +650,7 @@ export const LogChart = observer(() => {
               <Line
                 type="monotone"
                 dataKey="setpoint"
-                stroke="#10b981"
+                stroke={theme.colors.chart.setpoint}
                 strokeWidth={2}
                 dot={false}
                 name="Setpoint"
@@ -494,7 +663,7 @@ export const LogChart = observer(() => {
               <Line
                 type="monotone"
                 dataKey="pidD"
-                stroke="#8b5cf6"
+                stroke={theme.colors.chart.pidD}
                 strokeWidth={1.5}
                 dot={false}
                 name="D-term"
@@ -507,7 +676,7 @@ export const LogChart = observer(() => {
                 <Line
                   type="monotone"
                   dataKey="motor1"
-                  stroke="#ef4444"
+                  stroke={theme.colors.chart.motor1}
                   strokeWidth={1}
                   dot={false}
                   name="M1"
@@ -517,7 +686,7 @@ export const LogChart = observer(() => {
                 <Line
                   type="monotone"
                   dataKey="motor2"
-                  stroke="#f59e0b"
+                  stroke={theme.colors.chart.motor2}
                   strokeWidth={1}
                   dot={false}
                   name="M2"
@@ -527,7 +696,7 @@ export const LogChart = observer(() => {
                 <Line
                   type="monotone"
                   dataKey="motor3"
-                  stroke="#10b981"
+                  stroke={theme.colors.chart.motor3}
                   strokeWidth={1}
                   dot={false}
                   name="M3"
@@ -537,7 +706,7 @@ export const LogChart = observer(() => {
                 <Line
                   type="monotone"
                   dataKey="motor4"
-                  stroke="#3b82f6"
+                  stroke={theme.colors.chart.motor4}
                   strokeWidth={1}
                   dot={false}
                   name="M4"
@@ -552,39 +721,22 @@ export const LogChart = observer(() => {
 
         {/* Issue hover popover */}
         {hoveredIssue && (
-          <div
-            className="fixed z-50 pointer-events-none bg-white border border-gray-300 rounded-lg shadow-lg p-3 max-w-xs"
+          <HoverPopover
             style={{
               left: hoveredIssue.x + 12,
               top: hoveredIssue.y - 10,
             }}
           >
             <div className="flex items-start justify-between gap-2 mb-1">
-              <p className="text-sm font-medium">{hoveredIssue.issue.description}</p>
-              <span
-                className="px-1.5 py-0.5 rounded text-xs font-medium shrink-0"
-                style={{
-                  backgroundColor:
-                    hoveredIssue.issue.severity === 'high'
-                      ? '#fecaca'
-                      : hoveredIssue.issue.severity === 'medium'
-                      ? '#fef3c7'
-                      : '#bfdbfe',
-                  color:
-                    hoveredIssue.issue.severity === 'high'
-                      ? '#991b1b'
-                      : hoveredIssue.issue.severity === 'medium'
-                      ? '#92400e'
-                      : '#1e40af',
-                }}
-              >
+              <PopoverTitle>{hoveredIssue.issue.description}</PopoverTitle>
+              <SeverityBadgeInline severity={hoveredIssue.issue.severity}>
                 {hoveredIssue.issue.severity.toUpperCase()}
-              </span>
+              </SeverityBadgeInline>
             </div>
-            <p className="text-xs text-gray-500 mb-1">
+            <PopoverMeta>
               Axis: {hoveredIssue.issue.axis}
-            </p>
-            <div className="text-xs text-gray-600 space-y-0.5">
+            </PopoverMeta>
+            <PopoverMetrics>
               {hoveredIssue.issue.metrics.overshoot !== undefined && (
                 <p>Overshoot: {hoveredIssue.issue.metrics.overshoot.toFixed(1)}</p>
               )}
@@ -594,19 +746,19 @@ export const LogChart = observer(() => {
               {hoveredIssue.issue.metrics.amplitude !== undefined && (
                 <p>Amplitude: {hoveredIssue.issue.metrics.amplitude.toFixed(1)} deg/s</p>
               )}
-            </div>
-          </div>
+            </PopoverMetrics>
+          </HoverPopover>
         )}
-      </div>
+      </ChartContainer>
 
       {/* Zoom controls */}
-      <div className="px-4 py-3 border-t">
+      <ZoomControls>
         <div className="flex items-center gap-4">
           <div className="flex-1">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium text-gray-600">
+              <ZoomLabel>
                 Zoom: {zoomLevel.toFixed(1)}x ({windowSec.toFixed(1)}s)
-              </span>
+              </ZoomLabel>
             </div>
             <input
               data-testid="zoom-level-slider"
@@ -619,15 +771,14 @@ export const LogChart = observer(() => {
               className="w-full"
             />
           </div>
-          <button
+          <ZoomResetBtn
             data-testid="zoom-reset-button"
             onClick={() => uiStore.setZoom(0, 100)}
-            className="text-sm text-blue-600 hover:text-blue-800 shrink-0"
           >
             Reset
-          </button>
+          </ZoomResetBtn>
         </div>
-      </div>
-    </div>
+      </ZoomControls>
+    </ChartWrapper>
   )
 })

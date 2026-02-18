@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { observer } from 'mobx-react-lite'
+import styled from '@emotion/styled'
 import { useAnalysisStore, useLogStore, useUIStore } from '../stores/RootStore'
 import { Recommendation, DetectedIssue, ParameterChange, Axis } from '../domain/types/Analysis'
 import { PidProfile, FilterSettings } from '../domain/types/LogFrame'
@@ -34,6 +35,469 @@ function computeTransition(
   const [resolved] = resolveChange(change.recommendedChange, current, isPerAxis)
   return { current, resolved }
 }
+
+/* ---- Styled Components ---- */
+
+const PanelWrapper = styled.div`
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  color: ${p => p.theme.colors.text.primary};
+`
+
+const EmptyPanel = styled.div`
+  padding: 1rem;
+  text-align: center;
+  color: ${p => p.theme.colors.text.muted};
+`
+
+const CliBar = styled.div`
+  flex-shrink: 0;
+  border-bottom: 1px solid ${p => p.theme.colors.border.main};
+  background-color: ${p => p.theme.colors.accent.indigoBg};
+`
+
+const CliBarInner = styled.div`
+  padding: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`
+
+const CliLabel = styled.span`
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: ${p => p.theme.colors.accent.indigoText};
+`
+
+const CliPreviewToggle = styled.button`
+  font-size: 0.75rem;
+  color: ${p => p.theme.colors.accent.indigo};
+  background: none;
+  border: none;
+  cursor: pointer;
+
+  &:hover {
+    opacity: 0.8;
+  }
+`
+
+const CopyButton = styled.button<{ copied: boolean }>`
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  transition: background-color 0.15s;
+  border: none;
+  cursor: pointer;
+  color: ${p => p.theme.colors.button.primaryText};
+  background-color: ${p => p.copied ? p.theme.colors.accent.green : p.theme.colors.accent.indigo};
+
+  &:hover {
+    opacity: 0.9;
+  }
+`
+
+const CliPreview = styled.pre`
+  padding: 0.75rem;
+  background-color: ${p => p.theme.colors.background.cliPreview};
+  color: ${p => p.theme.colors.accent.green};
+  font-size: 0.75rem;
+  font-family: monospace;
+  border-radius: 0 0 0.25rem 0.25rem;
+  overflow-x: auto;
+  max-height: 12rem;
+  overflow-y: auto;
+  margin: 0 0.75rem 0.75rem;
+`
+
+const TabBar = styled.div`
+  flex-shrink: 0;
+  display: flex;
+  border-bottom: 1px solid ${p => p.theme.colors.border.main};
+  background-color: ${p => p.theme.colors.background.panel};
+`
+
+const Tab = styled.button<{ isActive: boolean }>`
+  flex: 1;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: color 0.15s;
+  border: none;
+  border-bottom: 2px solid ${p => p.isActive ? p.theme.colors.button.primary : 'transparent'};
+  background: none;
+  cursor: pointer;
+  color: ${p => p.isActive ? p.theme.colors.text.link : p.theme.colors.text.muted};
+
+  &:hover {
+    color: ${p => p.isActive ? p.theme.colors.text.link : p.theme.colors.text.primary};
+  }
+`
+
+const TabContent = styled.div`
+  flex: 1;
+  overflow-y: auto;
+`
+
+const SummarySection = styled.div`
+  padding: 1rem;
+  border-bottom: 1px solid ${p => p.theme.colors.border.main};
+  background-color: ${p => p.theme.colors.background.section};
+`
+
+const SummaryTitle = styled.h2`
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: ${p => p.theme.colors.text.heading};
+`
+
+const HealthBadge = styled.span<{ health: string }>`
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background-color: ${p => {
+    switch (p.health) {
+      case 'excellent': return p.theme.colors.health.excellentBg
+      case 'good': return p.theme.colors.health.goodBg
+      case 'needsWork': return p.theme.colors.health.needsWorkBg
+      default: return p.theme.colors.health.criticalBg
+    }
+  }};
+  color: ${p => {
+    switch (p.health) {
+      case 'excellent': return p.theme.colors.health.excellentText
+      case 'good': return p.theme.colors.health.goodText
+      case 'needsWork': return p.theme.colors.health.needsWorkText
+      default: return p.theme.colors.health.criticalText
+    }
+  }};
+`
+
+const ProfileLabel = styled.span`
+  font-size: 0.75rem;
+  color: ${p => p.theme.colors.text.muted};
+`
+
+const SeverityCount = styled.p<{ severity: string }>`
+  font-size: 0.875rem;
+  color: ${p =>
+    p.severity === 'high' ? p.theme.colors.severity.high
+    : p.severity === 'medium' ? p.theme.colors.severity.medium
+    : p.theme.colors.severity.low};
+`
+
+const PrioritiesSection = styled.div`
+  padding: 1rem;
+  border-bottom: 1px solid ${p => p.theme.colors.border.main};
+  background-color: ${p => p.theme.colors.severity.lowBg};
+`
+
+const PrioritiesTitle = styled.h3`
+  font-size: 0.875rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: ${p => p.theme.colors.severity.lowText};
+`
+
+const PriorityList = styled.ol`
+  list-style-type: decimal;
+  list-style-position: inside;
+  font-size: 0.875rem;
+  color: ${p => p.theme.colors.severity.lowText};
+
+  & > li + li {
+    margin-top: 0.25rem;
+  }
+`
+
+const SeverityGroup = styled.div`
+  padding: 1rem;
+  border-bottom: 1px solid ${p => p.theme.colors.border.main};
+`
+
+const SeverityGroupTitle = styled.h3<{ severity: string }>`
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  color: ${p =>
+    p.severity === 'high' ? p.theme.colors.severity.high
+    : p.severity === 'medium' ? p.theme.colors.severity.medium
+    : p.theme.colors.severity.low};
+`
+
+const NoItemsText = styled.div`
+  padding: 2rem;
+  text-align: center;
+  color: ${p => p.theme.colors.text.muted};
+`
+
+const FixesSection = styled.div`
+  padding: 1rem;
+`
+
+/* ---- Issue Card ---- */
+
+const IssueCardWrapper = styled.div<{ severity: string; isSelected: boolean }>`
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+  border-left: 4px solid ${p =>
+    p.severity === 'high' ? p.theme.colors.severity.high
+    : p.severity === 'medium' ? p.theme.colors.severity.medium
+    : p.theme.colors.severity.low};
+  background-color: ${p =>
+    p.severity === 'high' ? p.theme.colors.severity.highBg
+    : p.severity === 'medium' ? p.theme.colors.severity.mediumBg
+    : p.theme.colors.severity.lowBg};
+  ${p => p.isSelected && `
+    ring: 2px;
+    box-shadow: 0 0 0 2px ${p.theme.colors.border.focus};
+  `}
+
+  &:hover {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  }
+`
+
+const SeverityBadge = styled.span<{ severity: string }>`
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background-color: ${p =>
+    p.severity === 'high' ? p.theme.colors.severity.highBg
+    : p.severity === 'medium' ? p.theme.colors.severity.mediumBg
+    : p.theme.colors.severity.lowBg};
+  color: ${p =>
+    p.severity === 'high' ? p.theme.colors.severity.highText
+    : p.severity === 'medium' ? p.theme.colors.severity.mediumText
+    : p.theme.colors.severity.lowText};
+`
+
+const IssueTitle = styled.h4`
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: ${p => p.theme.colors.text.primary};
+`
+
+const NavButton = styled.button`
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  background-color: ${p => p.theme.colors.button.secondary};
+  color: ${p => p.theme.colors.text.primary};
+
+  &:hover {
+    background-color: ${p => p.theme.colors.button.secondaryHover};
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+`
+
+const NavLabel = styled.span`
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: ${p => p.theme.colors.text.secondary};
+`
+
+const IssueMetrics = styled.div`
+  font-size: 0.75rem;
+  color: ${p => p.theme.colors.text.secondary};
+
+  & > p + p {
+    margin-top: 0.25rem;
+  }
+`
+
+const LinkedRecLink = styled.button`
+  display: block;
+  font-size: 0.75rem;
+  color: ${p => p.theme.colors.text.link};
+  background: none;
+  border: none;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+  text-align: left;
+
+  &:hover {
+    color: ${p => p.theme.colors.text.linkHover};
+    text-decoration: underline;
+  }
+`
+
+const LinkedRecBorder = styled.div`
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid ${p => p.theme.colors.border.main};
+
+  & > button + button {
+    margin-top: 0.25rem;
+  }
+`
+
+/* ---- Recommendation Card ---- */
+
+const RecCardWrapper = styled.div<{ isHighlighted: boolean }>`
+  padding: 1rem;
+  border: 1px solid ${p => p.theme.colors.border.main};
+  border-radius: 0.5rem;
+  background-color: ${p => p.theme.colors.background.panel};
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+  transition: box-shadow 0.15s;
+  ${p => p.isHighlighted && `
+    box-shadow: 0 0 0 2px ${p.theme.colors.border.focus};
+  `}
+
+  &:hover {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  }
+`
+
+const RecTitle = styled.h4`
+  font-weight: 700;
+  font-size: 0.875rem;
+  color: ${p => p.theme.colors.text.primary};
+`
+
+const PriorityBadge = styled.span`
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background-color: ${p => p.theme.colors.severity.lowBg};
+  color: ${p => p.theme.colors.severity.lowText};
+`
+
+const ConfidenceLabel = styled.span`
+  font-size: 0.75rem;
+  color: ${p => p.theme.colors.text.muted};
+`
+
+const RecDescription = styled.p`
+  font-size: 0.875rem;
+  color: ${p => p.theme.colors.text.primary};
+  margin-bottom: 0.75rem;
+`
+
+const ChangesBlock = styled.div`
+  margin-bottom: 0.75rem;
+  padding: 0.75rem;
+  background-color: ${p => p.theme.colors.background.section};
+  border-radius: 0.25rem;
+`
+
+const ChangesTitle = styled.h5`
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: ${p => p.theme.colors.text.primary};
+  margin-bottom: 0.5rem;
+`
+
+const RationaleLabel = styled.p`
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: ${p => p.theme.colors.text.primary};
+  margin-bottom: 0.125rem;
+`
+
+const RationaleText = styled.p`
+  font-size: 0.75rem;
+  color: ${p => p.theme.colors.text.secondary};
+`
+
+const ExpectedBlock = styled.div`
+  padding: 0.5rem;
+  background-color: ${p => p.theme.colors.accent.greenBg};
+  border-radius: 0.25rem;
+`
+
+const ExpectedText = styled.p`
+  font-size: 0.75rem;
+  color: ${p => p.theme.colors.accent.greenText};
+`
+
+const RisksSection = styled.details`
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+`
+
+const RisksSummary = styled.summary`
+  cursor: pointer;
+  color: ${p => p.theme.colors.accent.orangeText};
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+`
+
+const RiskDot = styled.span`
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background-color: ${p => p.theme.colors.accent.orange};
+`
+
+const RiskList = styled.ul`
+  list-style-type: disc;
+  list-style-position: inside;
+  font-size: 0.75rem;
+  color: ${p => p.theme.colors.accent.orangeText};
+  margin-left: 1rem;
+  margin-top: 0.25rem;
+
+  & > li + li {
+    margin-top: 0.25rem;
+  }
+`
+
+/* ---- Change Display ---- */
+
+const ChangeParamName = styled.span`
+  font-weight: 500;
+  color: ${p => p.theme.colors.text.heading};
+`
+
+const ChangeValue = styled.span<{ direction: 'increase' | 'decrease' | 'neutral' }>`
+  font-family: monospace;
+  font-weight: 700;
+  color: ${p => {
+    switch (p.direction) {
+      case 'increase': return p.theme.colors.change.increase
+      case 'decrease': return p.theme.colors.change.decrease
+      default: return p.theme.colors.change.neutral
+    }
+  }};
+`
+
+const ChangeFallback = styled.span`
+  font-family: monospace;
+  font-weight: 700;
+  color: ${p => p.theme.colors.text.link};
+`
+
+const CliSnippet = styled.code`
+  background-color: ${p => p.theme.colors.background.section};
+  padding: 0 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  color: ${p => p.theme.colors.text.secondary};
+`
+
+/* ---- Main Panel Component ---- */
 
 export const RecommendationsPanel = observer(() => {
   const analysisStore = useAnalysisStore()
@@ -106,9 +570,9 @@ export const RecommendationsPanel = observer(() => {
 
   if (!analysisStore.isComplete) {
     return (
-      <div data-testid="recommendations-empty" className="p-4 text-center text-gray-500">
+      <EmptyPanel data-testid="recommendations-empty">
         <p>Run analysis to see recommendations</p>
-      </div>
+      </EmptyPanel>
     )
   }
 
@@ -123,117 +587,86 @@ export const RecommendationsPanel = observer(() => {
     medium: 'Medium Severity Issues',
     low: 'Low Severity Issues',
   }
-  const severityColors: Record<string, string> = {
-    high: 'text-red-700',
-    medium: 'text-amber-700',
-    low: 'text-blue-700',
-  }
 
   return (
-    <div className="h-full flex flex-col">
-      {/* B1: Sticky CLI Action Bar */}
+    <PanelWrapper>
+      {/* Sticky CLI Action Bar */}
       {cliCommands && (
-        <div data-testid="cli-commands-section" className="shrink-0 border-b bg-indigo-50">
-          <div className="p-3 flex items-center justify-between">
+        <CliBar data-testid="cli-commands-section">
+          <CliBarInner>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-indigo-900">
+              <CliLabel>
                 {commandCount} CLI command{commandCount !== 1 ? 's' : ''}
-              </span>
-              <button
-                onClick={() => setCliExpanded(!cliExpanded)}
-                className="text-xs text-indigo-600 hover:text-indigo-800"
-              >
+              </CliLabel>
+              <CliPreviewToggle onClick={() => setCliExpanded(!cliExpanded)}>
                 {cliExpanded ? 'Hide' : 'Preview'}
-              </button>
+              </CliPreviewToggle>
             </div>
-            <button
+            <CopyButton
               data-testid="copy-cli-button"
+              copied={copied}
               onClick={handleCopy}
-              className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
-                copied
-                  ? 'bg-green-600 text-white'
-                  : 'bg-indigo-600 text-white hover:bg-indigo-700'
-              }`}
             >
               {copied ? 'Copied!' : 'Copy All to Clipboard'}
-            </button>
-          </div>
+            </CopyButton>
+          </CliBarInner>
           {cliExpanded && (
-            <pre className="px-3 pb-3 bg-gray-900 text-green-400 text-xs font-mono rounded-b overflow-x-auto max-h-48 overflow-y-auto mx-3 mb-3">
-              {cliCommands}
-            </pre>
+            <CliPreview>{cliCommands}</CliPreview>
           )}
-        </div>
+        </CliBar>
       )}
 
-      {/* B4: Tab Bar */}
-      <div className="shrink-0 flex border-b bg-white">
+      {/* Tab Bar */}
+      <TabBar>
         {([
           ['summary', 'Summary'],
           ['issues', `Issues (${issueCount})`],
           ['fixes', `Fixes (${recCount})`],
         ] as [RightPanelTab, string][]).map(([tab, label]) => (
-          <button
+          <Tab
             key={tab}
+            isActive={activeTab === tab}
             onClick={() => uiStore.setActiveRightTab(tab)}
-            className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors ${
-              activeTab === tab
-                ? 'text-blue-600 border-b-2 border-blue-600'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
           >
             {label}
-          </button>
+          </Tab>
         ))}
-      </div>
+      </TabBar>
 
       {/* Tab Content */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto">
+      <TabContent ref={scrollRef}>
         {/* Summary Tab */}
         {activeTab === 'summary' && (
           <>
-            <div data-testid="analysis-summary" className="p-4 border-b bg-gray-50">
-              <h2 className="text-lg font-bold mb-2">Analysis Summary</h2>
+            <SummarySection data-testid="analysis-summary">
+              <SummaryTitle>Analysis Summary</SummaryTitle>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium">Overall Health:</span>
-                  <span
-                    data-testid="overall-health-badge"
-                    className={`px-2 py-1 rounded text-xs font-medium ${
-                      summary.overallHealth === 'excellent'
-                        ? 'bg-green-100 text-green-800'
-                        : summary.overallHealth === 'good'
-                        ? 'bg-blue-100 text-blue-800'
-                        : summary.overallHealth === 'needsWork'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}
-                  >
+                  <HealthBadge data-testid="overall-health-badge" health={summary.overallHealth}>
                     {summary.overallHealth.toUpperCase()}
-                  </span>
+                  </HealthBadge>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  <span>Profile: {analysisStore.quadProfile.label}</span>
+                <div className="flex items-center gap-2">
+                  <ProfileLabel>Profile: {analysisStore.quadProfile.label}</ProfileLabel>
                 </div>
-                <div className="text-sm space-y-1">
-                  <p className="text-red-700">High: {summary.highIssueCount}</p>
-                  <p className="text-amber-700">Medium: {summary.mediumIssueCount}</p>
-                  <p className="text-blue-700">Low: {summary.lowIssueCount}</p>
+                <div className="space-y-1">
+                  <SeverityCount severity="high">High: {summary.highIssueCount}</SeverityCount>
+                  <SeverityCount severity="medium">Medium: {summary.mediumIssueCount}</SeverityCount>
+                  <SeverityCount severity="low">Low: {summary.lowIssueCount}</SeverityCount>
                 </div>
               </div>
-            </div>
+            </SummarySection>
 
             {summary.topPriorities.length > 0 && (
-              <div data-testid="top-priorities" className="p-4 border-b bg-blue-50">
-                <h3 className="text-sm font-bold mb-2 text-blue-900">
-                  Top Priorities:
-                </h3>
-                <ol className="list-decimal list-inside space-y-1 text-sm text-blue-800">
+              <PrioritiesSection data-testid="top-priorities">
+                <PrioritiesTitle>Top Priorities:</PrioritiesTitle>
+                <PriorityList>
                   {summary.topPriorities.map((priority, idx) => (
                     <li key={idx}>{priority}</li>
                   ))}
-                </ol>
-              </div>
+                </PriorityList>
+              </PrioritiesSection>
             )}
           </>
         )}
@@ -245,29 +678,29 @@ export const RecommendationsPanel = observer(() => {
               const issues = issuesBySeverity[sev]
               if (!issues || issues.length === 0) return null
               return (
-                <div key={sev} data-testid={`severity-group-${sev}`} className="p-4 border-b">
-                  <h3 className={`text-md font-bold mb-3 ${severityColors[sev]}`}>
+                <SeverityGroup key={sev} data-testid={`severity-group-${sev}`}>
+                  <SeverityGroupTitle severity={sev}>
                     {severityLabels[sev]}
-                  </h3>
+                  </SeverityGroupTitle>
                   <div key={analysisStore.selectedIssueId ?? ''} className={`space-y-3${analysisStore.selectedIssueId ? ' dim-siblings' : ''}`}>
                     {issues.map(issue => (
                       <IssueCard key={issue.id} issue={issue} onNavigateToRec={navigateToRec} />
                     ))}
                   </div>
-                </div>
+                </SeverityGroup>
               )
             })}
             {issueCount === 0 && (
-              <div className="p-8 text-center text-gray-400">
+              <NoItemsText>
                 <p>No issues detected</p>
-              </div>
+              </NoItemsText>
             )}
           </>
         )}
 
         {/* Fixes Tab */}
         {activeTab === 'fixes' && (
-          <div data-testid="recommendations-section" className="p-4">
+          <FixesSection data-testid="recommendations-section">
             <div key={analysisStore.selectedRecommendationId ?? ''} className={`space-y-4${analysisStore.selectedRecommendationId ? ' dim-siblings' : ''}`}>
               {analysisStore.recommendations.map(rec => (
                 <RecommendationCard
@@ -279,14 +712,14 @@ export const RecommendationsPanel = observer(() => {
               ))}
             </div>
             {recCount === 0 && (
-              <div className="p-8 text-center text-gray-400">
+              <NoItemsText>
                 <p>No recommendations</p>
-              </div>
+              </NoItemsText>
             )}
-          </div>
+          </FixesSection>
         )}
-      </div>
-    </div>
+      </TabContent>
+    </PanelWrapper>
   )
 })
 
@@ -311,7 +744,7 @@ const IssueCard = observer(({ issue, onNavigateToRec }: { issue: DetectedIssue; 
         if (totalDuration > 0) {
           const tr = occurrences[idx]
           const occSpan = tr[1] - tr[0]
-          const padding = Math.max(occSpan * 2, 500_000) // min 0.5s in µs
+          const padding = Math.max(occSpan * 2, 500_000)
           const startPct = Math.max(
             0,
             ((tr[0] - padding - firstTime) / totalDuration) * 100
@@ -354,56 +787,36 @@ const IssueCard = observer(({ issue, onNavigateToRec }: { issue: DetectedIssue; 
   const isSelected = analysisStore.selectedIssueId === issue.id
 
   return (
-    <div
+    <IssueCardWrapper
       data-issue-id={issue.id}
+      severity={issue.severity}
+      isSelected={isSelected}
       onClick={handleClick}
-      className={`p-3 rounded-lg border-l-4 cursor-pointer transition-shadow hover:shadow-md ${
-        issue.severity === 'high'
-          ? 'bg-red-50 border-red-500'
-          : issue.severity === 'medium'
-          ? 'bg-amber-50 border-amber-500'
-          : 'bg-blue-50 border-blue-400'
-      } ${isSelected ? 'ring-2 ring-blue-500 attention-pulse selected-item' : ''}`}
+      className={isSelected ? 'attention-pulse selected-item' : ''}
     >
       <div className="flex items-start justify-between mb-2">
-        <h4 className="font-medium text-sm">{issue.description}</h4>
-        <span
-          className={`px-2 py-1 rounded text-xs font-medium ${
-            issue.severity === 'high'
-              ? 'bg-red-100 text-red-800'
-              : issue.severity === 'medium'
-              ? 'bg-amber-100 text-amber-800'
-              : 'bg-blue-100 text-blue-800'
-          }`}
-        >
+        <IssueTitle>{issue.description}</IssueTitle>
+        <SeverityBadge severity={issue.severity}>
           {issue.severity.toUpperCase()}
-        </span>
+        </SeverityBadge>
       </div>
 
       {/* Occurrence navigator */}
       {hasMultiple && (
         <div className="flex items-center gap-2 mb-2">
-          <button
-            onClick={handlePrev}
-            disabled={occIdx === 0}
-            className="px-1.5 py-0.5 rounded text-xs font-medium bg-gray-200 hover:bg-gray-300 disabled:opacity-40 disabled:cursor-default"
-          >
+          <NavButton onClick={handlePrev} disabled={occIdx === 0}>
             &lt;
-          </button>
-          <span className="text-xs font-medium text-gray-600">
+          </NavButton>
+          <NavLabel>
             {occIdx + 1}/{occurrences.length}
-          </span>
-          <button
-            onClick={handleNext}
-            disabled={occIdx === occurrences.length - 1}
-            className="px-1.5 py-0.5 rounded text-xs font-medium bg-gray-200 hover:bg-gray-300 disabled:opacity-40 disabled:cursor-default"
-          >
+          </NavLabel>
+          <NavButton onClick={handleNext} disabled={occIdx === occurrences.length - 1}>
             &gt;
-          </button>
+          </NavButton>
         </div>
       )}
 
-      <div className="text-xs text-gray-600 space-y-1">
+      <IssueMetrics>
         <p>
           <span className="font-medium">Axis:</span> {issue.axis}
         </p>
@@ -429,31 +842,30 @@ const IssueCard = observer(({ issue, onNavigateToRec }: { issue: DetectedIssue; 
           <span className="font-medium">Confidence:</span>{' '}
           {(issue.confidence * 100).toFixed(0)}%
         </p>
-      </div>
+      </IssueMetrics>
 
-      {/* Linked recommendations — clicking switches to Fixes tab */}
+      {/* Linked recommendations */}
       {linkedRecs.length > 0 && (
-        <div className="mt-2 pt-2 border-t border-gray-200 space-y-1">
+        <LinkedRecBorder>
           {linkedRecs.map(rec => (
-            <button
+            <LinkedRecLink
               key={rec.id}
               onClick={(e) => {
                 e.stopPropagation()
                 onNavigateToRec(rec.id)
               }}
-              className="block text-xs text-blue-600 hover:text-blue-800 hover:underline truncate w-full text-left"
             >
               Fix: {rec.title}
-            </button>
+            </LinkedRecLink>
           ))}
-        </div>
+        </LinkedRecBorder>
       )}
-    </div>
+    </IssueCardWrapper>
   )
 })
 
 /**
- * B5: Format a change with direction arrow and value transition
+ * Format a change with direction arrow and value transition
  */
 function ChangeDisplay({ change, pidProfile, filterSettings }: {
   change: ParameterChange
@@ -473,23 +885,23 @@ function ChangeDisplay({ change, pidProfile, filterSettings }: {
   return (
     <li className="text-sm">
       <div className="flex items-baseline gap-2 flex-wrap">
-        <span className="font-medium text-gray-900">
+        <ChangeParamName>
           {displayName}{axisLabel}
-        </span>
+        </ChangeParamName>
         {current !== undefined && resolved !== null ? (
           <span className="flex items-center gap-1">
-            <span className={`font-mono font-bold ${isIncrease ? 'text-green-700' : isDecrease ? 'text-amber-700' : 'text-gray-700'}`}>
+            <ChangeValue direction={isIncrease ? 'increase' : isDecrease ? 'decrease' : 'neutral'}>
               {isIncrease ? '\u2191' : isDecrease ? '\u2193' : ''} {current} → {resolved}
-            </span>
+            </ChangeValue>
           </span>
         ) : (
-          <span className="font-mono font-bold text-blue-700">
+          <ChangeFallback>
             {change.recommendedChange}
-          </span>
+          </ChangeFallback>
         )}
       </div>
-      <p className="text-xs text-gray-500 mt-0.5">
-        <code className="bg-gray-100 px-1 rounded text-xs">set {cliName} = {resolved ?? change.recommendedChange}</code>
+      <p className="mt-0.5">
+        <CliSnippet>set {cliName} = {resolved ?? change.recommendedChange}</CliSnippet>
       </p>
     </li>
   )
@@ -505,29 +917,31 @@ const RecommendationCard = observer(
     const isHighlighted = analysisStore.selectedRecommendationId === recommendation.id
 
     return (
-      <div data-rec-id={recommendation.id} className={`p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow ${isHighlighted ? 'ring-2 ring-blue-500 attention-pulse selected-item' : ''}`}>
+      <RecCardWrapper
+        data-rec-id={recommendation.id}
+        isHighlighted={isHighlighted}
+        className={isHighlighted ? 'attention-pulse selected-item' : ''}
+      >
         <div className="flex items-start justify-between mb-2">
-          <h4 className="font-bold text-sm">{recommendation.title}</h4>
+          <RecTitle>{recommendation.title}</RecTitle>
           <div className="flex items-center gap-2">
-            <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
+            <PriorityBadge>
               Priority: {recommendation.priority}
-            </span>
-            <span className="text-xs text-gray-500">
+            </PriorityBadge>
+            <ConfidenceLabel>
               {(recommendation.confidence * 100).toFixed(0)}%
-            </span>
+            </ConfidenceLabel>
           </div>
         </div>
 
-        <p className="text-sm text-gray-700 mb-3">
+        <RecDescription>
           {recommendation.description}
-        </p>
+        </RecDescription>
 
-        {/* B5: Changes with human-readable names and magnitude indicators */}
+        {/* Changes with human-readable names and magnitude indicators */}
         {recommendation.changes.length > 0 && (
-          <div className="mb-3 p-3 bg-gray-50 rounded">
-            <h5 className="text-xs font-bold text-gray-700 mb-2">
-              Recommended Changes:
-            </h5>
+          <ChangesBlock>
+            <ChangesTitle>Recommended Changes:</ChangesTitle>
             <ul className="space-y-2">
               {recommendation.changes.map((change, idx) => (
                 <ChangeDisplay
@@ -538,40 +952,38 @@ const RecommendationCard = observer(
                 />
               ))}
             </ul>
-          </div>
+          </ChangesBlock>
         )}
 
-        {/* B6: Rationale always visible */}
-        <div className="text-sm mb-2">
-          <p className="text-xs font-medium text-gray-700 mb-0.5">Why this helps</p>
-          <p className="text-gray-600 text-xs">
-            {recommendation.rationale}
-          </p>
+        {/* Rationale */}
+        <div className="mb-2">
+          <RationaleLabel>Why this helps</RationaleLabel>
+          <RationaleText>{recommendation.rationale}</RationaleText>
         </div>
 
         {/* Expected Improvement */}
-        <div className="p-2 bg-green-50 rounded">
-          <p className="text-xs text-green-800">
+        <ExpectedBlock>
+          <ExpectedText>
             <span className="font-medium">Expected:</span>{' '}
             {recommendation.expectedImprovement}
-          </p>
-        </div>
+          </ExpectedText>
+        </ExpectedBlock>
 
-        {/* Risks — still collapsible but with dot indicator */}
+        {/* Risks */}
         {recommendation.risks.length > 0 && (
-          <details className="text-sm mt-2">
-            <summary className="cursor-pointer text-orange-700 font-medium flex items-center gap-1.5">
-              <span className="inline-block w-2 h-2 rounded-full bg-orange-400"></span>
+          <RisksSection>
+            <RisksSummary>
+              <RiskDot />
               Risks ({recommendation.risks.length})
-            </summary>
-            <ul className="list-disc list-inside text-xs text-orange-600 ml-4 mt-1 space-y-1">
+            </RisksSummary>
+            <RiskList>
               {recommendation.risks.map((risk, idx) => (
                 <li key={idx}>{risk}</li>
               ))}
-            </ul>
-          </details>
+            </RiskList>
+          </RisksSection>
         )}
-      </div>
+      </RecCardWrapper>
     )
   }
 )

@@ -1,6 +1,7 @@
 import { LogStore } from './LogStore'
 import { AnalysisStore } from './AnalysisStore'
 import { UIStore } from './UIStore'
+import { ThemeStore } from '../theme/ThemeStore'
 import { createContext, useContext } from 'react'
 
 /**
@@ -10,11 +11,13 @@ export class RootStore {
   logStore: LogStore
   analysisStore: AnalysisStore
   uiStore: UIStore
+  themeStore: ThemeStore
 
   constructor() {
     this.logStore = new LogStore()
     this.analysisStore = new AnalysisStore(this.logStore)
     this.uiStore = new UIStore()
+    this.themeStore = new ThemeStore()
 
     // Wire auto-analyze: when parse completes, trigger analysis automatically
     this.logStore.setAutoAnalyzer(this.analysisStore)
@@ -53,4 +56,8 @@ export function useAnalysisStore(): AnalysisStore {
 
 export function useUIStore(): UIStore {
   return useStores().uiStore
+}
+
+export function useThemeStore(): ThemeStore {
+  return useStores().themeStore
 }

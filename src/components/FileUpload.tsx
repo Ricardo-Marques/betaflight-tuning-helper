@@ -1,6 +1,144 @@
 import { observer } from 'mobx-react-lite'
+import styled from '@emotion/styled'
 import { useStores } from '../stores/RootStore'
 import { useState, useCallback } from 'react'
+
+const UploadWrapper = styled.div`
+  padding: 1rem;
+`
+
+const Dropzone = styled.div<{ isDragging: boolean }>`
+  border: 2px dashed ${p => p.isDragging ? p.theme.colors.border.focus : p.theme.colors.border.main};
+  border-radius: 0.5rem;
+  padding: 2rem;
+  text-align: center;
+  transition: border-color 0.15s, background-color 0.15s;
+  background-color: ${p => p.isDragging ? p.theme.colors.severity.lowBg : 'transparent'};
+
+  &:hover {
+    border-color: ${p => p.theme.colors.text.muted};
+  }
+`
+
+const UploadIcon = styled.svg`
+  margin: 0 auto 1rem;
+  height: 3rem;
+  width: 3rem;
+  color: ${p => p.theme.colors.text.muted};
+`
+
+const UploadTitle = styled.p`
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: ${p => p.theme.colors.text.primary};
+  margin-bottom: 0.5rem;
+`
+
+const UploadSubtext = styled.p`
+  font-size: 0.875rem;
+  color: ${p => p.theme.colors.text.muted};
+  margin-bottom: 1rem;
+`
+
+const UploadButton = styled.label`
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.375rem;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+  color: ${p => p.theme.colors.button.primaryText};
+  background-color: ${p => p.theme.colors.button.primary};
+  cursor: pointer;
+  transition: background-color 0.15s;
+
+  &:hover {
+    background-color: ${p => p.theme.colors.button.primaryHover};
+  }
+`
+
+const FormatHint = styled.p`
+  font-size: 0.75rem;
+  color: ${p => p.theme.colors.text.muted};
+  margin-top: 1rem;
+`
+
+const ProgressBarTrack = styled.div`
+  width: 100%;
+  background-color: ${p => p.theme.colors.button.secondary};
+  border-radius: 9999px;
+  height: 0.625rem;
+  margin-bottom: 0.5rem;
+`
+
+const ProgressBarFill = styled.div<{ width: number }>`
+  background-color: ${p => p.theme.colors.button.primary};
+  height: 0.625rem;
+  border-radius: 9999px;
+  transition: width 0.3s;
+  width: ${p => p.width}%;
+`
+
+const StatusText = styled.p`
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: ${p => p.theme.colors.text.primary};
+  margin-bottom: 0.5rem;
+`
+
+const StatusSubtext = styled.p`
+  font-size: 0.875rem;
+  color: ${p => p.theme.colors.text.muted};
+`
+
+const SuccessIcon = styled.svg`
+  margin: 0 auto 1rem;
+  height: 3rem;
+  width: 3rem;
+  color: ${p => p.theme.colors.accent.green};
+`
+
+const ErrorIcon = styled.svg`
+  margin: 0 auto 1rem;
+  height: 3rem;
+  width: 3rem;
+  color: ${p => p.theme.colors.severity.high};
+`
+
+const ErrorTitle = styled.p`
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: ${p => p.theme.colors.severity.high};
+  margin-bottom: 0.5rem;
+`
+
+const ErrorDetail = styled.p`
+  font-size: 0.875rem;
+  color: ${p => p.theme.colors.severity.high};
+`
+
+const MetadataBlock = styled.div`
+  font-size: 0.875rem;
+  color: ${p => p.theme.colors.text.secondary};
+
+  & > p + p {
+    margin-top: 0.25rem;
+  }
+`
+
+const LinkButton = styled.button`
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  color: ${p => p.theme.colors.text.link};
+  background: none;
+  border: none;
+  cursor: pointer;
+
+  &:hover {
+    color: ${p => p.theme.colors.text.linkHover};
+  }
+`
 
 export const FileUpload = observer(() => {
   const { logStore, uiStore, analysisStore } = useStores()
@@ -42,14 +180,10 @@ export const FileUpload = observer(() => {
   )
 
   return (
-    <div className="p-4">
-      <div
+    <UploadWrapper>
+      <Dropzone
         data-testid="file-dropzone"
-        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-          isDragging
-            ? 'border-blue-500 bg-blue-50'
-            : 'border-gray-300 hover:border-gray-400'
-        }`}
+        isDragging={isDragging}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -57,8 +191,7 @@ export const FileUpload = observer(() => {
         {logStore.parseStatus === 'idle' && (
           <>
             <div className="mb-4">
-              <svg
-                className="mx-auto h-12 w-12 text-gray-400"
+              <UploadIcon
                 stroke="currentColor"
                 fill="none"
                 viewBox="0 0 48 48"
@@ -69,12 +202,10 @@ export const FileUpload = observer(() => {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
-              </svg>
+              </UploadIcon>
             </div>
-            <p className="text-lg font-medium text-gray-700 mb-2">
-              Drop blackbox log here
-            </p>
-            <p className="text-sm text-gray-500 mb-4">or click to browse</p>
+            <UploadTitle>Drop blackbox log here</UploadTitle>
+            <UploadSubtext>or click to browse</UploadSubtext>
             <input
               type="file"
               accept=".bbl,.bfl,.txt,.csv"
@@ -82,15 +213,12 @@ export const FileUpload = observer(() => {
               className="hidden"
               id="file-upload"
             />
-            <label
-              htmlFor="file-upload"
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 cursor-pointer"
-            >
+            <UploadButton htmlFor="file-upload">
               Select File
-            </label>
-            <p className="text-xs text-gray-400 mt-4">
+            </UploadButton>
+            <FormatHint>
               Supports .bbl, .bfl, .txt, .csv (Betaflight Blackbox)
-            </p>
+            </FormatHint>
           </>
         )}
 
@@ -99,24 +227,20 @@ export const FileUpload = observer(() => {
             <div className="mb-4">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
             </div>
-            <p data-testid="parse-status-text" className="text-lg font-medium text-gray-700 mb-2">
+            <StatusText data-testid="parse-status-text">
               Parsing log...
-            </p>
-            <div data-testid="parse-progress-bar" className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
-              <div
-                className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
-                style={{ width: `${logStore.parseProgress}%` }}
-              ></div>
-            </div>
-            <p className="text-sm text-gray-500">{logStore.parseMessage}</p>
+            </StatusText>
+            <ProgressBarTrack data-testid="parse-progress-bar">
+              <ProgressBarFill width={logStore.parseProgress} />
+            </ProgressBarTrack>
+            <StatusSubtext>{logStore.parseMessage}</StatusSubtext>
           </>
         )}
 
         {logStore.parseStatus === 'success' && logStore.metadata && (
           <>
             <div className="mb-4">
-              <svg
-                className="mx-auto h-12 w-12 text-green-500"
+              <SuccessIcon
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -127,12 +251,12 @@ export const FileUpload = observer(() => {
                   strokeWidth={2}
                   d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
-              </svg>
+              </SuccessIcon>
             </div>
-            <p data-testid="parse-success-text" className="text-lg font-medium text-gray-700 mb-2">
+            <StatusText data-testid="parse-success-text">
               Log loaded successfully!
-            </p>
-            <div data-testid="parse-metadata" className="text-sm text-gray-600 space-y-1">
+            </StatusText>
+            <MetadataBlock data-testid="parse-metadata">
               <p>
                 <span className="font-medium">Duration:</span>{' '}
                 {logStore.metadata.duration.toFixed(1)}s
@@ -147,22 +271,20 @@ export const FileUpload = observer(() => {
                   {logStore.metadata.craftName}
                 </p>
               )}
-            </div>
-            <button
+            </MetadataBlock>
+            <LinkButton
               data-testid="upload-different-file"
               onClick={() => { logStore.reset(); analysisStore.reset(); uiStore.reset() }}
-              className="mt-4 text-sm text-blue-600 hover:text-blue-800"
             >
               Upload different file
-            </button>
+            </LinkButton>
           </>
         )}
 
         {logStore.parseStatus === 'error' && (
           <>
             <div className="mb-4">
-              <svg
-                className="mx-auto h-12 w-12 text-red-500"
+              <ErrorIcon
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -173,19 +295,18 @@ export const FileUpload = observer(() => {
                   strokeWidth={2}
                   d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
-              </svg>
+              </ErrorIcon>
             </div>
-            <p data-testid="parse-error-text" className="text-lg font-medium text-red-700 mb-2">Parse failed</p>
-            <p className="text-sm text-red-600">{logStore.parseError}</p>
-            <button
+            <ErrorTitle data-testid="parse-error-text">Parse failed</ErrorTitle>
+            <ErrorDetail>{logStore.parseError}</ErrorDetail>
+            <LinkButton
               onClick={() => { logStore.reset(); analysisStore.reset(); uiStore.reset() }}
-              className="mt-4 text-sm text-blue-600 hover:text-blue-800"
             >
               Try again
-            </button>
+            </LinkButton>
           </>
         )}
-      </div>
-    </div>
+      </Dropzone>
+    </UploadWrapper>
   )
 })

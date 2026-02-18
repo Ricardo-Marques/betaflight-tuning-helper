@@ -1,7 +1,140 @@
 import { observer } from 'mobx-react-lite'
+import styled from '@emotion/styled'
 import { useLogStore, useAnalysisStore, useUIStore } from '../stores/RootStore'
 import { FileUpload } from './FileUpload'
 import { ProfileSelector } from './ProfileSelector'
+
+const PanelContainer = styled.div`
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: ${p => p.theme.colors.background.panel};
+  border-right: 1px solid ${p => p.theme.colors.border.main};
+`
+
+const SectionBorder = styled.div`
+  border-bottom: 1px solid ${p => p.theme.colors.border.main};
+`
+
+const AnalysisSection = styled.div`
+  padding: 1rem;
+  border-bottom: 1px solid ${p => p.theme.colors.border.main};
+`
+
+const ProgressTrack = styled.div`
+  width: 100%;
+  background-color: ${p => p.theme.colors.button.secondary};
+  border-radius: 9999px;
+  height: 0.5rem;
+`
+
+const ProgressFill = styled.div<{ width: number }>`
+  background-color: ${p => p.theme.colors.button.primary};
+  height: 0.5rem;
+  border-radius: 9999px;
+  transition: width 0.3s;
+  width: ${p => p.width}%;
+`
+
+const ProgressMessage = styled.p`
+  font-size: 0.75rem;
+  color: ${p => p.theme.colors.text.secondary};
+  margin-top: 0.25rem;
+  text-align: center;
+`
+
+const ReanalyzeBtn = styled.button`
+  width: 100%;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: background-color 0.15s;
+  border: none;
+  cursor: pointer;
+  color: ${p => p.theme.colors.button.secondaryText};
+  background-color: ${p => p.theme.colors.button.secondary};
+
+  &:hover {
+    background-color: ${p => p.theme.colors.button.secondaryHover};
+  }
+`
+
+const SegmentsWrapper = styled.div`
+  padding: 1rem;
+`
+
+const SegmentsTitle = styled.h3`
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: ${p => p.theme.colors.text.primary};
+  margin-bottom: 0.75rem;
+`
+
+const SegmentCard = styled.button<{ isSelected: boolean }>`
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  text-align: left;
+  transition: background-color 0.15s;
+  cursor: pointer;
+  border: 2px solid ${p => p.isSelected ? p.theme.colors.border.focus : 'transparent'};
+  background-color: ${p => p.isSelected ? p.theme.colors.background.selected : p.theme.colors.background.section};
+
+  &:hover {
+    background-color: ${p => p.isSelected ? p.theme.colors.background.selected : p.theme.colors.background.hover};
+  }
+`
+
+const SegmentHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+`
+
+const SegmentPhase = styled.span`
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-transform: capitalize;
+  color: ${p => p.theme.colors.text.primary};
+`
+
+const IssueBadge = styled.span`
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background-color: ${p => p.theme.colors.severity.highBg};
+  color: ${p => p.theme.colors.severity.highText};
+`
+
+const SegmentDesc = styled.p`
+  font-size: 0.75rem;
+  color: ${p => p.theme.colors.text.secondary};
+`
+
+const LogInfoSection = styled.div`
+  padding: 1rem;
+  border-top: 1px solid ${p => p.theme.colors.border.main};
+  background-color: ${p => p.theme.colors.background.section};
+`
+
+const LogInfoTitle = styled.h3`
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: ${p => p.theme.colors.text.primary};
+  margin-bottom: 0.5rem;
+`
+
+const LogInfoText = styled.div`
+  font-size: 0.75rem;
+  color: ${p => p.theme.colors.text.secondary};
+
+  & > p + p {
+    margin-top: 0.25rem;
+  }
+`
 
 export const LeftPanel = observer(() => {
   const logStore = useLogStore()
@@ -9,56 +142,47 @@ export const LeftPanel = observer(() => {
   const uiStore = useUIStore()
 
   return (
-    <div className="h-full flex flex-col bg-white border-r">
-      {/* File Upload Section */}
-      <div className="border-b">
+    <PanelContainer>
+      <SectionBorder>
         <FileUpload />
-      </div>
+      </SectionBorder>
 
-      {/* Analysis Status / Re-analyze */}
       {logStore.isLoaded && (
-        <div className="p-4 border-b">
+        <AnalysisSection>
           {analysisStore.analysisStatus === 'analyzing' && (
             <div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${analysisStore.analysisProgress}%` }}
-                ></div>
-              </div>
-              <p className="text-xs text-gray-600 mt-1 text-center">
+              <ProgressTrack>
+                <ProgressFill width={analysisStore.analysisProgress} />
+              </ProgressTrack>
+              <ProgressMessage>
                 {analysisStore.analysisMessage}
-              </p>
+              </ProgressMessage>
             </div>
           )}
 
           {analysisStore.isComplete && (
-            <button
+            <ReanalyzeBtn
               data-testid="reanalyze-button"
               onClick={() => analysisStore.analyze()}
-              className="w-full px-4 py-2 rounded-lg font-medium transition-colors bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm"
             >
               Re-analyze
-            </button>
+            </ReanalyzeBtn>
           )}
-        </div>
+        </AnalysisSection>
       )}
 
-      {/* Quad Profile Selector */}
       {logStore.isLoaded && <ProfileSelector />}
 
-      {/* Flight Segments */}
       {analysisStore.isComplete && analysisStore.segments.length > 0 && (
         <div className="flex-1 overflow-y-auto">
-          <div className="p-4">
-            <h3 className="text-sm font-bold text-gray-700 mb-3">
-              Flight Segments
-            </h3>
+          <SegmentsWrapper>
+            <SegmentsTitle>Flight Segments</SegmentsTitle>
             <div data-testid="flight-segments" className="space-y-2">
               {analysisStore.segments.map(segment => (
-                <button
+                <SegmentCard
                   key={segment.id}
                   data-testid={`segment-${segment.id}`}
+                  isSelected={analysisStore.selectedSegmentId === segment.id}
                   onClick={() => {
                     analysisStore.selectSegment(segment.id)
                     if (logStore.frames.length > 0) {
@@ -72,35 +196,27 @@ export const LeftPanel = observer(() => {
                       }
                     }
                   }}
-                  className={`w-full p-3 rounded-lg text-left transition-colors ${
-                    analysisStore.selectedSegmentId === segment.id
-                      ? 'bg-blue-100 border-2 border-blue-500'
-                      : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
-                  }`}
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium capitalize">
-                      {segment.phase}
-                    </span>
+                  <SegmentHeader>
+                    <SegmentPhase>{segment.phase}</SegmentPhase>
                     {segment.issueCount > 0 && (
-                      <span className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800">
+                      <IssueBadge>
                         {segment.issueCount} issue{segment.issueCount !== 1 ? 's' : ''}
-                      </span>
+                      </IssueBadge>
                     )}
-                  </div>
-                  <p className="text-xs text-gray-600">{segment.description}</p>
-                </button>
+                  </SegmentHeader>
+                  <SegmentDesc>{segment.description}</SegmentDesc>
+                </SegmentCard>
               ))}
             </div>
-          </div>
+          </SegmentsWrapper>
         </div>
       )}
 
-      {/* Log Info */}
       {logStore.isLoaded && logStore.metadata && (
-        <div data-testid="log-info" className="p-4 border-t bg-gray-50">
-          <h3 className="text-xs font-bold text-gray-700 mb-2">Log Info</h3>
-          <div className="text-xs text-gray-600 space-y-1">
+        <LogInfoSection data-testid="log-info">
+          <LogInfoTitle>Log Info</LogInfoTitle>
+          <LogInfoText>
             <p>
               <span className="font-medium">Firmware:</span>{' '}
               {logStore.metadata.firmwareType} {logStore.metadata.firmwareVersion}
@@ -122,9 +238,9 @@ export const LeftPanel = observer(() => {
                 {logStore.metadata.debugMode}
               </p>
             )}
-          </div>
-        </div>
+          </LogInfoText>
+        </LogInfoSection>
       )}
-    </div>
+    </PanelContainer>
   )
 })

@@ -8,7 +8,11 @@ const base = repo ? `/${repo}/` : '/'
 
 export default defineConfig({
   base,
-  plugins: [react()],
+  plugins: [
+    react({
+      jsxImportSource: '@emotion/react',
+    }),
+  ],
   worker: {
     format: 'es'
   }

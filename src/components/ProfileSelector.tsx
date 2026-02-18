@@ -1,51 +1,101 @@
 import { observer } from 'mobx-react-lite'
+import styled from '@emotion/styled'
 import { useAnalysisStore } from '../stores/RootStore'
 import { QUAD_SIZE_ORDER, QUAD_PROFILES } from '../domain/profiles/quadProfiles'
+
+const SelectorWrapper = styled.div`
+  padding: 1rem;
+  border-bottom: 1px solid ${p => p.theme.colors.border.main};
+`
+
+const SelectorHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+`
+
+const SelectorTitle = styled.h3`
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: ${p => p.theme.colors.text.primary};
+`
+
+const DetectionBadge = styled.span<{ variant: 'good' | 'low' }>`
+  font-size: 0.75rem;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  color: ${p => p.variant === 'good' ? p.theme.colors.accent.greenText : p.theme.colors.severity.mediumText};
+  background-color: ${p => p.variant === 'good' ? p.theme.colors.accent.greenBg : p.theme.colors.severity.mediumBg};
+`
+
+const ButtonGroup = styled.div`
+  display: flex;
+  gap: 0.25rem;
+`
+
+const ProfileBtn = styled.button<{ isActive: boolean }>`
+  flex: 1;
+  padding: 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: background-color 0.15s, color 0.15s;
+  border: none;
+  cursor: pointer;
+  color: ${p => p.isActive ? p.theme.colors.button.primaryText : p.theme.colors.text.secondary};
+  background-color: ${p => p.isActive ? p.theme.colors.button.primary : p.theme.colors.background.section};
+
+  &:hover {
+    background-color: ${p => p.isActive ? p.theme.colors.button.primaryHover : p.theme.colors.button.secondaryHover};
+  }
+`
+
+const ReasoningText = styled.p`
+  font-size: 0.75rem;
+  color: ${p => p.theme.colors.text.muted};
+  margin-top: 0.375rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`
 
 export const ProfileSelector = observer(() => {
   const analysisStore = useAnalysisStore()
   const detection = analysisStore.detectionResult
 
   return (
-    <div className="p-4 border-b">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-xs font-bold text-gray-700">Quad Profile</h3>
+    <SelectorWrapper>
+      <SelectorHeader>
+        <SelectorTitle>Quad Profile</SelectorTitle>
         {detection && detection.confidence >= 0.5 && (
-          <span className="text-xs text-green-700 bg-green-50 px-1.5 py-0.5 rounded">
-            Auto-detected
-          </span>
+          <DetectionBadge variant="good">Auto-detected</DetectionBadge>
         )}
         {detection && detection.confidence < 0.5 && (
-          <span className="text-xs text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">
-            Low confidence
-          </span>
+          <DetectionBadge variant="low">Low confidence</DetectionBadge>
         )}
-      </div>
-      <div className="flex gap-1">
+      </SelectorHeader>
+      <ButtonGroup>
         {QUAD_SIZE_ORDER.map(sizeId => {
           const profile = QUAD_PROFILES[sizeId]
           const isActive = analysisStore.quadProfile.id === sizeId
           return (
-            <button
+            <ProfileBtn
               key={sizeId}
+              isActive={isActive}
               onClick={() => analysisStore.setQuadProfile(sizeId)}
               title={profile.description}
-              className={`flex-1 px-1.5 py-1.5 rounded text-xs font-medium transition-colors ${
-                isActive
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
             >
               {profile.label}
-            </button>
+            </ProfileBtn>
           )
         })}
-      </div>
+      </ButtonGroup>
       {detection && detection.reasoning.length > 0 && (
-        <p className="text-xs text-gray-500 mt-1.5 truncate" title={detection.reasoning.join('; ')}>
+        <ReasoningText title={detection.reasoning.join('; ')}>
           {detection.reasoning[0]}
-        </p>
+        </ReasoningText>
       )}
-    </div>
+    </SelectorWrapper>
   )
 })
