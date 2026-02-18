@@ -51,7 +51,7 @@ export const WobbleRule: TuningRule = {
     if (metrics.amplitude > 35 * scale) {
       severity = 'high'
     } else if (metrics.amplitude > 25 * scale) {
-      severity = 'high'
+      severity = 'medium'
     } else if (metrics.amplitude > 15 * scale) {
       severity = 'medium'
     } else {
@@ -94,58 +94,32 @@ export const WobbleRule: TuningRule = {
       const band = issue.metrics.dominantBand
 
       if (band === 'low') {
-        // Low-frequency wobble (< 20 Hz) - insufficient P or FF
-        recommendations.push(
-          {
-            id: generateId(),
-            issueId: issue.id,
-            type: 'increasePID',
-            priority: 8,
-            confidence: 0.85,
-            title: `Increase P on ${issue.axis}`,
-            description: 'Low-frequency oscillation indicates insufficient P gain',
-            rationale:
-              'P gain provides the main restoring force. Low-frequency wobble means the quad is not holding position firmly enough.',
-            risks: [
-              'Too much P can cause rapid oscillations',
-              'May need D adjustment to compensate',
-            ],
-            changes: [
-              {
-                parameter: 'pidPGain',
-                recommendedChange: '+0.3',
-                axis: issue.axis,
-                explanation: 'Increase P to improve positional authority',
-              },
-            ],
-            expectedImprovement:
-              'Firmer hold during cruise, reduced slow oscillations',
-          },
-          {
-            id: generateId(),
-            issueId: issue.id,
-            type: 'adjustFeedforward',
-            priority: 7,
-            confidence: 0.75,
-            title: `Increase Feedforward on ${issue.axis}`,
-            description: 'Feedforward can help reduce low-frequency drift',
-            rationale:
-              'Feedforward anticipates needed corrections, reducing lag that can cause slow oscillations.',
-            risks: [
-              'Too much FF can cause overshoot on stick inputs',
-              'Less effective if stick feels are already good',
-            ],
-            changes: [
-              {
-                parameter: 'pidFeedforward',
-                recommendedChange: '+5',
-                axis: issue.axis,
-                explanation: 'Increase FF for more proactive corrections',
-              },
-            ],
-            expectedImprovement: 'More locked-in feel during cruise',
-          }
-        )
+        // Low-frequency wobble (< 20 Hz) - insufficient P gain
+        recommendations.push({
+          id: generateId(),
+          issueId: issue.id,
+          type: 'increasePID',
+          priority: 8,
+          confidence: 0.85,
+          title: `Increase P on ${issue.axis}`,
+          description: 'Low-frequency oscillation indicates insufficient P gain',
+          rationale:
+            'P gain provides the main restoring force. Low-frequency wobble means the quad is not holding position firmly enough.',
+          risks: [
+            'Too much P can cause rapid oscillations',
+            'May need D adjustment to compensate',
+          ],
+          changes: [
+            {
+              parameter: 'pidPGain',
+              recommendedChange: '+0.3',
+              axis: issue.axis,
+              explanation: 'Increase P to improve positional authority',
+            },
+          ],
+          expectedImprovement:
+            'Firmer hold during cruise, reduced slow oscillations',
+        })
       } else if (band === 'high') {
         // High-frequency noise (> 80 Hz) - filtering or D-term issue
         recommendations.push(

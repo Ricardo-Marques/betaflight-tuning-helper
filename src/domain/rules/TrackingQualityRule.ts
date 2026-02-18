@@ -98,7 +98,7 @@ export const TrackingQualityRule: TuningRule = {
     if (normalizedError > 60 * scale) {
       severity = 'high' // Quad barely responding
     } else if (normalizedError > 40 * scale) {
-      severity = 'high' // Significantly delayed
+      severity = 'medium' // Significantly delayed
     } else if (normalizedError > 25 * scale) {
       severity = 'medium' // Noticeable sluggishness
     } else if (normalizedError > 12 * scale) {
@@ -119,10 +119,10 @@ export const TrackingQualityRule: TuningRule = {
 
     if (amplitudeRatio < 90 && normalizedError > 25) {
       issueType = 'underdamped'
-      issueDescription = `Poor tracking: sluggish response — gyro at ${amplitudeRatio.toFixed(0)}% of setpoint (${normalizedError.toFixed(0)}% error)`
+      issueDescription = `Poor tracking: not enough P gain — gyro only reaching ${amplitudeRatio.toFixed(0)}% of setpoint (${normalizedError.toFixed(0)}% error)`
     } else if (amplitudeRatio > 105) {
       issueType = 'overdamped'
-      issueDescription = `Poor tracking: overdamped response — ${amplitudeRatio.toFixed(0)}% amplitude ratio (${normalizedError.toFixed(0)}% error)`
+      issueDescription = `Poor tracking: overshooting setpoint — ${amplitudeRatio.toFixed(0)}% amplitude ratio, too much P or not enough D (${normalizedError.toFixed(0)}% error)`
     } else {
       issueType = 'lowFrequencyOscillation'
       issueDescription = `Poor tracking: ${normalizedError.toFixed(0)}% error during active flight`

@@ -59,7 +59,7 @@ export const HighThrottleOscillationRule: TuningRule = {
     if (amplitude > 50 * scale) {
       severity = 'high'
     } else if (amplitude > 30 * scale) {
-      severity = 'high'
+      severity = 'medium'
     } else if (amplitude > 18 * scale) {
       severity = 'medium'
     } else {
@@ -99,7 +99,7 @@ export const HighThrottleOscillationRule: TuningRule = {
         type: 'adjustTPA',
         priority: 8,
         confidence: issue.confidence,
-        title: `Increase TPA rate for ${issue.axis}`,
+        title: 'Increase TPA rate',
         description: 'Oscillations at high throttle indicate TPA is not attenuating PIDs enough',
         rationale:
           'TPA (Throttle PID Attenuation) reduces PID gains at high throttle. Oscillations appearing only at high throttle means the gains are too high at that throttle level.',
@@ -124,7 +124,7 @@ export const HighThrottleOscillationRule: TuningRule = {
         type: 'adjustTPA',
         priority: 7,
         confidence: issue.confidence * 0.9,
-        title: `Lower TPA breakpoint for ${issue.axis}`,
+        title: 'Lower TPA breakpoint',
         description: 'Start TPA attenuation earlier to catch oscillations at moderate-high throttle',
         rationale:
           'The TPA breakpoint is the throttle value where attenuation begins. Lowering it means PID reduction starts earlier, catching oscillations at lower throttle.',

@@ -60,7 +60,7 @@ export const GyroNoiseRule: TuningRule = {
     if (gyroRMS > 15 * scale) {
       severity = 'high'
     } else if (gyroRMS > 10 * scale) {
-      severity = 'high'
+      severity = 'medium'
     } else if (gyroRMS > 5 * scale) {
       severity = 'medium'
     } else {
@@ -133,7 +133,7 @@ export const GyroNoiseRule: TuningRule = {
         changes: [
           {
             parameter: 'gyroFilterMultiplier',
-            recommendedChange: '+1',
+            recommendedChange: '+10',
             explanation: 'Increase gyro filter multiplier for stronger noise suppression',
           },
         ],

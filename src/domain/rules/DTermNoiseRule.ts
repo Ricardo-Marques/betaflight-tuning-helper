@@ -61,7 +61,7 @@ export const DTermNoiseRule: TuningRule = {
     if (dToGyroRatio > 2.0 * scale) {
       severity = 'high'
     } else if (dToGyroRatio > 1.0 * scale) {
-      severity = 'high'
+      severity = 'medium'
     } else {
       severity = 'medium'
     }
@@ -110,7 +110,7 @@ export const DTermNoiseRule: TuningRule = {
         changes: [
           {
             parameter: 'dtermFilterMultiplier',
-            recommendedChange: '+1',
+            recommendedChange: '+10',
             explanation: 'Increase D-term filter multiplier for stronger noise suppression',
           },
         ],

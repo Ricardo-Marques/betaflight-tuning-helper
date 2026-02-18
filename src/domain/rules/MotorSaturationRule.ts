@@ -44,7 +44,7 @@ export const MotorSaturationRule: TuningRule = {
     if (metrics.saturationPercentage > 30 * scale) {
       severity = 'high'
     } else if (metrics.saturationPercentage > 15 * scale) {
-      severity = 'high'
+      severity = 'medium'
     } else if (metrics.saturationPercentage > 8 * scale) {
       severity = 'medium'
     } else {
@@ -152,13 +152,11 @@ export const MotorSaturationRule: TuningRule = {
             {
               parameter: 'pidPGain',
               recommendedChange: '-0.2',
-              axis: 'roll',
               explanation: 'Reduce P to lower motor demand',
             },
             {
               parameter: 'pidDGain',
               recommendedChange: '-0.1',
-              axis: 'roll',
               explanation: 'Reduce D to lower motor demand',
             },
           ],

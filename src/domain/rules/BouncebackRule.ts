@@ -48,7 +48,7 @@ export const BouncebackRule: TuningRule = {
     if (metrics.overshoot > 40 * scale || metrics.settlingTime > 150 * scale) {
       severity = 'high'
     } else if (metrics.overshoot > 25 * scale || metrics.settlingTime > 100 * scale) {
-      severity = 'high'
+      severity = 'medium'
     } else if (metrics.overshoot > 15 * scale || metrics.settlingTime > 75 * scale) {
       severity = 'medium'
     } else {
@@ -57,7 +57,6 @@ export const BouncebackRule: TuningRule = {
 
     // Calculate confidence based on signal quality
     const gyro = extractAxisData(windowFrames, 'gyroADC', window.axis)
-    extractAxisData(windowFrames, 'setpoint', window.axis)
     const signalToNoise = Math.abs(metrics.overshoot) / (calculateStdDev(gyro) + 1)
     const confidence = Math.min(0.95, 0.6 + signalToNoise * 0.1)
 
@@ -90,27 +89,27 @@ export const BouncebackRule: TuningRule = {
 
       // Decision logic based on bounceback characteristics
       if (overshoot > 50 && settlingTime < 100) {
-        // Fast but large overshoot - too much D or not enough damping
+        // Large overshoot with fast settling - P is too high, overshooting target
         recommendations.push({
           id: uuidv4(),
           issueId: issue.id,
           type: 'decreasePID',
           priority: 8,
           confidence: issue.confidence,
-          title: `Reduce D on ${issue.axis}`,
-          description: 'Large overshoot with fast oscillation indicates excessive D-term',
+          title: `Reduce P on ${issue.axis}`,
+          description: 'Large overshoot indicates P gain is too aggressive',
           rationale:
-            'High D-term amplifies small errors too aggressively, causing overshoot. Reducing D allows smoother response.',
+            'High P gain drives the quad past its target too aggressively, causing overshoot on stick release. Reducing P prevents the initial overshoot.',
           risks: [
-            'May increase settling time slightly',
-            'Could allow more propwash if reduced too much',
+            'May reduce responsiveness slightly',
+            'Could feel less locked-in during fast maneuvers',
           ],
           changes: [
             {
-              parameter: 'pidDGain',
+              parameter: 'pidPGain',
               recommendedChange: '-0.3',
               axis: issue.axis,
-              explanation: 'Reduce D slider by 0.3 steps to decrease damping aggression',
+              explanation: 'Reduce P to prevent overshooting on stick release',
             },
           ],
           expectedImprovement: 'Smoother stick release with less overshoot',
