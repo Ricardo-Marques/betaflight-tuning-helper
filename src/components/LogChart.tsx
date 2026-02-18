@@ -441,13 +441,11 @@ export const LogChart = observer(() => {
       return
     }
     el.style.display = ''
-    // Position to the RIGHT of cursor so it doesn't overlap the Recharts tooltip (which renders left)
-    el.style.left = `${hovered.x + 20}px`
-    // Smart vertical positioning: prefer above cursor, flip below if not enough space
-    const spaceAbove = hovered.y - 12
-    // Render off-screen first to measure height
+    // Render off-screen first to measure dimensions before positioning
+    el.style.left = '0px'
     el.style.top = '-9999px'
     el.style.bottom = ''
+    el.style.right = ''
     el.style.visibility = 'hidden'
 
     // Build inner HTML
@@ -485,15 +483,33 @@ export const LogChart = observer(() => {
         <p style="font-size:0.75rem;color:${theme.colors.text.muted};font-style:italic">Click to cycle through issues</p>`)
     }
     el.innerHTML = parts.join('')
-    // Measure actual height and apply final position
+    // Measure actual dimensions for smart positioning
     const popoverHeight = el.offsetHeight
+    const popoverWidth = el.offsetWidth
     el.style.visibility = ''
+
+    // Horizontal: place on opposite side from the Recharts tooltip.
+    // Recharts puts its tooltip to the right when cursor is in the left half,
+    // and to the left when cursor is in the right half.
+    // We do the inverse so they never overlap.
+    const chartRect = chartContainerRef.current?.getBoundingClientRect()
+    const chartMidX = chartRect
+      ? chartRect.left + chartRect.width / 2
+      : window.innerWidth / 2
+    if (hovered.x < chartMidX) {
+      // Cursor in left half → Recharts tooltip right → issue popover LEFT
+      el.style.left = `${Math.max(4, hovered.x - popoverWidth - 20)}px`
+    } else {
+      // Cursor in right half → Recharts tooltip left → issue popover RIGHT
+      el.style.left = `${hovered.x + 20}px`
+    }
+
+    // Vertical: prefer above cursor, flip below if not enough space
+    const spaceAbove = hovered.y - 12
     if (spaceAbove >= popoverHeight) {
-      // Position above cursor
       el.style.top = ''
       el.style.bottom = `${window.innerHeight - hovered.y + 12}px`
     } else {
-      // Not enough space above — position below cursor
       el.style.bottom = ''
       el.style.top = `${hovered.y + 12}px`
     }
@@ -848,10 +864,17 @@ export const LogChart = observer(() => {
       if (prevIds !== nextIds) {
         updateHoverPopover({ issues: nearby, x: event.clientX, y: event.clientY })
       } else if (popoverRef.current) {
-        // Reposition only — use smart vertical positioning
+        // Reposition only — opposite side from Recharts tooltip + smart vertical
         const el = popoverRef.current
-        el.style.left = `${event.clientX + 20}px`
+        const popoverWidth = el.offsetWidth
         const popoverHeight = el.offsetHeight
+        const chartRect = chartContainerRef.current?.getBoundingClientRect()
+        const midX = chartRect ? chartRect.left + chartRect.width / 2 : window.innerWidth / 2
+        if (event.clientX < midX) {
+          el.style.left = `${Math.max(4, event.clientX - popoverWidth - 20)}px`
+        } else {
+          el.style.left = `${event.clientX + 20}px`
+        }
         const spaceAbove = event.clientY - 12
         if (spaceAbove >= popoverHeight) {
           el.style.top = ''
