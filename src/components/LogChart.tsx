@@ -399,6 +399,7 @@ export const LogChart = observer(() => {
   const forcedPopoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
   const hoveredIssuesRef = useRef<HoveredIssues | null>(null)
+  const popoverSourceRef = useRef<'hover' | 'forced' | null>(null)
   const hoverClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [showGlow, setShowGlow] = useObservableState(false)
   const glowTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -432,8 +433,9 @@ export const LogChart = observer(() => {
       : theme.colors.severity.low
 
   // Imperatively update the issue hover popover — no React re-render
-  const updateHoverPopover = (hovered: HoveredIssues | null): void => {
+  const updateHoverPopover = (hovered: HoveredIssues | null, source: 'hover' | 'forced' = 'hover'): void => {
     hoveredIssuesRef.current = hovered
+    popoverSourceRef.current = hovered ? source : null
     const el = popoverRef.current
     if (!el) return
     if (!hovered) {
@@ -742,8 +744,8 @@ export const LogChart = observer(() => {
       return
     }
 
-    // If hover popover is already showing, just refresh its content (update selected highlight)
-    if (hoveredIssuesRef.current) {
+    // If a real hover popover is already showing, just refresh its content (update selected highlight)
+    if (popoverSourceRef.current === 'hover') {
       refreshPopoverContent()
       return
     }
@@ -775,10 +777,10 @@ export const LogChart = observer(() => {
       issues,
       x: rect.left + 16 + pxLeft, // 16 = 1rem padding
       y: rect.top + 30,
-    })
+    }, 'forced')
     forcedPopoverTimer.current = setTimeout(() => {
-      // Only auto-dismiss if no hover popover took over
-      if (!hoveredIssuesRef.current) updateHoverPopover(null)
+      // Only auto-dismiss if a real hover didn't take over
+      if (popoverSourceRef.current !== 'hover') updateHoverPopover(null)
     }, 2000)
   })
 
