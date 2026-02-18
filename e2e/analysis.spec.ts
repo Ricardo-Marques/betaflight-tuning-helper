@@ -112,6 +112,40 @@ test.describe('Analysis', () => {
     await expect(firstRec.getByText('Why this helps')).toBeVisible()
   })
 
+  test('clicking off-axis issue switches axis and fades off-axis pills', async ({ page }) => {
+    // Ensure we start on roll axis
+    const rollBtn = page.getByTestId('axis-button-roll')
+    await rollBtn.click()
+    await expect(rollBtn).toHaveAttribute('data-active', '')
+
+    // Find a pitch issue pill (if any exist)
+    const pitchPill = page.locator('[data-testid^="issue-pill-"][data-axis="pitch"]').first()
+    const pitchPillCount = await pitchPill.count()
+    if (pitchPillCount === 0) {
+      // Try yaw instead
+      const yawPill = page.locator('[data-testid^="issue-pill-"][data-axis="yaw"]').first()
+      const yawCount = await yawPill.count()
+      if (yawCount === 0) {
+        test.skip()
+        return
+      }
+      await yawPill.click()
+      await expect(page.getByTestId('axis-button-yaw')).toHaveAttribute('data-active', '')
+    } else {
+      await pitchPill.click()
+      await expect(page.getByTestId('axis-button-pitch')).toHaveAttribute('data-active', '')
+    }
+
+    // After axis switch, off-axis pills should have reduced opacity
+    const currentAxis = await page.locator('[data-testid^="axis-button-"][data-active]').textContent()
+    const offAxisPills = page.locator(`[data-testid^="issue-pill-"]:not([data-axis="${currentAxis?.toLowerCase()}"])`)
+    const offAxisCount = await offAxisPills.count()
+    if (offAxisCount > 0) {
+      const opacity = await offAxisPills.first().evaluate(el => getComputedStyle(el).opacity)
+      expect(Number(opacity)).toBeLessThan(1)
+    }
+  })
+
   test('rationale is always visible on recommendation cards', async ({ page }) => {
     // Switch to Fixes tab
     await page.locator('button').filter({ hasText: /^Fixes/ }).click()
