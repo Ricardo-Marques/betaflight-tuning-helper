@@ -61,6 +61,7 @@ export interface DetectedIssue {
   metrics: IssueMetrics
   confidence: number // 0-1
   occurrences?: [number, number][] // individual timeRanges before collapse
+  peakTimes?: number[] // per-occurrence peak timestamps (µs), parallel to occurrences
 }
 
 export type IssueType =
@@ -117,6 +118,9 @@ export interface IssueMetrics {
 
   /** Phase lag between setpoint and gyro (ms) */
   phaseLagMs?: number
+
+  /** Absolute timestamp (µs) of the most pronounced point in this occurrence */
+  peakTime?: number
 }
 
 export type FrequencyBand = 'low' | 'mid' | 'high'

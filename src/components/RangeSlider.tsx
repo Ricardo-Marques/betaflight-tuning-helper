@@ -3,7 +3,7 @@ import styled from '@emotion/styled'
 import { useRef } from 'react'
 import { useAutorun } from '../lib/mobx-reactivity'
 
-const MIN_WINDOW = 2 // 2% minimum zoom window
+const MIN_WINDOW = 1 // 1% minimum zoom window (matches chart scroll)
 const HANDLE_W_PX = 12 // must match RangeSliderHandle width
 
 const RangeSliderWrapper = styled.div`

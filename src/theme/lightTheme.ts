@@ -47,6 +47,7 @@ export const lightTheme: Theme = {
       motor2: '#f59e0b',    // amber-500
       motor3: '#10b981',    // emerald-500
       motor4: '#3b82f6',    // blue-500
+      throttle: '#a855f7',  // purple-500
       grid: '#e5e7eb',      // gray-200
       axis: '#6b7280',      // gray-500
       tooltipBg: 'rgba(255, 255, 255, 0.95)',

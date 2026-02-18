@@ -44,6 +44,7 @@ export interface ThemeColors {
     motor2: string
     motor3: string
     motor4: string
+    throttle: string
     grid: string
     axis: string
     tooltipBg: string

@@ -159,8 +159,9 @@ export function useChartInteractions(
     for (const issue of visibleIssues) {
       if (!uiStore.showIssues && issue.id !== analysisStore.selectedIssueId) continue
       const times = issue.occurrences ?? [issue.timeRange]
-      for (const tr of times) {
-        const occTime = tr[0] / 1000000
+      for (let tIdx = 0; tIdx < times.length; tIdx++) {
+        const tr = times[tIdx]
+        const occTime = (issue.peakTimes?.[tIdx] ?? issue.metrics.peakTime ?? (tr[0] + tr[1]) / 2) / 1000000
         if (Math.abs(occTime - cursorTime) < threshold) {
           nearby.push(issue)
           break
@@ -257,9 +258,11 @@ export function useChartInteractions(
     const sevRank: Record<string, number> = { high: 0, medium: 1, low: 2 }
     const nearbyClicks: { issue: DetectedIssue; occIdx: number }[] = []
     for (const issue of visibleIssues) {
+      if (!uiStore.showIssues && issue.id !== analysisStore.selectedIssueId) continue
       const times = issue.occurrences ?? [issue.timeRange]
       for (let tIdx = 0; tIdx < times.length; tIdx++) {
-        const occTime = times[tIdx][0] / 1000000
+        const tr = times[tIdx]
+        const occTime = (issue.peakTimes?.[tIdx] ?? issue.metrics.peakTime ?? (tr[0] + tr[1]) / 2) / 1000000
         if (Math.abs(occTime - clickTime) < threshold) {
           nearbyClicks.push({ issue, occIdx: tIdx })
           break

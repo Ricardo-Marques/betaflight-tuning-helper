@@ -169,10 +169,11 @@ export function useIssuePopover(
     el.innerHTML = buildPopoverHTML(hovered.issues)
   }
 
-  // Flash glow when selected issue changes
+  // Flash glow when selected issue changes (or re-selected)
   useAutorun(() => {
     if (analysisStore.selectedIssueId) {
       void analysisStore.selectedOccurrenceIdx
+      void analysisStore.selectionBump
       setShowGlow(true)
       if (refs.glowTimer.current) clearTimeout(refs.glowTimer.current)
       refs.glowTimer.current = setTimeout(() => setShowGlow(false), 1500)
@@ -181,11 +182,12 @@ export function useIssuePopover(
     }
   })
 
-  // Show forced popover for 2s when an issue is selected
+  // Show forced popover for 2s when an issue is selected (or re-selected)
   useAutorun(() => {
     if (refs.forcedPopoverTimer.current) clearTimeout(refs.forcedPopoverTimer.current)
     const issueId = analysisStore.selectedIssueId
     const occIdx = analysisStore.selectedOccurrenceIdx
+    void analysisStore.selectionBump
     // Read chartMountedBox.value to re-fire when DOM element mounts
     const mounted = chartMountedBox?.value ?? true
     if (!issueId || occIdx == null || !mounted || !refs.chartContainerRef.current || chartData.length < 2 || containerWidth === 0) {
@@ -207,7 +209,7 @@ export function useIssuePopover(
     const timeStart = chartData[0].time
     const timeEnd = chartData[chartData.length - 1].time
     const timeSpan = timeEnd - timeStart
-    const t = occ[0] / 1000000
+    const t = (issue.peakTimes?.[occIdx] ?? issue.metrics.peakTime ?? (occ[0] + occ[1]) / 2) / 1000000
     if (t < timeStart || t > timeEnd) { updateHoverPopover(null); return }
 
     const plotWidth = containerWidth - CHART_MARGIN_LEFT - CHART_MARGIN_RIGHT
@@ -216,7 +218,10 @@ export function useIssuePopover(
     const sevRank: Record<string, number> = { high: 0, medium: 1, low: 2 }
     const stacked = visibleIssues.filter(vi => {
       const viTimes = vi.occurrences ?? [vi.timeRange]
-      return viTimes.some(tr => Math.abs(tr[0] / 1000000 - t) < (timeSpan * 0.005))
+      return viTimes.some((tr, idx) => {
+        const viT = (vi.peakTimes?.[idx] ?? vi.metrics.peakTime ?? (tr[0] + tr[1]) / 2) / 1000000
+        return Math.abs(viT - t) < (timeSpan * 0.005)
+      })
     }).sort((a, b) => (sevRank[a.severity] ?? 2) - (sevRank[b.severity] ?? 2))
     const issues = stacked.length > 0 ? stacked : [issue]
 

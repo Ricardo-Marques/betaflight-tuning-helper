@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { useLogStore, useUIStore } from '../../stores/RootStore'
 import { useComputed } from '../../lib/mobx-reactivity'
 import type { LogFrame } from '../../domain/types/LogFrame'
@@ -22,6 +23,7 @@ interface ChartDataResult {
   visibleFrames: LogFrame[]
   chartData: ChartDataPoint[]
   yDomain: [number, number]
+  motorDomain: [number, number]
 }
 
 export function useChartData(isDraggingObs: boolean): ChartDataResult {
@@ -62,7 +64,8 @@ export function useChartData(isDraggingObs: boolean): ChartDataResult {
     }))
   })
 
-  const yDomain = useComputed((): [number, number] => {
+  // Tight domain computed from visible frames
+  const tightDomain = useComputed((): [number, number] => {
     if (visibleFrames.length === 0) return [0, 1]
 
     let min = Infinity
@@ -87,5 +90,67 @@ export function useChartData(isDraggingObs: boolean): ChartDataResult {
     return [min - margin, max + margin]
   })
 
-  return { zoomDuration, visibleFrames, chartData, yDomain }
+  // Smoothed Y domain: lerp toward tight domain each pan frame (no RAF needed).
+  // MobX already re-evaluates this computed on every pan frame because tightDomain
+  // changes, so we piggyback on that reactivity for free synchronous easing.
+  const displayedRef = useRef<[number, number]>([0, 1])
+  const seededRef = useRef(false)
+
+  const yDomain = useComputed((): [number, number] => {
+    const tight = tightDomain
+
+    // Not dragging — snap to tight domain immediately
+    if (!isDraggingObs) {
+      displayedRef.current = tight
+      seededRef.current = false
+      return tight
+    }
+
+    // First frame of a drag — seed so we don't lerp from stale values
+    if (!seededRef.current) {
+      seededRef.current = true
+      displayedRef.current = tight
+      return tight
+    }
+
+    const prev = displayedRef.current
+    // Asymmetric lerp: expand fast (keep up with new peaks), shrink slow (avoid jitter)
+    const EXPAND = 0.6
+    const SHRINK = 0.08
+    const alphaMin = tight[0] < prev[0] ? EXPAND : SHRINK
+    const alphaMax = tight[1] > prev[1] ? EXPAND : SHRINK
+    const smoothed: [number, number] = [
+      prev[0] + (tight[0] - prev[0]) * alphaMin,
+      prev[1] + (tight[1] - prev[1]) * alphaMax,
+    ]
+    displayedRef.current = smoothed
+    return smoothed
+  })
+
+  // Stable motor/throttle domain computed from the entire log (never changes during pan)
+  const motorDomain = useComputed((): [number, number] => {
+    const frames = logStore.frames
+    if (frames.length === 0) return [0, 2000]
+
+    let min = Infinity
+    let max = -Infinity
+    const step = Math.max(1, Math.floor(frames.length / 5000))
+
+    for (let i = 0; i < frames.length; i += step) {
+      const frame = frames[i]
+      for (const m of frame.motor) {
+        if (m < min) min = m
+        if (m > max) max = m
+      }
+      const t = frame.throttle
+      if (t < min) min = t
+      if (t > max) max = t
+    }
+
+    const range = max - min
+    const margin = range * 0.05
+    return [min - margin, max + margin]
+  })
+
+  return { zoomDuration, visibleFrames, chartData, yDomain, motorDomain }
 }

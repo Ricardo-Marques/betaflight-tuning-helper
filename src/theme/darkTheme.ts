@@ -47,6 +47,7 @@ export const darkTheme: Theme = {
       motor2: '#fbbf24',    // amber-400
       motor3: '#34d399',    // emerald-400
       motor4: '#60a5fa',    // blue-400
+      throttle: '#c084fc',  // purple-400
       grid: '#374151',      // gray-700
       axis: '#9ca3af',      // gray-400
       tooltipBg: 'rgba(31, 41, 55, 0.95)',

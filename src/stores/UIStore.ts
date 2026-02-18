@@ -17,7 +17,7 @@ export class UIStore {
   showPidI: boolean = false
   showPidD: boolean = false
   showMotors: boolean = true
-  showThrottle: boolean = true
+  showThrottle: boolean = false
   showIssues: boolean = true
 
   leftPanelOpen: boolean = true
@@ -158,7 +158,7 @@ export class UIStore {
     this.showPidI = false
     this.showPidD = false
     this.showMotors = true
-    this.showThrottle = true
+    this.showThrottle = false
     this.showIssues = true
     this.activeRightTab = 'summary'
     this.axisHighlight = null

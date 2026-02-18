@@ -132,10 +132,41 @@ export class RuleEngine {
 
       // Detect issues
       const ruleIssues = rule.detect(window, frames, profile)
+
+      // Stamp each issue with the peak time (frame with highest gyro-setpoint error)
+      if (ruleIssues.length > 0) {
+        const peakTime = this.findPeakTime(window, frames)
+        for (const issue of ruleIssues) {
+          issue.metrics.peakTime = peakTime
+        }
+      }
+
       issues.push(...ruleIssues)
     }
 
     return issues
+  }
+
+  /**
+   * Find the timestamp of the most pronounced point in a window
+   * by locating the frame with the highest |gyro - setpoint| error.
+   */
+  private findPeakTime(window: AnalysisWindow, frames: LogFrame[]): number {
+    const axis = window.axis
+    let maxError = -1
+    let peakTime = (window.startTime + window.endTime) / 2
+
+    for (const idx of window.frameIndices) {
+      const frame = frames[idx]
+      if (!frame) continue
+      const error = Math.abs(frame.gyroADC[axis] - frame.setpoint[axis])
+      if (error > maxError) {
+        maxError = error
+        peakTime = frame.time
+      }
+    }
+
+    return peakTime
   }
 
   /**
@@ -499,11 +530,16 @@ export class RuleEngine {
         // If issues overlap or are close (within 100ms), merge them
         if (next.timeRange[0] - current.timeRange[1] < 100000) {
           // Merge: extend time range, average metrics, use higher severity
+          // Keep peakTime from the higher-confidence detection
+          const bestPeakTime = next.confidence > current.confidence
+            ? (next.metrics.peakTime ?? current.metrics.peakTime)
+            : (current.metrics.peakTime ?? next.metrics.peakTime)
           current = {
             ...current,
             timeRange: [current.timeRange[0], next.timeRange[1]],
             severity: this.maxSeverity(current.severity, next.severity),
             confidence: (current.confidence + next.confidence) / 2,
+            metrics: { ...current.metrics, peakTime: bestPeakTime },
           }
         } else {
           merged.push(current)
@@ -564,6 +600,7 @@ export class RuleEngine {
         description,
         metrics: worstMetrics,
         occurrences: group.map(i => i.timeRange),
+        peakTimes: group.map(i => i.metrics.peakTime ?? (i.timeRange[0] + i.timeRange[1]) / 2),
       })
     }
 

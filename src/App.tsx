@@ -97,6 +97,50 @@ const ReanalyzingOverlay = styled.div`
   pointer-events: all;
 `
 
+const AnalysisOverlay = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(2px);
+  pointer-events: none;
+`
+
+const AnalysisOverlayCard = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  background-color: rgba(0, 0, 0, 0.6);
+  padding: 1.5rem 2.5rem;
+  border-radius: 0.75rem;
+  min-width: 14rem;
+`
+
+const AnalysisOverlayText = styled.span`
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #fff;
+`
+
+const AnalysisOverlayTrack = styled.div`
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+  height: 0.375rem;
+`
+
+const AnalysisOverlayFill = styled.div<{ width: number }>`
+  background-color: #fff;
+  height: 0.375rem;
+  border-radius: 9999px;
+  transition: width 0.3s;
+  width: ${p => p.width}%;
+`
+
 const ReanalyzingLabel = styled.span`
   font-size: 0.875rem;
   font-weight: 600;
@@ -227,7 +271,7 @@ export const App = observer(() => {
     }
   }
 
-  const isLoaded = logStore.isLoaded || logStore.parseStatus === 'parsing'
+  const isLoaded = logStore.isLoaded
 
   return (
     <AppContainer
@@ -307,6 +351,16 @@ export const App = observer(() => {
             <ReanalyzingOverlay>
               <ReanalyzingLabel>Updating analysis...</ReanalyzingLabel>
             </ReanalyzingOverlay>
+          )}
+          {analysisStore.analysisStatus === 'analyzing' && !analysisStore.isReanalyzing && (
+            <AnalysisOverlay>
+              <AnalysisOverlayCard>
+                <AnalysisOverlayText>{analysisStore.analysisMessage || 'Detecting issues...'}</AnalysisOverlayText>
+                <AnalysisOverlayTrack>
+                  <AnalysisOverlayFill width={analysisStore.analysisProgress} />
+                </AnalysisOverlayTrack>
+              </AnalysisOverlayCard>
+            </AnalysisOverlay>
           )}
           {uiStore.leftPanelOpen && (
             <LeftPanelWrapper data-testid="left-panel">

@@ -14,6 +14,7 @@ import {
 } from '../domain/utils/CliExport'
 import { RightPanelTab } from '../stores/UIStore'
 import { useObservableState, useComputed, useAutorun } from '../lib/mobx-reactivity'
+import { ISSUE_CHART_DESCRIPTIONS } from '../domain/issueChartDescriptions'
 
 // Per-axis PID params that use resolveChange with isPerAxisPid=true
 const PER_AXIS_PID_PARAMS = new Set([
@@ -374,7 +375,8 @@ const LinkedRecLink = styled.button`
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
   text-align: left;
 
   &:hover {
@@ -409,6 +411,39 @@ const OccurrenceNav = styled.div`
 
 const MetricLabel = styled.span`
   font-weight: 500;
+`
+
+const ChartHintToggle = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  padding: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: ${p => p.theme.colors.text.link};
+  background: none;
+  border: none;
+  cursor: pointer;
+
+  &:hover {
+    color: ${p => p.theme.colors.text.linkHover};
+  }
+`
+
+const ChartHintChevron = styled.span<{ expanded: boolean }>`
+  display: inline-block;
+  transition: transform 0.15s;
+  transform: rotate(${p => p.expanded ? '90deg' : '0deg'});
+`
+
+const ChartHintText = styled.p`
+  margin-top: 0.375rem;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: ${p => p.theme.colors.text.secondary};
+  padding-top: 0.375rem;
+  border-top: 1px solid ${p => p.theme.colors.border.main};
 `
 
 /* ---- Recommendation Card ---- */
@@ -875,9 +910,22 @@ const IssueCard = observer(({ issue, onNavigateToRec }: { issue: DetectedIssue; 
   const uiStore = useUIStore()
   const logStore = useLogStore()
   const [occIdx, setOccIdx] = useObservableState(0)
+  const [chartHintOpen, setChartHintOpen] = useObservableState(false)
+  const cardRef = useRef<HTMLDivElement>(null)
 
   // Sync local occurrence index when selected externally (e.g. clicking chart pill)
   const isSelected = analysisStore.selectedIssueId === issue.id
+
+  // Restart pulse animation on re-selection of the same issue
+  useAutorun(() => {
+    void analysisStore.selectionBump
+    if (analysisStore.selectedIssueId === issue.id && cardRef.current) {
+      const el = cardRef.current
+      el.classList.remove('attention-pulse')
+      void el.offsetWidth
+      el.classList.add('attention-pulse')
+    }
+  })
   useAutorun(() => {
     const storeOccIdx = analysisStore.selectedOccurrenceIdx
     if (analysisStore.selectedIssueId === issue.id && storeOccIdx != null && storeOccIdx !== occIdx) {
@@ -895,7 +943,7 @@ const IssueCard = observer(({ issue, onNavigateToRec }: { issue: DetectedIssue; 
     const frames = logStore.frames
     if (frames.length > 0) {
       const tr = occurrences[idx]
-      const occTime = tr[0]
+      const occTime = issue.peakTimes?.[idx] ?? issue.metrics.peakTime ?? (tr[0] + tr[1]) / 2
 
       // Check if this occurrence is already visible in the current view
       const startFrame = Math.floor((uiStore.zoomStart / 100) * frames.length)
@@ -941,6 +989,7 @@ const IssueCard = observer(({ issue, onNavigateToRec }: { issue: DetectedIssue; 
 
   return (
     <IssueCardWrapper
+      ref={cardRef}
       data-issue-id={issue.id}
       data-selected={isSelected || undefined}
       severity={issue.severity}
@@ -997,6 +1046,20 @@ const IssueCard = observer(({ issue, onNavigateToRec }: { issue: DetectedIssue; 
           {(issue.confidence * 100).toFixed(0)}%
         </p>
       </IssueMetrics>
+
+      {/* Chart hint */}
+      <ChartHintToggle
+        onClick={(e) => {
+          e.stopPropagation()
+          setChartHintOpen(!chartHintOpen)
+        }}
+      >
+        <ChartHintChevron expanded={chartHintOpen}>&#9656;</ChartHintChevron>
+        What this looks like
+      </ChartHintToggle>
+      {chartHintOpen && (
+        <ChartHintText>{ISSUE_CHART_DESCRIPTIONS[issue.type]}</ChartHintText>
+      )}
 
       {/* Linked recommendations */}
       {linkedRecs.length > 0 && (

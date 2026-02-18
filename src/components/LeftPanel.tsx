@@ -16,33 +16,6 @@ const SectionBorder = styled.div`
   border-bottom: 1px solid ${p => p.theme.colors.border.main};
 `
 
-const AnalysisSection = styled.div`
-  padding: 1rem;
-  border-bottom: 1px solid ${p => p.theme.colors.border.main};
-`
-
-const ProgressTrack = styled.div`
-  width: 100%;
-  background-color: ${p => p.theme.colors.button.secondary};
-  border-radius: 9999px;
-  height: 0.5rem;
-`
-
-const ProgressFill = styled.div<{ width: number }>`
-  background-color: ${p => p.theme.colors.button.primary};
-  height: 0.5rem;
-  border-radius: 9999px;
-  transition: width 0.3s;
-  width: ${p => p.width}%;
-`
-
-const ProgressMessage = styled.p`
-  font-size: 0.75rem;
-  color: ${p => p.theme.colors.text.secondary};
-  margin-top: 0.25rem;
-  text-align: center;
-`
-
 const SegmentsScrollArea = styled.div`
   flex: 1;
   overflow-y: auto;
@@ -144,17 +117,6 @@ export const LeftPanel = observer(() => {
       <SectionBorder>
         <FileUpload />
       </SectionBorder>
-
-      {logStore.isLoaded && analysisStore.analysisStatus === 'analyzing' && (
-        <AnalysisSection>
-          <ProgressTrack>
-            <ProgressFill width={analysisStore.analysisProgress} />
-          </ProgressTrack>
-          <ProgressMessage>
-            {analysisStore.analysisMessage}
-          </ProgressMessage>
-        </AnalysisSection>
-      )}
 
       {logStore.isLoaded && <ProfileSelector />}
 

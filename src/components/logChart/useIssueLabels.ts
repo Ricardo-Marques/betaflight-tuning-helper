@@ -69,7 +69,8 @@ export function useIssueLabels(
       const times = issue.occurrences ?? [issue.timeRange]
       const isIssueSelected = issue.id === analysisStore.selectedIssueId
       for (let idx = 0; idx < times.length; idx++) {
-        const t = times[idx][0] / 1000000
+        const t = (issue.peakTimes?.[idx] ?? issue.metrics.peakTime ?? (times[idx][0] + times[idx][1]) / 2) / 1000000
+        if (t < timeStart || t > timeEnd) continue
         const px = CHART_MARGIN_LEFT + ((t - timeStart) / timeSpan) * plotWidth
         const isThisOcc = isIssueSelected && analysisStore.selectedOccurrenceIdx === idx
         entries.push({ key: `${issue.id}-${idx}`, px, isSelected: isThisOcc, sev: sevOrder[issue.severity] ?? 2, issue })

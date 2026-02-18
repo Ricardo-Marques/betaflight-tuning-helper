@@ -34,6 +34,7 @@ export class AnalysisStore {
   selectedIssueId: string | null = null
   selectedOccurrenceIdx: number | null = null
   selectedRecommendationId: string | null = null
+  selectionBump: number = 0
   quadProfile: QuadProfile = DEFAULT_PROFILE
   analysisLevel: AnalysisLevel = 'average'
   isReanalyzing: boolean = false
@@ -236,6 +237,7 @@ export class AnalysisStore {
   selectIssue = (issueId: string | null, occurrenceIdx?: number): void => {
     this.selectedIssueId = issueId
     this.selectedOccurrenceIdx = occurrenceIdx ?? null
+    this.selectionBump++
   }
 
   selectRecommendation = (recId: string | null): void => {
@@ -251,9 +253,13 @@ export class AnalysisStore {
   getIssuesInTimeRange(startTime: number, endTime: number): DetectedIssue[] {
     return this.issues.filter(issue => {
       const occurrences = issue.occurrences ?? [issue.timeRange]
-      return occurrences.some(
-        tr => tr[0] >= startTime && tr[0] <= endTime
-      )
+      return occurrences.some((tr, idx) => {
+        // Time range overlaps the visible window
+        if (tr[0] <= endTime && tr[1] >= startTime) return true
+        // Peak time falls within the visible window
+        const peak = issue.peakTimes?.[idx] ?? issue.metrics.peakTime
+        return peak !== undefined && peak >= startTime && peak <= endTime
+      })
     })
   }
 }

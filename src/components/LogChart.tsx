@@ -58,7 +58,7 @@ export const LogChart = observer(() => {
       ? theme.colors.severity.medium
       : theme.colors.severity.low
 
-  const { zoomDuration, visibleFrames, chartData, yDomain } = useChartData(isDraggingObs)
+  const { zoomDuration, visibleFrames, chartData, yDomain, motorDomain } = useChartData(isDraggingObs)
   const { visibleIssues, visibleLabels } = useIssueLabels(visibleFrames, chartData, containerWidth, severityColor)
 
   const popoverRefs = { popoverRef, hoveredIssuesRef, popoverSourceRef, forcedPopoverTimer, hoverClearTimer, glowTimer, chartContainerRef }
@@ -124,6 +124,10 @@ export const LogChart = observer(() => {
             Motors
           </ToggleLabel>
           <ToggleLabel>
+            <StyledCheckbox data-testid="toggle-throttle" type="checkbox" checked={uiStore.showThrottle} onChange={uiStore.toggleThrottle} />
+            Throttle
+          </ToggleLabel>
+          <ToggleLabel>
             <StyledCheckbox data-testid="toggle-issues" type="checkbox" checked={uiStore.showIssues} onChange={uiStore.toggleIssues} />
             Issues
           </ToggleLabel>
@@ -145,7 +149,10 @@ export const LogChart = observer(() => {
                   const times = issue.occurrences ?? [issue.timeRange]
                   const viewStart = visibleFrames.length > 0 ? visibleFrames[0].time : 0
                   const viewEnd = visibleFrames.length > 0 ? visibleFrames[visibleFrames.length - 1].time : Infinity
-                  const inViewIdx = times.findIndex(tr => tr[0] >= viewStart && tr[0] <= viewEnd)
+                  const inViewIdx = times.findIndex((tr, idx) => {
+                    const peak = issue.peakTimes?.[idx] ?? issue.metrics.peakTime ?? (tr[0] + tr[1]) / 2
+                    return peak >= viewStart && peak <= viewEnd
+                  })
                   const occIdx = inViewIdx >= 0 ? inViewIdx : 0
                   analysisStore.selectIssue(issue.id, occIdx)
                   uiStore.setActiveRightTab('issues')
@@ -154,7 +161,7 @@ export const LogChart = observer(() => {
                     const frames = logStore.frames
                     if (times.length > 0 && frames.length > 0) {
                       const tr = times[occIdx]
-                      const occTime = tr[0]
+                      const occTime = issue.peakTimes?.[occIdx] ?? issue.metrics.peakTime ?? (tr[0] + tr[1]) / 2
                       let lo = 0, hi = frames.length - 1
                       while (lo < hi) { const mid = (lo + hi) >> 1; if (frames[mid].time < occTime) lo = mid + 1; else hi = mid }
                       const centerPct = (lo / frames.length) * 100
@@ -199,9 +206,10 @@ export const LogChart = observer(() => {
               stroke={theme.colors.chart.axis} tick={{ dy: 4 }}
               tickFormatter={(value: number) => value.toFixed(1)}
             />
-            <YAxis yAxisId="primary" width={50} domain={yDomain} allowDataOverflow
-              label={{ value: 'deg/s', angle: -90, position: 'insideLeft' }} stroke={theme.colors.chart.axis} />
-            <YAxis yAxisId="motor" hide />
+            <YAxis yAxisId="primary" width={65} domain={yDomain} allowDataOverflow
+              label={{ value: 'deg/s', angle: -90, position: 'insideLeft' }} stroke={theme.colors.chart.axis}
+              tickFormatter={(value: number) => Math.round(value).toString()} />
+            <YAxis yAxisId="motor" hide domain={motorDomain} allowDataOverflow />
             <Tooltip
               active={isDraggingObs ? false : undefined}
               contentStyle={{
@@ -223,7 +231,8 @@ export const LogChart = observer(() => {
                 const isIssueSelected = issue.id === analysisStore.selectedIssueId
                 for (let idx = 0; idx < times.length; idx++) {
                   const isThisOcc = isIssueSelected && analysisStore.selectedOccurrenceIdx === idx
-                  allLines.push({ x: times[idx][0] / 1000000, issue, idx, isSelected: isThisOcc, sev: sevRank[issue.severity] ?? 2 })
+                  const peakT = (issue.peakTimes?.[idx] ?? issue.metrics.peakTime ?? (times[idx][0] + times[idx][1]) / 2) / 1000000
+                  allLines.push({ x: peakT, issue, idx, isSelected: isThisOcc, sev: sevRank[issue.severity] ?? 2 })
                 }
               }
               const posHighest = new Map<string, number>()
@@ -281,6 +290,10 @@ export const LogChart = observer(() => {
                 <Line type="monotone" dataKey="motor4" yAxisId="motor" stroke={theme.colors.chart.motor4}
                   strokeWidth={1} dot={false} name="M4" isAnimationActive={false} strokeOpacity={0.6} />
               </>
+            )}
+            {uiStore.showThrottle && (
+              <Line type="monotone" dataKey="throttle" yAxisId="motor" stroke={theme.colors.chart.throttle}
+                strokeWidth={1.5} dot={false} name="Throttle" isAnimationActive={false} strokeOpacity={0.7} />
             )}
           </LineChart>
         </ResponsiveContainer>

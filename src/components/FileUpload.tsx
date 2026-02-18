@@ -9,16 +9,16 @@ const UploadWrapper = styled.div`
   max-width: 32rem;
 `
 
-const Dropzone = styled.div<{ isDragging: boolean; compact?: boolean }>`
-  border: 2px dashed ${p => p.isDragging ? p.theme.colors.border.focus : p.compact ? 'transparent' : p.theme.colors.border.main};
+const Dropzone = styled.div<{ isDragging: boolean; compact?: boolean; noBorder?: boolean }>`
+  border: ${p => p.noBorder ? 'none' : `2px dashed ${p.isDragging ? p.theme.colors.border.focus : p.compact ? 'transparent' : p.theme.colors.border.main}`};
   border-radius: 0.5rem;
-  padding: ${p => p.compact ? '0' : '2rem'};
+  padding: ${p => p.compact || p.noBorder ? '0' : '2rem'};
   text-align: center;
   transition: border-color 0.15s, background-color 0.15s;
   background-color: ${p => p.isDragging ? p.theme.colors.severity.lowBg : 'transparent'};
 
   &:hover {
-    border-color: ${p => p.compact ? 'transparent' : p.theme.colors.text.muted};
+    border-color: ${p => (p.compact || p.noBorder) ? 'transparent' : p.theme.colors.text.muted};
   }
 `
 
@@ -203,6 +203,7 @@ export const FileUpload = observer(() => {
         data-testid="file-dropzone"
         isDragging={isDragging}
         compact={logStore.parseStatus === 'success'}
+        noBorder={logStore.parseStatus === 'parsing'}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
