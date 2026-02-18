@@ -1,0 +1,36 @@
+import type { ChangelogEntry } from '../domain/types/Changelog'
+
+/**
+ * Curated changelog entries shown in the "What's New" modal.
+ * Only include changes users would actually care about.
+ *
+ * When making commits, consider adding an entry here if the change
+ * is user-facing (new feature, meaningful fix, or UX improvement).
+ */
+export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // 2026-02-18
+  { hash: '9058924', date: '2026-02-18', message: 'Fix text wrapping on recommendation cards', category: 'fix' },
+  { hash: 'a7dfd93', date: '2026-02-18', message: 'Redesigned summary panel with severity badges and top priorities', category: 'improvement' },
+  { hash: '02cfb82', date: '2026-02-18', message: 'Colored chart toggle chips replace checkboxes', category: 'improvement' },
+  { hash: '199e93b', date: '2026-02-18', message: 'Redesigned upload screen with drag-and-drop and feature highlights', category: 'improvement' },
+  { hash: '3e440ac', date: '2026-02-18', message: 'Draggable resize handles between panels', category: 'feature' },
+  { hash: 'd8ce216', date: '2026-02-18', message: 'Issue markers show exact problem location on chart', category: 'feature' },
+  { hash: 'd8ce216', date: '2026-02-18', message: 'Throttle trace overlay', category: 'feature' },
+  { hash: 'd8ce216', date: '2026-02-18', message: 'Chart hints explain what each issue looks like', category: 'feature' },
+  { hash: '2e21b24', date: '2026-02-18', message: 'Click issues to zoom to the exact spot in your flight', category: 'feature' },
+  { hash: '18fbe36', date: '2026-02-18', message: 'Off-axis issues fade so you can focus on the selected axis', category: 'improvement' },
+  { hash: 'c059f75', date: '2026-02-18', message: 'Feedforward analysis and extended yaw coverage', category: 'feature' },
+  { hash: 'bd8c0bb', date: '2026-02-18', message: 'Fix filter recommendations giving opposite advice', category: 'fix' },
+  { hash: '3f756aa', date: '2026-02-18', message: 'Fix harmful tuning recommendations', category: 'fix' },
+  { hash: 'c02c1b8', date: '2026-02-18', message: 'Fix crash on large log files', category: 'fix' },
+  { hash: '3031c45', date: '2026-02-18', message: 'Analysis level selector (Basic / Average / Expert)', category: 'feature' },
+
+  // 2026-02-17
+  { hash: '0c5ff5e', date: '2026-02-17', message: 'Issues toggle and independent motor Y-axis scaling', category: 'feature' },
+  { hash: '332cba8', date: '2026-02-17', message: 'Scroll-to-zoom on chart', category: 'feature' },
+  { hash: 'c1bb0c5', date: '2026-02-17', message: 'Dark mode with theme toggle', category: 'feature' },
+  { hash: '8570440', date: '2026-02-17', message: 'Quad profile auto-detection (Whoop, 3", 5", 7", X-Class)', category: 'feature' },
+  { hash: 'f0d18d1', date: '2026-02-17', message: 'Copy-paste CLI commands for all recommendations', category: 'feature' },
+  { hash: 'f0d18d1', date: '2026-02-17', message: 'Navigate between multiple occurrences of the same issue', category: 'feature' },
+  { hash: '3cf3aae', date: '2026-02-17', message: 'Native .bbl/.bfl binary parser (no WASM needed)', category: 'feature' },
+]
