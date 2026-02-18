@@ -25,9 +25,19 @@ This app bridges that gap. Drop a log file, and it will:
 
 Everything runs 100% client-side. No data leaves your browser, no account required.
 
+![Instant Flight Analysis](screenshots/01-analysis-overview.png)
+
+![Pinpoint Tuning Problems](screenshots/02-issue-detection.png)
+
+![Copy-Paste CLI Fixes](screenshots/03-actionable-fixes.png)
+
+![Deep Signal Analysis](screenshots/04-signal-analysis.png)
+
+![Light & Dark Themes](screenshots/05-light-mode.png)
+
 ## Features
 
-**Log parsing** — Upload `.bbl` files directly from your flight controller, or `.txt`/`.csv` exports from Blackbox Explorer. Binary BBL parsing uses a native TypeScript parser (version-agnostic, no WASM dependency). Parsed in a Web Worker so the UI stays responsive. Handles 10MB+ logs.
+**Log parsing** — Upload `.bbl`/`.bfl` files directly from your flight controller, or `.txt`/`.csv` exports from Blackbox Explorer. Binary BBL parsing uses a native TypeScript parser (version-agnostic, no WASM dependency). Parsed in a Web Worker so the UI stays responsive. Handles 10MB+ logs.
 
 **8 detection rules** — The rule engine analyzes overlapping time windows across roll, pitch, and yaw:
 
@@ -48,81 +58,22 @@ Everything runs 100% client-side. No data leaves your browser, no account requir
 
 **Betaflight-native output** — All recommendations use Betaflight 4.4/4.5 slider terminology with specific parameter changes, rationale, risk assessment, and confidence scores.
 
-## Tech Stack
+## How to Use
 
-React 18, TypeScript (strict), MobX, Vite, Recharts, Tailwind CSS, Web Workers
-
-## Getting Started
-
-```bash
-npm install
-npm run dev        # http://localhost:5173
-```
-
-### Usage
-
-1. Drag and drop a `.bbl` file from your flight controller (or a `.txt`/`.csv` export from Blackbox Explorer)
-2. Click **Analyze Log**
-3. Review detected issues and recommendations
-4. Apply changes in Betaflight Configurator
-
-### Build
-
-```bash
-npm run build      # Output in dist/
-npm run preview    # Preview production build locally
-```
-
-## Deployment
-
-The app deploys automatically to GitHub Pages on every push to `main` via the workflow in `.github/workflows/deploy.yml`.
-
-To set up GitHub Pages for your fork:
-
-1. Push the repo to GitHub
-2. Go to **Settings > Pages**
-3. Under **Source**, select **GitHub Actions**
-4. Push to `main` — the workflow will build and deploy automatically
-
-The Vite config reads the repo name from the `GITHUB_REPOSITORY` environment variable at build time, so no hardcoded base path is needed.
-
-## Project Structure
-
-```
-src/
-  domain/
-    engine/RuleEngine.ts        # Orchestrates analysis: windowing, dedup, recommendations
-    rules/                      # 8 self-contained detection rules
-    types/                      # LogFrame, Analysis, TuningRule interfaces
-    utils/                      # FFT, signal analysis algorithms
-  stores/                       # MobX stores (LogStore, AnalysisStore, UIStore)
-  components/                   # React components (FileUpload, LogChart, etc.)
-  workers/logParser.worker.ts   # Background log parser
-```
-
-## Adding a New Rule
-
-Create a `TuningRule` object in `src/domain/rules/` and register it in the `RuleEngine` constructor:
-
-```typescript
-export const MyRule: TuningRule = {
-  id: 'my-rule',
-  name: 'My Detection',
-  description: '...',
-  issueTypes: ['myIssueType'],
-  baseConfidence: 0.85,
-  applicableAxes: ['roll', 'pitch'],
-  condition: (window, frames) => window.metadata.hasStickInput,
-  detect: (window, frames) => [],
-  recommend: (issues, frames) => [],
-}
-```
+1. Go to the [live app](https://ricardo-marques.github.io/betaflight-tuning-helper/)
+2. Drag and drop a `.bbl`/`.bfl` file from your flight controller (or a `.txt`/`.csv` export from Blackbox Explorer)
+3. Review detected issues and recommendations (analysis runs automatically)
+4. Copy CLI commands and apply changes in Betaflight Configurator
 
 ## Known Limitations
 
 - Multi-log BBL files: only the first log is parsed (most common case)
 - Files > 50MB may slow the browser
 - Simplified FFT (sufficient for tuning, not research-grade)
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, project structure, and architecture details.
 
 ## License
 
