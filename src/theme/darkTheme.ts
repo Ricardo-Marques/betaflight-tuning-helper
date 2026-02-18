@@ -6,7 +6,7 @@ export const darkTheme: Theme = {
       app: '#111827',       // gray-900
       panel: '#1f2937',     // gray-800
       section: '#1a2332',
-      header: '#172554',    // blue-950
+      header: '#0f172a',    // slate-900 (matches footer)
       footer: '#0f172a',    // slate-900
       input: '#374151',     // gray-700
       hover: '#374151',     // gray-700
@@ -21,7 +21,7 @@ export const darkTheme: Theme = {
       link: '#60a5fa',      // blue-400
       linkHover: '#93bbfd',
       heading: '#f3f4f6',   // gray-100
-      headerSubtle: '#93c5fd', // blue-300
+      headerSubtle: '#6b7280', // gray-500
     },
     border: {
       main: '#374151',      // gray-700

@@ -5,6 +5,8 @@ import { useState, useCallback } from 'react'
 
 const UploadWrapper = styled.div`
   padding: 1rem;
+  width: 100%;
+  max-width: 32rem;
 `
 
 const Dropzone = styled.div<{ isDragging: boolean }>`

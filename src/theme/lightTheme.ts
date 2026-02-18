@@ -6,7 +6,7 @@ export const lightTheme: Theme = {
       app: '#f3f4f6',       // gray-100
       panel: '#ffffff',
       section: '#f9fafb',   // gray-50
-      header: '#2563eb',    // blue-600
+      header: '#1f2937',    // gray-800 (matches footer)
       footer: '#1f2937',    // gray-800
       input: '#ffffff',
       hover: '#f3f4f6',     // gray-100
@@ -21,7 +21,7 @@ export const lightTheme: Theme = {
       link: '#2563eb',      // blue-600
       linkHover: '#1e40af', // blue-800
       heading: '#374151',   // gray-700
-      headerSubtle: '#bfdbfe', // blue-100
+      headerSubtle: '#9ca3af', // gray-400
     },
     border: {
       main: '#e5e7eb',      // gray-200
