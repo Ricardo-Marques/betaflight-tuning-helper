@@ -29,7 +29,7 @@ test.describe('Navigation', () => {
 
     const segment = page.locator('[data-testid^="segment-"]').first()
     await segment.scrollIntoViewIfNeeded()
-    await segment.evaluate(el => (el as HTMLElement).click())
+    await segment.click()
     await page.waitForTimeout(500)
 
     // After clicking a segment, zoom should have changed from 1.0x
@@ -39,7 +39,7 @@ test.describe('Navigation', () => {
   test('clicked segment has selected state', async ({ page }) => {
     const segment = page.locator('[data-testid^="segment-"]').first()
     await segment.scrollIntoViewIfNeeded()
-    await segment.evaluate(el => (el as HTMLElement).click())
+    await segment.click()
     await expect(segment).toHaveAttribute('data-selected', 'true')
   })
 

@@ -24,10 +24,27 @@ const VALID_CLI_PARAMS = new Set([
   'iterm_relax_cutoff',
 ])
 
-const VALID_ISSUE_TYPES = new Set([
-  'bounceback', 'propwash', 'midThrottleWobble', 'highFrequencyNoise',
-  'lowFrequencyOscillation', 'motorSaturation', 'gyroNoise', 'dtermNoise',
-  'highThrottleOscillation', 'underdamped', 'overdamped',
+/**
+ * Chart labels use shortLabel() which extracts the text before the colon in
+ * issue descriptions. These are the known prefixes produced by each rule.
+ */
+const VALID_CHART_LABELS = new Set([
+  // BouncebackRule
+  'Bounceback detected',
+  // PropwashRule
+  'Propwash oscillation',
+  // WobbleRule (description starts with frequency band)
+  'Low-frequency wobble', 'Mid-frequency wobble', 'High-frequency wobble',
+  // GyroNoiseRule
+  'Gyro noise',
+  // DTermNoiseRule
+  'D-term noise',
+  // MotorSaturationRule
+  'Motor saturation',
+  // HighThrottleOscillationRule
+  'High-throttle oscillation',
+  // TrackingQualityRule
+  'Phase lag', 'Poor tracking',
 ])
 
 /** Extract the text of a <p> containing a given label from an issue card */
@@ -319,7 +336,7 @@ test.describe('Data Verification', () => {
       if (text.length === 0) continue
       // Label may include a stack count suffix like "propwash +2"
       const issueType = text.replace(/\s\+\d+$/, '')
-      expect(VALID_ISSUE_TYPES.has(issueType)).toBe(true)
+      expect(VALID_CHART_LABELS.has(issueType)).toBe(true)
     }
   })
 })

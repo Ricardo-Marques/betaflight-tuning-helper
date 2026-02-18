@@ -362,8 +362,7 @@ test.describe('Issue Interactions', () => {
       const labelsBefore = await labels.count()
       expect(labelsBefore).toBeGreaterThan(0)
 
-      // Programmatic click — right panel overlaps the toggle
-      await page.getByTestId('toggle-issues').evaluate(el => (el as HTMLInputElement).click())
+      await page.getByTestId('toggle-issues').uncheck()
       await page.waitForTimeout(300)
 
       // Reference lines, labels, and strip should be gone
@@ -377,8 +376,7 @@ test.describe('Issue Interactions', () => {
     })
 
     test('selected issue still shows line and label when toggle is off', async ({ page }) => {
-      // Programmatic click — right panel overlaps the toggle
-      await page.getByTestId('toggle-issues').evaluate(el => (el as HTMLInputElement).click())
+      await page.getByTestId('toggle-issues').uncheck()
       await page.waitForTimeout(300)
 
       // Verify everything is hidden
@@ -406,10 +404,9 @@ test.describe('Issue Interactions', () => {
       const refLines = page.getByTestId('chart-container').locator('.recharts-reference-line')
       const refLinesBefore = await refLines.count()
 
-      // Programmatic clicks — right panel overlaps the toggle
-      await page.getByTestId('toggle-issues').evaluate(el => (el as HTMLInputElement).click())
+      await page.getByTestId('toggle-issues').uncheck()
       await page.waitForTimeout(300)
-      await page.getByTestId('toggle-issues').evaluate(el => (el as HTMLInputElement).click())
+      await page.getByTestId('toggle-issues').check()
       await page.waitForTimeout(300)
 
       const refLinesAfter = await refLines.count()

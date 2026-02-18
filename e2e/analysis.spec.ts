@@ -116,7 +116,7 @@ test.describe('Analysis', () => {
     // Ensure we start on roll axis
     const rollBtn = page.getByTestId('axis-button-roll')
     await rollBtn.click()
-    await expect(rollBtn).toHaveAttribute('data-active', '')
+    await expect(rollBtn).toHaveAttribute('data-active', 'true')
 
     // Find a pitch issue pill (if any exist)
     const pitchPill = page.locator('[data-testid^="issue-pill-"][data-axis="pitch"]').first()
@@ -130,10 +130,10 @@ test.describe('Analysis', () => {
         return
       }
       await yawPill.click()
-      await expect(page.getByTestId('axis-button-yaw')).toHaveAttribute('data-active', '')
+      await expect(page.getByTestId('axis-button-yaw')).toHaveAttribute('data-active', 'true')
     } else {
       await pitchPill.click()
-      await expect(page.getByTestId('axis-button-pitch')).toHaveAttribute('data-active', '')
+      await expect(page.getByTestId('axis-button-pitch')).toHaveAttribute('data-active', 'true')
     }
 
     // After axis switch, off-axis pills should have reduced opacity
