@@ -43,29 +43,12 @@ const ProgressMessage = styled.p`
   text-align: center;
 `
 
-const ReanalyzeBtn = styled.button`
-  width: 100%;
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  font-weight: 500;
-  font-size: 0.875rem;
-  transition: background-color 0.15s;
-  border: none;
-  cursor: pointer;
-  color: ${p => p.theme.colors.button.secondaryText};
-  background-color: ${p => p.theme.colors.button.secondary};
-
-  &:hover {
-    background-color: ${p => p.theme.colors.button.secondaryHover};
-  }
-`
-
 const SegmentsWrapper = styled.div`
   padding: 1rem;
 `
 
 const SegmentsTitle = styled.h3`
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: ${p => p.theme.colors.text.primary};
   margin-bottom: 0.75rem;
@@ -147,27 +130,14 @@ export const LeftPanel = observer(() => {
         <FileUpload />
       </SectionBorder>
 
-      {logStore.isLoaded && (
+      {logStore.isLoaded && analysisStore.analysisStatus === 'analyzing' && (
         <AnalysisSection>
-          {analysisStore.analysisStatus === 'analyzing' && (
-            <div>
-              <ProgressTrack>
-                <ProgressFill width={analysisStore.analysisProgress} />
-              </ProgressTrack>
-              <ProgressMessage>
-                {analysisStore.analysisMessage}
-              </ProgressMessage>
-            </div>
-          )}
-
-          {analysisStore.isComplete && (
-            <ReanalyzeBtn
-              data-testid="reanalyze-button"
-              onClick={() => analysisStore.analyze()}
-            >
-              Re-analyze
-            </ReanalyzeBtn>
-          )}
+          <ProgressTrack>
+            <ProgressFill width={analysisStore.analysisProgress} />
+          </ProgressTrack>
+          <ProgressMessage>
+            {analysisStore.analysisMessage}
+          </ProgressMessage>
         </AnalysisSection>
       )}
 

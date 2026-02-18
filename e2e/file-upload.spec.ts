@@ -36,7 +36,7 @@ test.describe('File Upload', () => {
 
   test('auto-analysis triggers after BFL parse', async ({ page }) => {
     await uploadAndAnalyze(page)
-    await expect(page.getByTestId('reanalyze-button')).toBeVisible()
+    await expect(page.getByTestId('flight-segments')).toBeVisible()
   })
 
   test('log info section displays after parse', async ({ page }) => {

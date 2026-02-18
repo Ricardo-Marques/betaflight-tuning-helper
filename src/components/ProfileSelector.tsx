@@ -2,6 +2,7 @@ import { observer } from 'mobx-react-lite'
 import styled from '@emotion/styled'
 import { useAnalysisStore } from '../stores/RootStore'
 import { QUAD_SIZE_ORDER, QUAD_PROFILES } from '../domain/profiles/quadProfiles'
+import { AnalysisLevel } from '../stores/AnalysisStore'
 
 const SelectorWrapper = styled.div`
   padding: 1rem;
@@ -60,42 +61,67 @@ const ReasoningText = styled.p`
   white-space: nowrap;
 `
 
+const ANALYSIS_LEVELS: { id: AnalysisLevel; label: string; description: string }[] = [
+  { id: 'basic', label: 'Basic', description: 'Relaxed — only flags clear problems' },
+  { id: 'average', label: 'Average', description: 'Balanced — good starting point' },
+  { id: 'expert', label: 'Expert', description: 'Strict — flags subtle issues' },
+]
+
 export const ProfileSelector = observer(() => {
   const analysisStore = useAnalysisStore()
   const detection = analysisStore.detectionResult
 
   return (
-    <SelectorWrapper>
-      <SelectorHeader>
-        <SelectorTitle>Quad Profile</SelectorTitle>
-        {detection && detection.confidence >= 0.5 && (
-          <DetectionBadge variant="good">Auto-detected</DetectionBadge>
+    <>
+      <SelectorWrapper>
+        <SelectorHeader>
+          <SelectorTitle>Quad Profile</SelectorTitle>
+          {detection && detection.confidence >= 0.5 && (
+            <DetectionBadge variant="good">Auto-detected</DetectionBadge>
+          )}
+          {detection && detection.confidence < 0.5 && (
+            <DetectionBadge variant="low">Low confidence</DetectionBadge>
+          )}
+        </SelectorHeader>
+        <ButtonGroup>
+          {QUAD_SIZE_ORDER.map(sizeId => {
+            const profile = QUAD_PROFILES[sizeId]
+            const isActive = analysisStore.quadProfile.id === sizeId
+            return (
+              <ProfileBtn
+                key={sizeId}
+                isActive={isActive}
+                onClick={() => analysisStore.setQuadProfile(sizeId)}
+                title={profile.description}
+              >
+                {profile.label}
+              </ProfileBtn>
+            )
+          })}
+        </ButtonGroup>
+        {detection && detection.reasoning.length > 0 && (
+          <ReasoningText title={detection.reasoning.join('; ')}>
+            {detection.reasoning[0]}
+          </ReasoningText>
         )}
-        {detection && detection.confidence < 0.5 && (
-          <DetectionBadge variant="low">Low confidence</DetectionBadge>
-        )}
-      </SelectorHeader>
-      <ButtonGroup>
-        {QUAD_SIZE_ORDER.map(sizeId => {
-          const profile = QUAD_PROFILES[sizeId]
-          const isActive = analysisStore.quadProfile.id === sizeId
-          return (
+      </SelectorWrapper>
+      <SelectorWrapper>
+        <SelectorHeader>
+          <SelectorTitle>Analysis Level</SelectorTitle>
+        </SelectorHeader>
+        <ButtonGroup>
+          {ANALYSIS_LEVELS.map(level => (
             <ProfileBtn
-              key={sizeId}
-              isActive={isActive}
-              onClick={() => analysisStore.setQuadProfile(sizeId)}
-              title={profile.description}
+              key={level.id}
+              isActive={analysisStore.analysisLevel === level.id}
+              onClick={() => analysisStore.setAnalysisLevel(level.id)}
+              title={level.description}
             >
-              {profile.label}
+              {level.label}
             </ProfileBtn>
-          )
-        })}
-      </ButtonGroup>
-      {detection && detection.reasoning.length > 0 && (
-        <ReasoningText title={detection.reasoning.join('; ')}>
-          {detection.reasoning[0]}
-        </ReasoningText>
-      )}
-    </SelectorWrapper>
+          ))}
+        </ButtonGroup>
+      </SelectorWrapper>
+    </>
   )
 })

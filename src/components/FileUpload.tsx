@@ -9,16 +9,16 @@ const UploadWrapper = styled.div`
   max-width: 32rem;
 `
 
-const Dropzone = styled.div<{ isDragging: boolean }>`
-  border: 2px dashed ${p => p.isDragging ? p.theme.colors.border.focus : p.theme.colors.border.main};
+const Dropzone = styled.div<{ isDragging: boolean; compact?: boolean }>`
+  border: 2px dashed ${p => p.isDragging ? p.theme.colors.border.focus : p.compact ? 'transparent' : p.theme.colors.border.main};
   border-radius: 0.5rem;
-  padding: 2rem;
+  padding: ${p => p.compact ? '0' : '2rem'};
   text-align: center;
   transition: border-color 0.15s, background-color 0.15s;
   background-color: ${p => p.isDragging ? p.theme.colors.severity.lowBg : 'transparent'};
 
   &:hover {
-    border-color: ${p => p.theme.colors.text.muted};
+    border-color: ${p => p.compact ? 'transparent' : p.theme.colors.text.muted};
   }
 `
 
@@ -94,13 +94,6 @@ const StatusSubtext = styled.p`
   color: ${p => p.theme.colors.text.muted};
 `
 
-const SuccessIcon = styled.svg`
-  margin: 1rem auto 1rem;
-  height: 3rem;
-  width: 3rem;
-  color: ${p => p.theme.colors.accent.green};
-`
-
 const ErrorIcon = styled.svg`
   margin: 0 auto 1rem;
   height: 3rem;
@@ -121,8 +114,9 @@ const ErrorDetail = styled.p`
 `
 
 const MetadataBlock = styled.div`
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   color: ${p => p.theme.colors.text.secondary};
+  text-align: left;
 
   & > p + p {
     margin-top: 0.25rem;
@@ -130,8 +124,8 @@ const MetadataBlock = styled.div`
 `
 
 const LinkButton = styled.button`
-  margin-top: 1rem;
-  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
   color: ${p => p.theme.colors.text.link};
   background: none;
   border: none;
@@ -186,6 +180,7 @@ export const FileUpload = observer(() => {
       <Dropzone
         data-testid="file-dropzone"
         isDragging={isDragging}
+        compact={logStore.parseStatus === 'success'}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -240,47 +235,28 @@ export const FileUpload = observer(() => {
         )}
 
         {logStore.parseStatus === 'success' && logStore.metadata && (
-          <>
-            <div className="mb-4">
-              <SuccessIcon
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </SuccessIcon>
-            </div>
-            <StatusText data-testid="parse-success-text">
-              Log loaded successfully!
-            </StatusText>
-            <MetadataBlock data-testid="parse-metadata">
+          <MetadataBlock data-testid="parse-success-text">
+            <p>
+              <span className="font-medium">Duration:</span>{' '}
+              {logStore.metadata.duration.toFixed(1)}s
+            </p>
+            <p>
+              <span className="font-medium">Loop Rate:</span>{' '}
+              {(logStore.metadata.looptime / 1000).toFixed(1)}kHz
+            </p>
+            {logStore.metadata.craftName && (
               <p>
-                <span className="font-medium">Duration:</span>{' '}
-                {logStore.metadata.duration.toFixed(1)}s
+                <span className="font-medium">Craft:</span>{' '}
+                {logStore.metadata.craftName}
               </p>
-              <p>
-                <span className="font-medium">Loop Rate:</span>{' '}
-                {(logStore.metadata.looptime / 1000).toFixed(1)}kHz
-              </p>
-              {logStore.metadata.craftName && (
-                <p>
-                  <span className="font-medium">Craft:</span>{' '}
-                  {logStore.metadata.craftName}
-                </p>
-              )}
-            </MetadataBlock>
+            )}
             <LinkButton
               data-testid="upload-different-file"
               onClick={() => { logStore.reset(); analysisStore.reset(); uiStore.reset() }}
             >
               Upload different file
             </LinkButton>
-          </>
+          </MetadataBlock>
         )}
 
         {logStore.parseStatus === 'error' && (

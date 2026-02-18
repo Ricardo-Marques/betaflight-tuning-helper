@@ -11,5 +11,5 @@ export const CSV_PATH = path.resolve(__dirname, '../testLogs/bflLog.BFL.csv')
 export async function uploadAndAnalyze(page: Page, filePath = BFL_PATH) {
   await page.locator('#file-upload').setInputFiles(filePath)
   await expect(page.getByTestId('parse-success-text')).toBeVisible({ timeout: 30_000 })
-  await expect(page.getByTestId('reanalyze-button')).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByTestId('flight-segments')).toBeVisible({ timeout: 30_000 })
 }

@@ -1,12 +1,26 @@
 import { makeObservable, observable, action, computed, runInAction } from 'mobx'
 import { AnalysisResult, DetectedIssue, Recommendation, FlightSegment } from '../domain/types/Analysis'
 import { RuleEngine } from '../domain/engine/RuleEngine'
-import { QuadProfile, QuadSize } from '../domain/types/QuadProfile'
+import { QuadProfile, QuadSize, ThresholdScaling } from '../domain/types/QuadProfile'
 import { QUAD_PROFILES, DEFAULT_PROFILE } from '../domain/profiles/quadProfiles'
 import { detectQuadSize, DetectionResult } from '../domain/profiles/detectQuadSize'
 import { LogStore } from './LogStore'
 
 export type AnalysisStatus = 'idle' | 'analyzing' | 'complete' | 'error'
+export type AnalysisLevel = 'basic' | 'average' | 'expert'
+
+/**
+ * Threshold multipliers per analysis level.
+ * Higher = more lenient (fewer issues detected).
+ * Basic: very relaxed, only obvious problems.
+ * Average: balanced baseline.
+ * Expert: aggressive, catches subtle issues.
+ */
+const ANALYSIS_LEVEL_MULTIPLIER: Record<AnalysisLevel, number> = {
+  basic: 4.0,
+  average: 1.25,
+  expert: 0.5,
+}
 
 /**
  * Store for analysis results and recommendations
@@ -22,6 +36,8 @@ export class AnalysisStore {
   selectedOccurrenceIdx: number | null = null
   selectedRecommendationId: string | null = null
   quadProfile: QuadProfile = DEFAULT_PROFILE
+  analysisLevel: AnalysisLevel = 'average'
+  isReanalyzing: boolean = false
   detectionResult: DetectionResult | null = null
 
   // Dependencies
@@ -42,6 +58,8 @@ export class AnalysisStore {
       selectedOccurrenceIdx: observable,
       selectedRecommendationId: observable,
       quadProfile: observable,
+      analysisLevel: observable,
+      isReanalyzing: observable,
       detectionResult: observable,
       isComplete: computed,
       issues: computed,
@@ -57,6 +75,7 @@ export class AnalysisStore {
       selectIssue: action,
       selectRecommendation: action,
       setQuadProfile: action,
+      setAnalysisLevel: action,
     })
   }
 
@@ -124,8 +143,57 @@ export class AnalysisStore {
   setQuadProfile = (sizeId: QuadSize): void => {
     this.quadProfile = QUAD_PROFILES[sizeId]
     if (this.logStore.isLoaded) {
-      this.analyze()
+      this.reanalyze()
     }
+  }
+
+  setAnalysisLevel = (level: AnalysisLevel): void => {
+    this.analysisLevel = level
+    if (this.logStore.isLoaded) {
+      this.reanalyze()
+    }
+  }
+
+  /**
+   * Re-run analysis without clearing UI.
+   * Shows an overlay, defers heavy work so the UI paints the button change first.
+   */
+  private reanalyze = (): void => {
+    this.isReanalyzing = true
+
+    // Defer to next frame so the button highlight and overlay render first
+    setTimeout(() => {
+      const m = ANALYSIS_LEVEL_MULTIPLIER[this.analysisLevel]
+      const scaledThresholds: ThresholdScaling = {
+        gyroNoise: this.quadProfile.thresholds.gyroNoise * m,
+        dtermNoise: this.quadProfile.thresholds.dtermNoise * m,
+        propwashAmplitude: this.quadProfile.thresholds.propwashAmplitude * m,
+        bouncebackOvershoot: this.quadProfile.thresholds.bouncebackOvershoot * m,
+        wobbleAmplitude: this.quadProfile.thresholds.wobbleAmplitude * m,
+        motorSaturation: this.quadProfile.thresholds.motorSaturation * m,
+        trackingError: this.quadProfile.thresholds.trackingError * m,
+        highThrottleOscillation: this.quadProfile.thresholds.highThrottleOscillation * m,
+      }
+      const scaledProfile: QuadProfile = {
+        ...this.quadProfile,
+        thresholds: scaledThresholds,
+      }
+
+      const result = this.ruleEngine.analyzeLog(
+        this.logStore.frames,
+        this.logStore.metadata!,
+        scaledProfile
+      )
+
+      runInAction(() => {
+        this.result = result
+        this.isReanalyzing = false
+        this.selectedIssueId = null
+        this.selectedOccurrenceIdx = null
+        this.selectedRecommendationId = null
+        this.selectedSegmentId = null
+      })
+    }, 0)
   }
 
   /**
@@ -175,11 +243,28 @@ export class AnalysisStore {
         this.analysisMessage = 'Generating recommendations...'
       })
 
-      // Run actual analysis with active profile
+      // Apply analysis level multiplier to profile thresholds
+      const m = ANALYSIS_LEVEL_MULTIPLIER[this.analysisLevel]
+      const scaledThresholds: ThresholdScaling = {
+        gyroNoise: this.quadProfile.thresholds.gyroNoise * m,
+        dtermNoise: this.quadProfile.thresholds.dtermNoise * m,
+        propwashAmplitude: this.quadProfile.thresholds.propwashAmplitude * m,
+        bouncebackOvershoot: this.quadProfile.thresholds.bouncebackOvershoot * m,
+        wobbleAmplitude: this.quadProfile.thresholds.wobbleAmplitude * m,
+        motorSaturation: this.quadProfile.thresholds.motorSaturation * m,
+        trackingError: this.quadProfile.thresholds.trackingError * m,
+        highThrottleOscillation: this.quadProfile.thresholds.highThrottleOscillation * m,
+      }
+      const scaledProfile: QuadProfile = {
+        ...this.quadProfile,
+        thresholds: scaledThresholds,
+      }
+
+      // Run actual analysis with scaled profile
       const result = this.ruleEngine.analyzeLog(
         this.logStore.frames,
         this.logStore.metadata!,
-        this.quadProfile
+        scaledProfile
       )
 
       // Log analysis results for debugging
@@ -221,6 +306,7 @@ export class AnalysisStore {
     this.selectedOccurrenceIdx = null
     this.selectedRecommendationId = null
     this.quadProfile = DEFAULT_PROFILE
+    this.analysisLevel = 'average'
     this.detectionResult = null
   }
 
