@@ -26,9 +26,11 @@ const SegmentsWrapper = styled.div`
 `
 
 const SegmentsTitle = styled.h3`
-  font-size: 0.75rem;
+  font-size: 0.625rem;
   font-weight: 700;
-  color: ${p => p.theme.colors.text.primary};
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: ${p => p.theme.colors.text.muted};
   margin-bottom: 0.75rem;
 `
 
@@ -88,9 +90,11 @@ const LogInfoSection = styled.div`
 `
 
 const LogInfoTitle = styled.h3`
-  font-size: 0.75rem;
+  font-size: 0.625rem;
   font-weight: 700;
-  color: ${p => p.theme.colors.text.primary};
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: ${p => p.theme.colors.text.muted};
   margin-bottom: 0.5rem;
 `
 
@@ -168,14 +172,6 @@ export const LeftPanel = observer(() => {
             <p>
               <InfoLabel>Firmware:</InfoLabel>{' '}
               {logStore.metadata.firmwareType} {logStore.metadata.firmwareVersion}
-            </p>
-            <p>
-              <InfoLabel>Loop Rate:</InfoLabel>{' '}
-              {(logStore.metadata.looptime / 1000).toFixed(1)}kHz
-            </p>
-            <p>
-              <InfoLabel>Duration:</InfoLabel>{' '}
-              {logStore.metadata.duration.toFixed(1)}s
             </p>
             <p>
               <InfoLabel>Motors:</InfoLabel> {logStore.metadata.motorCount}
