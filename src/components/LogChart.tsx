@@ -16,7 +16,7 @@ import {
 } from './LogChart.styles'
 import { RangeSlider } from './RangeSlider'
 import { useChartData } from './logChart/useChartData'
-import { useIssueLabels } from './logChart/useIssueLabels'
+import { useIssueLabels, shortLabel } from './logChart/useIssueLabels'
 import { useIssuePopover } from './logChart/useIssuePopover'
 import type { HoveredIssues } from './logChart/useIssuePopover'
 import { useChartInteractions } from './logChart/useChartInteractions'
@@ -159,7 +159,7 @@ export const LogChart = observer(() => {
                 style={{ color: severityColor(issue.severity) }}
               >
                 <IssueDot style={{ backgroundColor: severityColor(issue.severity) }} />
-                {issue.type}
+                {shortLabel(issue)}
               </IssuePill>
             ))}
           </IssuePillList>

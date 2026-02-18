@@ -64,7 +64,7 @@ export const WobbleRule: TuningRule = {
       severity,
       axis: window.axis,
       timeRange: [window.startTime, window.endTime],
-      description: `${metrics.frequencyBand.toUpperCase()}-frequency wobble: ${metrics.frequency.toFixed(1)} Hz, ${metrics.amplitude.toFixed(1)}° RMS`,
+      description: `${metrics.frequencyBand[0].toUpperCase()}${metrics.frequencyBand.slice(1)}-frequency wobble: ${metrics.frequency.toFixed(1)} Hz, ${metrics.amplitude.toFixed(1)}° RMS`,
       metrics: {
         frequency: metrics.frequency,
         amplitude: metrics.amplitude,

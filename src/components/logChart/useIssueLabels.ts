@@ -89,7 +89,7 @@ export function useIssueLabels(
       result.push({
         key: entry.key,
         pxLeft: entry.px,
-        text: stackCount > 0 ? `${entry.issue.type} +${stackCount}` : entry.issue.type,
+        text: stackCount > 0 ? `${shortLabel(entry.issue)} +${stackCount}` : shortLabel(entry.issue),
         color: severityColor(entry.issue.severity),
         fontSize: anySelected ? 11 : 9,
         fontWeight: anySelected ? 'bold' : 'normal',
@@ -113,4 +113,13 @@ export function useIssueLabels(
   })
 
   return { visibleIssues, visibleLabels }
+}
+
+/** Extract a short label from the issue description prefix (before the colon). */
+export function shortLabel(issue: DetectedIssue): string {
+  const colonIdx = issue.description.indexOf(':')
+  if (colonIdx > 0) {
+    return issue.description.slice(0, colonIdx)
+  }
+  return issue.type
 }
