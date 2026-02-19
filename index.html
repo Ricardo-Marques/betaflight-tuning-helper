@@ -5,8 +5,124 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Betaflight Tuning Helper</title>
+    <script>
+      // Read persisted theme or fall back to system preference — must run synchronously to avoid flash
+      (function() {
+        var stored = localStorage.getItem('theme-mode');
+        var dark = stored ? stored === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      })();
+    </script>
+    <style>
+      html[data-theme="dark"] { --loader-bg: #111827; --loader-text: #e5e7eb; --loader-sub: #6b7280; }
+      html[data-theme="light"] { --loader-bg: #f3f4f6; --loader-text: #374151; --loader-sub: #6b7280; }
+
+      body { margin: 0; }
+
+      #loader {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1.25rem;
+        background: var(--loader-bg);
+        transition: opacity 0.3s ease;
+      }
+      #loader.fade-out {
+        opacity: 0;
+        pointer-events: none;
+      }
+      #loader svg { width: 96px; height: 96px; }
+      #loader .loader-title {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--loader-text);
+        margin: 0;
+      }
+      #loader .loader-sub {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 0.8rem;
+        color: var(--loader-sub);
+        margin: -0.75rem 0 0 0;
+      }
+
+      @keyframes spin-cw { to { transform: rotate(360deg); } }
+      @keyframes spin-ccw { to { transform: rotate(-360deg); } }
+      @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+      .prop-fl { transform-origin: 36px 36px; animation: spin-ccw 0.8s linear infinite; }
+      .prop-fr { transform-origin: 164px 36px; animation: spin-cw 0.7s linear infinite; }
+      .prop-rr { transform-origin: 164px 164px; animation: spin-ccw 0.8s linear infinite; }
+      .prop-rl { transform-origin: 36px 164px; animation: spin-cw 0.7s linear infinite; }
+      .rec-dot { animation: blink 1.5s ease-in-out infinite; }
+    </style>
   </head>
   <body>
+    <div id="loader">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+        <!-- X-frame arms -->
+        <line x1="100" y1="100" x2="36" y2="36" stroke="#1e293b" stroke-width="8" stroke-linecap="round"/>
+        <line x1="100" y1="100" x2="164" y2="36" stroke="#1e293b" stroke-width="8" stroke-linecap="round"/>
+        <line x1="100" y1="100" x2="164" y2="164" stroke="#1e293b" stroke-width="8" stroke-linecap="round"/>
+        <line x1="100" y1="100" x2="36" y2="164" stroke="#1e293b" stroke-width="8" stroke-linecap="round"/>
+
+        <!-- Motor pods -->
+        <circle cx="36" cy="36" r="9" fill="#1e3a5f"/>
+        <circle cx="164" cy="36" r="9" fill="#1e3a5f"/>
+        <circle cx="164" cy="164" r="9" fill="#1e3a5f"/>
+        <circle cx="36" cy="164" r="9" fill="#1e3a5f"/>
+
+        <!-- Propeller: Front-Left (CCW) -->
+        <g class="prop-fl">
+          <ellipse cx="36" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85"/>
+          <ellipse cx="36" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(120 36 36)"/>
+          <ellipse cx="36" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(240 36 36)"/>
+        </g>
+
+        <!-- Propeller: Front-Right (CW) -->
+        <g class="prop-fr">
+          <ellipse cx="164" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85"/>
+          <ellipse cx="164" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(120 164 36)"/>
+          <ellipse cx="164" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(240 164 36)"/>
+        </g>
+
+        <!-- Propeller: Rear-Right (CCW) -->
+        <g class="prop-rr">
+          <ellipse cx="164" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85"/>
+          <ellipse cx="164" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(120 164 164)"/>
+          <ellipse cx="164" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(240 164 164)"/>
+        </g>
+
+        <!-- Propeller: Rear-Left (CW) -->
+        <g class="prop-rl">
+          <ellipse cx="36" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85"/>
+          <ellipse cx="36" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(120 36 164)"/>
+          <ellipse cx="36" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(240 36 164)"/>
+        </g>
+
+        <!-- Center body plate -->
+        <rect x="72" y="64" width="56" height="72" rx="8" fill="#2563eb"/>
+
+        <!-- FPV camera mount -->
+        <rect x="86" y="52" width="28" height="14" rx="3" fill="#334155"/>
+        <circle cx="100" cy="59" r="5" fill="#1e293b"/>
+        <circle cx="100" cy="59" r="3" fill="#0f172a"/>
+        <!-- Recording dot -->
+        <circle cx="111" cy="54" r="2" fill="#ef4444" class="rec-dot"/>
+
+        <!-- Motor pod center dots -->
+        <circle cx="36" cy="36" r="3" fill="#93c5fd"/>
+        <circle cx="164" cy="36" r="3" fill="#93c5fd"/>
+        <circle cx="164" cy="164" r="3" fill="#93c5fd"/>
+        <circle cx="36" cy="164" r="3" fill="#93c5fd"/>
+      </svg>
+      <p class="loader-title">Betaflight Tuning Helper</p>
+      <p class="loader-sub">Loading...</p>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
