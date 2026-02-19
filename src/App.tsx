@@ -185,7 +185,6 @@ const RightPanelWrapper = styled.div`
   flex-shrink: 0;
   overflow: hidden;
   background-color: ${p => p.theme.colors.background.panel};
-  border-left: 1px solid ${p => p.theme.colors.border.main};
 `
 
 const Footer = styled.footer`
@@ -285,9 +284,31 @@ export const App = observer(() => {
   const clampWidth = (w: number): number =>
     Math.max(MIN_PANEL_WIDTH, Math.min(MAX_PANEL_WIDTH, w))
 
+  const dragActivated = useRef(false)
+  const DRAG_THRESHOLD = 5
+
+  const activateDrag = (): void => {
+    const state = dragState.current
+    if (!state || dragActivated.current) return
+    dragActivated.current = true
+    const handle = state.side === 'left' ? leftHandleRef.current : rightHandleRef.current
+    if (handle) handle.setAttribute('data-dragging', 'true')
+    const inner = chartInnerRef.current
+    if (inner) inner.style.width = inner.offsetWidth + 'px'
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+  }
+
   const handleResizeMove = (e: MouseEvent): void => {
     const state = dragState.current
     if (!state) return
+
+    // Nothing happens until the mouse moves past the threshold
+    if (!dragActivated.current) {
+      if (Math.abs(e.clientX - state.originX) < DRAG_THRESHOLD) return
+      activateDrag()
+    }
+
     e.preventDefault()
     const delta = e.clientX - state.originX
     const raw = state.side === 'left'
@@ -301,26 +322,26 @@ export const App = observer(() => {
 
   const handleResizeUp = (): void => {
     const state = dragState.current
-    const handle = state?.side === 'left' ? leftHandleRef.current : rightHandleRef.current
-    if (handle) handle.removeAttribute('data-dragging')
     document.removeEventListener('mousemove', handleResizeMove)
     document.removeEventListener('mouseup', handleResizeUp)
-    document.body.style.cursor = ''
-    document.body.style.userSelect = ''
-    // Unfreeze chart inner so it follows its parent's size again
-    const inner = chartInnerRef.current
-    if (inner) inner.style.width = ''
-    // Clear panel inline override
-    const panel = state?.side === 'left' ? leftPanelRef.current : rightPanelRef.current
-    if (panel) panel.style.width = ''
-    if (state) {
-      runInAction(() => {
-        if (state.side === 'left') {
-          uiStore.setLeftPanelWidth(lastWidth.current)
-        } else {
-          uiStore.setRightPanelWidth(lastWidth.current)
-        }
-      })
+    if (dragActivated.current) {
+      const handle = state?.side === 'left' ? leftHandleRef.current : rightHandleRef.current
+      if (handle) handle.removeAttribute('data-dragging')
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      const inner = chartInnerRef.current
+      if (inner) inner.style.width = ''
+      const panel = state?.side === 'left' ? leftPanelRef.current : rightPanelRef.current
+      if (panel) panel.style.width = ''
+      if (state) {
+        runInAction(() => {
+          if (state.side === 'left') {
+            uiStore.setLeftPanelWidth(lastWidth.current)
+          } else {
+            uiStore.setRightPanelWidth(lastWidth.current)
+          }
+        })
+      }
     }
     dragState.current = null
   }
@@ -330,24 +351,11 @@ export const App = observer(() => {
     const originWidth = side === 'left' ? uiStore.leftPanelWidth : uiStore.rightPanelWidth
     dragState.current = { side, originX: e.clientX, originWidth }
     lastWidth.current = originWidth
-    const handle = side === 'left' ? leftHandleRef.current : rightHandleRef.current
-    if (handle) handle.setAttribute('data-dragging', 'true')
-    // Freeze chart inner at its current pixel width so Recharts doesn't re-render
-    const inner = chartInnerRef.current
-    if (inner) inner.style.width = inner.offsetWidth + 'px'
-    document.body.style.cursor = 'col-resize'
-    document.body.style.userSelect = 'none'
+    dragActivated.current = false
     document.addEventListener('mousemove', handleResizeMove)
     document.addEventListener('mouseup', handleResizeUp)
   }
 
-  const handleDoubleClick = (side: 'left' | 'right'): void => {
-    if (side === 'left') {
-      uiStore.toggleLeftPanel()
-    } else {
-      uiStore.toggleRightPanel()
-    }
-  }
 
   const handleGlobalDragEnter = (e: React.DragEvent) => {
     e.preventDefault()
@@ -483,7 +491,6 @@ export const App = observer(() => {
             data-collapsed={!uiStore.leftPanelOpen}
             onMouseDown={e => uiStore.leftPanelOpen ? startResize('left', e) : undefined}
             onClick={() => !uiStore.leftPanelOpen && uiStore.toggleLeftPanel()}
-            onDoubleClick={() => uiStore.leftPanelOpen && handleDoubleClick('left')}
             title={uiStore.leftPanelOpen ? 'Drag to resize left panel' : 'Open left panel'}
           >
             {!uiStore.leftPanelOpen && <HandleChevron>{'\u203A'}</HandleChevron>}
@@ -501,7 +508,6 @@ export const App = observer(() => {
             data-collapsed={!uiStore.rightPanelOpen}
             onMouseDown={e => uiStore.rightPanelOpen ? startResize('right', e) : undefined}
             onClick={() => !uiStore.rightPanelOpen && uiStore.toggleRightPanel()}
-            onDoubleClick={() => uiStore.rightPanelOpen && handleDoubleClick('right')}
             title={uiStore.rightPanelOpen ? 'Drag to resize right panel' : 'Open right panel'}
           >
             {!uiStore.rightPanelOpen && <HandleChevron>{'\u2039'}</HandleChevron>}

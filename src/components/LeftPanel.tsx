@@ -9,7 +9,6 @@ const PanelContainer = styled.div`
   display: flex;
   flex-direction: column;
   background-color: ${p => p.theme.colors.background.panel};
-  border-right: 1px solid ${p => p.theme.colors.border.main};
 `
 
 const SectionBorder = styled.div`

@@ -6,7 +6,7 @@ export type RightPanelTab = 'summary' | 'issues' | 'fixes'
 /**
  * Store for UI state (axis selection, zoom, toggles, etc.)
  */
-export const MIN_PANEL_WIDTH = 300
+export const MIN_PANEL_WIDTH = 350
 export const MAX_PANEL_WIDTH = 600
 const DEFAULT_PANEL_WIDTH = 352 // ~22rem
 const COLLAPSE_THRESHOLD = 80
