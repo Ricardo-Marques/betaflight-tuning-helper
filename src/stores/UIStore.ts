@@ -1,7 +1,8 @@
-import { makeAutoObservable } from 'mobx'
+import { makeAutoObservable, runInAction } from 'mobx'
 import { Axis } from '../domain/types/Analysis'
 
 export type RightPanelTab = 'summary' | 'issues' | 'fixes'
+export type MobileTab = 'upload' | 'chart' | 'tune'
 
 /**
  * Store for UI state (axis selection, zoom, toggles, etc.)
@@ -48,16 +49,32 @@ export class UIStore {
   axisHighlight: Axis | null = null
   axisHighlightKey: number = 0
 
+  isMobileLayout: boolean = false
+  mobileActiveTab: MobileTab = 'upload'
+
   private _animationFrameId: number | null = null
   private _axisHighlightTimer: ReturnType<typeof setTimeout> | null = null
   private _toastTimer: ReturnType<typeof setTimeout> | null = null
+  private _mediaQuery: MediaQueryList | null = null
+  private _mediaHandler: ((e: MediaQueryListEvent) => void) | null = null
 
   constructor() {
-    makeAutoObservable<this, '_animationFrameId' | '_axisHighlightTimer' | '_toastTimer'>(this, {
+    makeAutoObservable<this, '_animationFrameId' | '_axisHighlightTimer' | '_toastTimer' | '_mediaQuery' | '_mediaHandler'>(this, {
       _animationFrameId: false,
       _axisHighlightTimer: false,
       _toastTimer: false,
+      _mediaQuery: false,
+      _mediaHandler: false,
     })
+
+    if (typeof window !== 'undefined') {
+      this._mediaQuery = window.matchMedia('(max-width: 1599px)')
+      this.isMobileLayout = this._mediaQuery.matches
+      this._mediaHandler = (e: MediaQueryListEvent) => {
+        runInAction(() => { this.isMobileLayout = e.matches })
+      }
+      this._mediaQuery.addEventListener('change', this._mediaHandler)
+    }
   }
 
   setAxis = (axis: Axis): void => {
@@ -147,6 +164,10 @@ export class UIStore {
 
   setActiveRightTab = (tab: RightPanelTab): void => {
     this.activeRightTab = tab
+  }
+
+  setMobileActiveTab = (tab: MobileTab): void => {
+    this.mobileActiveTab = tab
   }
 
   openChangelog = (): void => {
@@ -266,6 +287,7 @@ export class UIStore {
     this.leftPanelWidth = DEFAULT_PANEL_WIDTH
     this.rightPanelWidth = DEFAULT_PANEL_WIDTH
     this.activeRightTab = 'summary'
+    this.mobileActiveTab = 'upload'
     this.axisHighlight = null
   }
 }
