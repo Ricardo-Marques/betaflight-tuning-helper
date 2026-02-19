@@ -7,10 +7,24 @@ const VIRTUAL_ID = 'virtual:changelog'
 const RESOLVED_ID = '\0' + VIRTUAL_ID
 
 export function changelogPlugin(): Plugin {
+  const changelogPath = path.resolve(__dirname, '../src/data/changelog.ts')
+
   return {
     name: 'changelog',
     resolveId(id: string) {
       if (id === VIRTUAL_ID) return RESOLVED_ID
+    },
+    configureServer(server) {
+      server.watcher.add(changelogPath)
+      server.watcher.on('change', (file) => {
+        if (path.normalize(file) === path.normalize(changelogPath)) {
+          const mod = server.moduleGraph.getModuleById(RESOLVED_ID)
+          if (mod) {
+            server.moduleGraph.invalidateModule(mod)
+            server.ws.send({ type: 'full-reload' })
+          }
+        }
+      })
     },
     load(id: string) {
       if (id !== RESOLVED_ID) return

@@ -205,8 +205,8 @@ export const ChangelogModal = observer(() => {
             grouped.map(([date, entries]) => (
               <DateGroup key={date}>
                 <DateHeading>{formatDate(date)}</DateHeading>
-                {entries.map(entry => (
-                  <EntryItem key={entry.hash}>
+                {entries.map((entry, i) => (
+                  <EntryItem key={`${entry.hash}-${i}`}>
                     <CategoryBadge category={entry.category}>{entry.category}</CategoryBadge>
                     <EntryMessage>{entry.message}</EntryMessage>
                   </EntryItem>

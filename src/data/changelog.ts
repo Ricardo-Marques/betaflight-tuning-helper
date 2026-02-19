@@ -9,6 +9,11 @@ import type { ChangelogEntry } from '../domain/types/Changelog'
  */
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   // 2026-02-18
+  { hash: 'af653cb', date: '2026-02-18', message: 'Hide parameter changes that already match your current value', category: 'improvement' },
+  { hash: 'c8c7dc8', date: '2026-02-18', message: 'Import your Betaflight settings and accept tune to iterate between flights', category: 'feature' },
+  { hash: '42ae970', date: '2026-02-18', message: 'Safety warning on the home page reminding to review changes before flying', category: 'improvement' },
+  { hash: 'c9d7373', date: '2026-02-18', message: 'Upload a different file button is easier to find', category: 'improvement' },
+  { hash: '5e64923', date: '2026-02-18', message: 'Try it instantly with a built-in sample log', category: 'feature' },
   { hash: 'c4c64f6', date: '2026-02-18', message: 'Quad profile now defaults to 5" instead of unreliable auto-detection', category: 'improvement' },
   { hash: '9058924', date: '2026-02-18', message: 'Fix text wrapping on recommendation cards', category: 'fix' },
   { hash: 'a7dfd93', date: '2026-02-18', message: 'Redesigned summary panel with severity badges and top priorities', category: 'improvement' },
