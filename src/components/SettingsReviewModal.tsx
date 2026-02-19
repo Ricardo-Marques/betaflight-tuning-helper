@@ -1,6 +1,7 @@
 import { observer } from 'mobx-react-lite'
 import styled from '@emotion/styled'
 import { useUIStore, useSettingsStore } from '../stores/RootStore'
+import { RELEVANT_CLI_NAMES } from '../domain/utils/CliExport'
 
 /* ---- Styled Components ---- */
 
@@ -23,6 +24,7 @@ const ModalContainer = styled.div`
   max-height: 80vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   background-color: ${p => p.theme.colors.background.panel};
   border: 1px solid ${p => p.theme.colors.border.main};
   border-radius: 0.75rem;
@@ -60,6 +62,7 @@ const CloseButton = styled.button`
 
 const ModalBody = styled.div`
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 1.25rem;
   display: flex;
@@ -76,7 +79,6 @@ const CountText = styled.p`
 const SettingsTable = styled.div`
   border: 1px solid ${p => p.theme.colors.border.main};
   border-radius: 0.375rem;
-  overflow: hidden;
 `
 
 const SettingsRow = styled.div`
@@ -164,6 +166,7 @@ export const SettingsReviewModal = observer(() => {
   }
 
   const entries = Array.from(settingsStore.pendingValues.entries())
+    .filter(([name]) => RELEVANT_CLI_NAMES.has(name))
 
   return (
     <Backdrop onClick={handleBackdropClick} onKeyDown={handleKeyDown} data-testid="settings-review-modal">
@@ -174,7 +177,7 @@ export const SettingsReviewModal = observer(() => {
         </ModalHeader>
         <ModalBody>
           <CountText data-testid="settings-review-count">
-            {entries.length} setting{entries.length !== 1 ? 's' : ''} ready to apply as your baseline
+            {entries.length} tuning-relevant setting{entries.length !== 1 ? 's' : ''} ready to apply as your baseline
           </CountText>
           <SettingsTable>
             {entries.map(([name, value]) => (

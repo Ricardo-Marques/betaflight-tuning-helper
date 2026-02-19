@@ -66,16 +66,16 @@ const CliBar = styled.div`
 `
 
 const CliBarInner = styled.div`
-  padding: 0.75rem;
+  padding: 1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.75rem;
 `
 
 const CliBarRow = styled.div`
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 0.5rem;
 `
 
@@ -266,65 +266,73 @@ const FixesSection = styled.div`
   padding: 1rem;
 `
 
-/* ---- CLI Bar secondary row ---- */
+/* ---- CLI Bar action buttons ---- */
 
-const CliBarSecondaryRow = styled.div`
+const CliBarActions = styled.div`
   display: flex;
   align-items: center;
   gap: 0.5rem;
 `
 
-const CliTextButton = styled.button<{ color?: 'green' }>`
-  font-size: 0.75rem;
+const CliActionButton = styled.button<{ variant: 'import' | 'accept' }>`
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 600;
-  background: none;
-  border: none;
+  border-radius: 0.375rem;
   cursor: pointer;
-  padding: 0;
-  color: ${p => p.color === 'green' ? p.theme.colors.accent.greenText : p.theme.colors.accent.indigo};
+  transition: background-color 0.15s, box-shadow 0.15s, opacity 0.15s;
+  border: ${p => p.variant === 'import'
+    ? `1.5px solid ${p.theme.colors.accent.indigo}`
+    : 'none'};
+  background-color: ${p => p.variant === 'accept'
+    ? p.theme.colors.accent.green
+    : 'transparent'};
+  color: ${p => p.variant === 'accept'
+    ? '#fff'
+    : p.theme.colors.accent.indigo};
 
-  &:hover {
-    text-decoration: underline;
+  &:hover:not(:disabled) {
+    background-color: ${p => p.variant === 'accept'
+      ? p.theme.colors.accent.greenText
+      : p.theme.colors.accent.indigo};
+    color: #fff;
   }
 
   &:disabled {
-    opacity: 0.5;
+    opacity: 0.45;
     cursor: default;
-    text-decoration: none;
   }
 `
 
-const CliDot = styled.span`
-  font-size: 0.5rem;
-  color: ${p => p.theme.colors.text.muted};
-`
-
-const CliSuccessText = styled.button`
-  font-size: 0.75rem;
+const CliSuccessText = styled.span`
+  flex: 1;
+  text-align: center;
+  font-size: 0.8125rem;
   font-weight: 600;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: default;
   color: ${p => p.theme.colors.accent.greenText};
 `
 
 const AcceptTuneWrapper = styled.span`
   position: relative;
-  display: inline-flex;
+  display: flex;
+  flex: 1;
 
   &:hover > [data-tooltip] {
     display: block;
+  }
+
+  > button {
+    width: 100%;
   }
 `
 
 const AcceptTuneTooltip = styled.div`
   display: none;
   position: absolute;
-  left: 50%;
+  right: 0;
   top: calc(100% + 6px);
-  transform: translateX(-50%);
-  width: 180px;
+  width: 200px;
   padding: 0.5rem;
   border-radius: 0.375rem;
   font-size: 0.6875rem;
@@ -907,31 +915,31 @@ export const RecommendationsPanel = observer(() => {
           <CliBarInner>
             <CliBarRow>
               <CliLabel>
-                {commandCount} CLI command{commandCount !== 1 ? 's' : ''}
+                Implement suggested fixes
               </CliLabel>
             </CliBarRow>
-            <CliBarSecondaryRow>
-              <CliTextButton
+            <CliBarActions>
+              <CliActionButton
+                variant="import"
                 onClick={uiStore.openSettingsImport}
                 data-testid="import-settings-button"
               >
                 {settingsStore.hasImportedSettings ? 'Update settings' : 'Import settings'}
-              </CliTextButton>
+              </CliActionButton>
               {commandCount > 0 && (
                 <>
-                  <CliDot>{'\u00b7'}</CliDot>
                   {tuneAccepted ? (
                     <CliSuccessText>Accepted!</CliSuccessText>
                   ) : (
                     <AcceptTuneWrapper>
-                      <CliTextButton
-                        color="green"
+                      <CliActionButton
+                        variant="accept"
                         disabled={!settingsStore.hasImportedSettings}
                         onClick={() => guardPendingSettings() || setShowAcceptModal(true)}
                         data-testid="accept-tune-button"
                       >
                         Accept tune
-                      </CliTextButton>
+                      </CliActionButton>
                       <AcceptTuneTooltip data-tooltip>
                         {settingsStore.hasImportedSettings
                           ? 'Apply recommended values as your new baseline'
@@ -941,7 +949,7 @@ export const RecommendationsPanel = observer(() => {
                   )}
                 </>
               )}
-            </CliBarSecondaryRow>
+            </CliBarActions>
           </CliBarInner>
         </CliBar>
       )}
