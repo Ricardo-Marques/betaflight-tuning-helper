@@ -2,6 +2,7 @@ import { observer } from 'mobx-react-lite'
 import styled from '@emotion/styled'
 import { useStores } from '../stores/RootStore'
 import { useObservableState } from '../lib/mobx-reactivity'
+import { SafetyWarning } from './SafetyWarning'
 
 const UploadWrapper = styled.div<{ isIdle?: boolean }>`
   padding: 1rem;
@@ -387,6 +388,7 @@ export const FileUpload = observer(() => {
                 <FeatureText>Export ready-to-paste CLI commands</FeatureText>
               </FeatureItem>
             </FeatureList>
+            <SafetyWarning />
           </>
         )}
 
