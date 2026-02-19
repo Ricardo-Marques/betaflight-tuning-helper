@@ -11,8 +11,12 @@ export interface SerialConnection {
   close(): Promise<void>
   /** Write a string to the serial port */
   write(data: string): Promise<void>
+  /** Write raw bytes to the serial port */
+  writeBytes(data: Uint8Array): Promise<void>
   /** Read lines until the given prompt string appears, with timeout */
   readUntilPrompt(prompt: string, timeoutMs: number): Promise<string>
+  /** Accumulate raw bytes until predicate returns true or timeout */
+  readBytesUntil(shouldStop: (buffer: Uint8Array) => boolean, timeoutMs: number): Promise<Uint8Array>
   /** Whether the port is currently open */
   readonly isOpen: boolean
   /** Callback for unexpected disconnections */
@@ -80,6 +84,18 @@ export function createSerialConnection(): SerialConnection {
       }
     },
 
+    async writeBytes(data: Uint8Array): Promise<void> {
+      if (!port?.writable) {
+        throw new Error('Serial port is not open')
+      }
+      const writer = port.writable.getWriter()
+      try {
+        await writer.write(data)
+      } finally {
+        writer.releaseLock()
+      }
+    },
+
     async readUntilPrompt(prompt: string, timeoutMs: number): Promise<string> {
       if (!port?.readable) {
         throw new Error('Serial port is not open')
@@ -120,6 +136,63 @@ export function createSerialConnection(): SerialConnection {
           return buffer
         }
         throw new Error(`Timeout waiting for "${prompt}" prompt`)
+      } finally {
+        try { reader.releaseLock() } catch { /* already released */ }
+        reader = null
+      }
+    },
+
+    async readBytesUntil(shouldStop: (buffer: Uint8Array) => boolean, timeoutMs: number): Promise<Uint8Array> {
+      if (!port?.readable) {
+        throw new Error('Serial port is not open')
+      }
+
+      reader = port.readable.getReader()
+      const chunks: Uint8Array[] = []
+      let totalLength = 0
+
+      try {
+        const deadline = Date.now() + timeoutMs
+
+        while (Date.now() < deadline) {
+          const remaining = deadline - Date.now()
+          if (remaining <= 0) break
+
+          const result = await Promise.race([
+            reader.read(),
+            new Promise<{ done: true; value: undefined }>(resolve =>
+              setTimeout(() => resolve({ done: true, value: undefined }), remaining)
+            ),
+          ])
+
+          if (result.done) break
+
+          if (result.value) {
+            chunks.push(result.value)
+            totalLength += result.value.length
+
+            // Build combined buffer to check predicate
+            const combined = new Uint8Array(totalLength)
+            let offset = 0
+            for (const chunk of chunks) {
+              combined.set(chunk, offset)
+              offset += chunk.length
+            }
+
+            if (shouldStop(combined)) {
+              return combined
+            }
+          }
+        }
+
+        // Timeout — return what we have
+        const combined = new Uint8Array(totalLength)
+        let offset = 0
+        for (const chunk of chunks) {
+          combined.set(chunk, offset)
+          offset += chunk.length
+        }
+        return combined
       } finally {
         try { reader.releaseLock() } catch { /* already released */ }
         reader = null

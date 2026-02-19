@@ -3,6 +3,7 @@ import { AnalysisStore } from './AnalysisStore'
 import { UIStore } from './UIStore'
 import { SettingsStore } from './SettingsStore'
 import { SerialStore } from './SerialStore'
+import { FlashDownloadStore } from './FlashDownloadStore'
 import { ThemeStore } from '../theme/ThemeStore'
 import { createContext, useContext } from 'react'
 
@@ -15,6 +16,7 @@ export class RootStore {
   uiStore: UIStore
   settingsStore: SettingsStore
   serialStore: SerialStore
+  flashDownloadStore: FlashDownloadStore
   themeStore: ThemeStore
 
   constructor() {
@@ -23,6 +25,7 @@ export class RootStore {
     this.uiStore = new UIStore()
     this.settingsStore = new SettingsStore()
     this.serialStore = new SerialStore()
+    this.flashDownloadStore = new FlashDownloadStore()
     this.themeStore = new ThemeStore()
 
     // Wire auto-analyze: when parse completes, trigger analysis automatically
@@ -30,6 +33,11 @@ export class RootStore {
 
     // Wire serial errors to toast notifications
     this.serialStore.setErrorHandler((message) => {
+      this.uiStore.showToast(message, 'error')
+    })
+
+    // Wire flash download errors to toast notifications
+    this.flashDownloadStore.setErrorHandler((message) => {
       this.uiStore.showToast(message, 'error')
     })
   }
@@ -80,4 +88,8 @@ export function useSettingsStore(): SettingsStore {
 
 export function useSerialStore(): SerialStore {
   return useStores().serialStore
+}
+
+export function useFlashDownloadStore(): FlashDownloadStore {
+  return useStores().flashDownloadStore
 }
