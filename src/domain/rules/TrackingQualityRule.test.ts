@@ -1,22 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
-import { resolve, dirname } from 'node:path'
-import { parseBblBuffer } from '../blackbox/BblParser'
+import { loadTestBflLog } from '../test-helpers'
 import { RuleEngine } from '../engine/RuleEngine'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
-
-function loadTestLog(): ReturnType<typeof parseBblBuffer> {
-  const bflPath = resolve(__dirname, '../../../test-logs/bflLog.BFL')
-  const buffer = new Uint8Array(readFileSync(bflPath))
-  return parseBblBuffer(buffer)
-}
 
 describe('TrackingQualityRule', () => {
   it('should not report implausible amplitude ratios (>200%) as underdamped', () => {
-    const { frames, metadata } = loadTestLog()
+    const { frames, metadata } = loadTestBflLog()
     const engine = new RuleEngine()
     const result = engine.analyzeLog(frames, metadata)
 
@@ -30,7 +18,7 @@ describe('TrackingQualityRule', () => {
   })
 
   it('should detect tracking issues (phase lag) at ~9.35s', () => {
-    const { frames, metadata } = loadTestLog()
+    const { frames, metadata } = loadTestBflLog()
     const engine = new RuleEngine()
     const result = engine.analyzeLog(frames, metadata)
 
@@ -50,7 +38,7 @@ describe('TrackingQualityRule', () => {
   })
 
   it('should use corrected ratio in metrics, not raw inflated ratio', () => {
-    const { frames, metadata } = loadTestLog()
+    const { frames, metadata } = loadTestBflLog()
     const engine = new RuleEngine()
     const result = engine.analyzeLog(frames, metadata)
 
