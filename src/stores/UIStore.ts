@@ -31,6 +31,7 @@ export class UIStore {
   rightPanelWidth: number = DEFAULT_PANEL_WIDTH
   activeRightTab: RightPanelTab = 'summary'
   changelogOpen: boolean = false
+  settingsImportOpen: boolean = false
 
   axisHighlight: Axis | null = null
   axisHighlightKey: number = 0
@@ -140,6 +141,14 @@ export class UIStore {
 
   closeChangelog = (): void => {
     this.changelogOpen = false
+  }
+
+  openSettingsImport = (): void => {
+    this.settingsImportOpen = true
+  }
+
+  closeSettingsImport = (): void => {
+    this.settingsImportOpen = false
   }
 
   animateZoom = (targetStart: number, targetEnd: number, duration: number = 300): void => {

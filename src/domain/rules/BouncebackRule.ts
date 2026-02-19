@@ -106,7 +106,7 @@ export const BouncebackRule: TuningRule = {
           expectedImprovement: 'Smoother stick release with less overshoot',
         })
       } else if (overshoot > 30 && settlingTime < 80) {
-        // Moderate overshoot with fast settling — likely feedforward-driven
+        // Moderate overshoot with fast settling - likely feedforward-driven
         // On Betaflight 4.3+, feedforward is a primary cause of overshoot on stick release
         recommendations.push({
           id: uuidv4(),
@@ -125,7 +125,7 @@ export const BouncebackRule: TuningRule = {
           changes: [
             {
               parameter: 'pidFeedforward',
-              recommendedChange: '-10',
+              recommendedChange: '-8%',
               axis: issue.axis,
               explanation: 'Reduce feedforward to prevent overshoot on stick release',
             },

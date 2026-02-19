@@ -66,7 +66,7 @@ export const TrackingQualityRule: TuningRule = {
     }
 
     // Determine severity based on normalized error (scaled by profile)
-    // 20% threshold — even well-tuned quads show 10-20% error during fast moves
+    // 20% threshold - even well-tuned quads show 10-20% error during fast moves
     // due to inherent PID phase lag (feedforward reduces but doesn't eliminate)
     let severity: 'low' | 'medium' | 'high'
     if (normalizedError > 60 * scale) {
@@ -76,7 +76,7 @@ export const TrackingQualityRule: TuningRule = {
     } else if (normalizedError > 20 * scale) {
       severity = 'low' // Noticeable sluggishness
     } else {
-      // Acceptable tracking quality — within normal PID phase lag range
+      // Acceptable tracking quality - within normal PID phase lag range
       return []
     }
 
@@ -106,15 +106,15 @@ export const TrackingQualityRule: TuningRule = {
     let issueDescription: string
 
     if (lag.lagMs > 2 && correctedRatio >= 80 && correctedRatio <= 120) {
-      // Significant phase lag with reasonable amplitude — timing problem, not gain
+      // Significant phase lag with reasonable amplitude - timing problem, not gain
       issueType = 'lowFrequencyOscillation'
       issueDescription = `Phase lag: gyro delayed by ${lag.lagMs.toFixed(1)}ms (${normalizedError.toFixed(0)}% tracking error)`
     } else if (correctedRatio < 90 && normalizedError > 25) {
       issueType = 'overdamped'
-      issueDescription = `Poor tracking: gyro only reaching ${correctedRatio.toFixed(0)}% of setpoint — insufficient P gain or too much D (${normalizedError.toFixed(0)}% error)`
+      issueDescription = `Poor tracking: gyro only reaching ${correctedRatio.toFixed(0)}% of setpoint - insufficient P gain or too much D (${normalizedError.toFixed(0)}% error)`
     } else if (correctedRatio > 105 && correctedRatio <= 200) {
       issueType = 'underdamped'
-      issueDescription = `Poor tracking: overshooting setpoint at ${correctedRatio.toFixed(0)}% — too much P or insufficient D damping (${normalizedError.toFixed(0)}% error)`
+      issueDescription = `Poor tracking: overshooting setpoint at ${correctedRatio.toFixed(0)}% - too much P or insufficient D damping (${normalizedError.toFixed(0)}% error)`
     } else {
       issueType = 'lowFrequencyOscillation'
       issueDescription = `Poor tracking: ${normalizedError.toFixed(0)}% error during active flight`
@@ -185,7 +185,7 @@ export const TrackingQualityRule: TuningRule = {
           priority: 8,
           confidence: worstIssue.confidence,
           title: `Increase P gain on ${axis}`,
-          description: 'Gyro not reaching setpoint — overdamped or insufficient P',
+          description: 'Gyro not reaching setpoint - overdamped or insufficient P',
           rationale:
             'Low amplitude ratio indicates the quad is not generating enough corrective force to match commanded rates. The response is sluggish, possibly due to too little P or too much D dampening the response.',
           risks: [
@@ -204,7 +204,7 @@ export const TrackingQualityRule: TuningRule = {
           expectedImprovement: 'Gyro will follow setpoint more closely during maneuvers',
         })
       } else if (worstIssue.type === 'underdamped') {
-        // Underdamped: overshooting setpoint — too much P or not enough D
+        // Underdamped: overshooting setpoint - too much P or not enough D
         const dIncrease = normalizedError > 50 ? '+0.3' : normalizedError > 35 ? '+0.2' : '+0.15'
 
         recommendations.push({
@@ -214,11 +214,11 @@ export const TrackingQualityRule: TuningRule = {
           priority: 7,
           confidence: worstIssue.confidence,
           title: `Increase D gain on ${axis}`,
-          description: 'Underdamped response — overshooting setpoint',
+          description: 'Underdamped response - overshooting setpoint',
           rationale:
             'High amplitude ratio with tracking error indicates the quad is overshooting its target and oscillating around it. Increasing D gain provides more damping to resist overshoot. If D is already high, consider reducing P instead.',
           risks: [
-            'High D amplifies gyro noise — monitor motor temperatures',
+            'High D amplifies gyro noise - monitor motor temperatures',
             'May need filter adjustment if D-term noise increases',
             'If D is already high, reduce P instead',
           ],
@@ -234,7 +234,7 @@ export const TrackingQualityRule: TuningRule = {
         })
       } else {
         // Generic tracking issue - try feedforward first
-        const ffIncrease = normalizedError > 35 ? '+10' : normalizedError > 25 ? '+7' : '+5'
+        const ffIncrease = normalizedError > 35 ? '+8%' : normalizedError > 25 ? '+6%' : '+4%'
 
         recommendations.push({
           id: uuidv4(),

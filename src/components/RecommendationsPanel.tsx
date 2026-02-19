@@ -1,11 +1,13 @@
 import { useRef } from 'react'
 import { observer } from 'mobx-react-lite'
 import styled from '@emotion/styled'
-import { useAnalysisStore, useLogStore, useUIStore } from '../stores/RootStore'
+import { useAnalysisStore, useLogStore, useUIStore, useSettingsStore } from '../stores/RootStore'
 import { Recommendation, DetectedIssue, ParameterChange } from '../domain/types/Analysis'
 import { PidProfile, FilterSettings } from '../domain/types/LogFrame'
 import {
   generateCliCommands,
+  resolveAllChanges,
+  getCliName,
   PARAMETER_DISPLAY_NAMES,
   resolveChange,
   getPidValue,
@@ -13,6 +15,8 @@ import {
 } from '../domain/utils/CliExport'
 import { useObservableState, useComputed, useAutorun } from '../lib/mobx-reactivity'
 import { ISSUE_CHART_DESCRIPTIONS } from '../domain/issueChartDescriptions'
+import { AcceptTuneModal } from './AcceptTuneModal'
+import { shouldShowAcceptTuneConfirm } from '../lib/preferences/acceptTuneConfirm'
 
 // Per-axis PID params that use resolveChange with isPerAxisPid=true
 const PER_AXIS_PID_PARAMS = new Set([
@@ -25,13 +29,16 @@ const PER_AXIS_PID_PARAMS = new Set([
 function computeTransition(
   change: ParameterChange,
   pidProfile?: PidProfile,
-  filterSettings?: FilterSettings
+  filterSettings?: FilterSettings,
+  importedValues?: Map<string, number>
 ): { current: number | undefined; resolved: number | null } {
   const isPerAxis = PER_AXIS_PID_PARAMS.has(change.parameter)
+  const cliName = getCliName(change.parameter, change.axis)
   const current = change.currentValue
     ?? (isPerAxis
       ? getPidValue(pidProfile, change.parameter, change.axis)
       : getGlobalValue(change.parameter, pidProfile, filterSettings))
+    ?? importedValues?.get(cliName)
   const [resolved] = resolveChange(change.recommendedChange, current, isPerAxis)
   return { current, resolved }
 }
@@ -64,6 +71,13 @@ const CliBarInner = styled.div`
   gap: 0.5rem;
 `
 
+const CliBarRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+`
+
 const CliLabel = styled.span`
   font-size: 0.875rem;
   font-weight: 700;
@@ -83,9 +97,9 @@ const CliPreviewToggle = styled.button`
 `
 
 const CopyButton = styled.button<{ copied: boolean }>`
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
   font-weight: 700;
   transition: background-color 0.15s;
   border: none;
@@ -109,6 +123,24 @@ const CliPreview = styled.pre`
   max-height: 12rem;
   overflow-y: auto;
   margin: 0 0.75rem 0.75rem;
+`
+
+const PreviewHint = styled.button`
+  display: block;
+  margin: 0 0.75rem 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+  border: 1px dashed ${p => p.theme.colors.accent.indigo};
+  background-color: ${p => p.theme.colors.accent.indigoBg};
+  color: ${p => p.theme.colors.accent.indigoText};
+
+  &:hover {
+    background-color: ${p => p.theme.colors.accent.indigo}20;
+  }
 `
 
 const TabBar = styled.div`
@@ -292,13 +324,76 @@ const FixesSection = styled.div`
   padding: 1rem;
 `
 
-/* ---- New styled components replacing Tailwind ---- */
+/* ---- CLI Bar secondary row ---- */
 
-const CliBarActions = styled.div`
+const CliBarSecondaryRow = styled.div`
   display: flex;
   align-items: center;
-  justify-content: flex-end;
   gap: 0.5rem;
+`
+
+const CliTextButton = styled.button<{ color?: 'green' }>`
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: ${p => p.color === 'green' ? p.theme.colors.accent.greenText : p.theme.colors.accent.indigo};
+
+  &:hover {
+    text-decoration: underline;
+  }
+`
+
+const CliDot = styled.span`
+  font-size: 0.5rem;
+  color: ${p => p.theme.colors.text.muted};
+`
+
+const CliStatusText = styled.span`
+  font-size: 0.6875rem;
+  color: ${p => p.theme.colors.text.secondary};
+`
+
+const CliSuccessText = styled.button`
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: default;
+  color: ${p => p.theme.colors.accent.greenText};
+`
+
+const AcceptTuneWrapper = styled.span`
+  position: relative;
+  display: inline-flex;
+
+  &:hover > [data-tooltip] {
+    display: block;
+  }
+`
+
+const AcceptTuneTooltip = styled.div`
+  display: none;
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 6px);
+  transform: translateX(-50%);
+  width: 180px;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 400;
+  line-height: 1.4;
+  color: ${p => p.theme.colors.text.primary};
+  background-color: ${p => p.theme.colors.chart.tooltipBg};
+  border: 1px solid ${p => p.theme.colors.chart.tooltipBorder};
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+  pointer-events: none;
+  white-space: normal;
 `
 
 const IssueList = styled.div`
@@ -714,8 +809,11 @@ export const RecommendationsPanel = observer(() => {
   const analysisStore = useAnalysisStore()
   const logStore = useLogStore()
   const uiStore = useUIStore()
+  const settingsStore = useSettingsStore()
   const [copied, setCopied] = useObservableState(false)
   const [cliExpanded, setCliExpanded] = useObservableState(false)
+  const [tuneAccepted, setTuneAccepted] = useObservableState(false)
+  const [showAcceptModal, setShowAcceptModal] = useObservableState(false)
 
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -725,7 +823,9 @@ export const RecommendationsPanel = observer(() => {
   const cliCommands = useComputed(() => {
     if (!analysisStore.isComplete) return ''
     const { recommendations } = analysisStore.result!
-    return generateCliCommands(recommendations, pidProfile, filterSettings)
+    // Access .size to ensure MobX tracks changes to baselineValues
+    void settingsStore.baselineValues.size
+    return generateCliCommands(recommendations, pidProfile, filterSettings, settingsStore.baselineValues)
   })
 
   const commandCount = useComputed(() => {
@@ -783,6 +883,15 @@ export const RecommendationsPanel = observer(() => {
     }
   }
 
+  const handleAcceptTune = () => {
+    if (!analysisStore.isComplete) return
+    const { recommendations } = analysisStore.result!
+    const resolved = resolveAllChanges(recommendations, pidProfile, filterSettings, settingsStore.baselineValues)
+    settingsStore.acceptResolvedValues(resolved)
+    setTuneAccepted(true)
+    setTimeout(() => setTuneAccepted(false), 2000)
+  }
+
   if (!analysisStore.isComplete) {
     return (
       <EmptyPanel data-testid="recommendations-empty">
@@ -809,24 +918,68 @@ export const RecommendationsPanel = observer(() => {
       {cliCommands && (
         <CliBar data-testid="cli-commands-section">
           <CliBarInner>
-            <CliLabel>
-              {commandCount} CLI command{commandCount !== 1 ? 's' : ''}{unresolvedCount > 0 ? ` (${unresolvedCount} need manual values)` : ''}
-            </CliLabel>
-            <CliBarActions>
-              <CliPreviewToggle onClick={() => setCliExpanded(!cliExpanded)}>
-                {cliExpanded ? 'Hide' : 'Preview'}
-              </CliPreviewToggle>
-              <CopyButton
-                data-testid="copy-cli-button"
-                copied={copied}
-                onClick={handleCopy}
+            <CliBarRow>
+              <CliLabel>
+                {commandCount} CLI command{commandCount !== 1 ? 's' : ''}
+              </CliLabel>
+              <CliBarRow>
+                <CliPreviewToggle onClick={() => setCliExpanded(!cliExpanded)}>
+                  {cliExpanded ? 'Hide' : 'Preview'}
+                </CliPreviewToggle>
+                <CopyButton
+                  data-testid="copy-cli-button"
+                  copied={copied}
+                  onClick={handleCopy}
+                >
+                  {copied ? 'Copied!' : 'Copy'}
+                </CopyButton>
+              </CliBarRow>
+            </CliBarRow>
+            <CliBarSecondaryRow>
+              <CliTextButton
+                onClick={uiStore.openSettingsImport}
+                data-testid="import-settings-button"
               >
-                {copied ? 'Copied!' : 'Copy'}
-              </CopyButton>
-            </CliBarActions>
+                {settingsStore.hasImportedSettings ? 'Update settings' : 'Import settings'}
+              </CliTextButton>
+              {unresolvedCount > 0 && (
+                <>
+                  <CliDot>{'\u00b7'}</CliDot>
+                  <CliStatusText>{unresolvedCount} need values</CliStatusText>
+                </>
+              )}
+              {commandCount > 0 && unresolvedCount === 0 && (
+                <>
+                  <CliDot>{'\u00b7'}</CliDot>
+                  {tuneAccepted ? (
+                    <CliSuccessText>Accepted!</CliSuccessText>
+                  ) : (
+                    <AcceptTuneWrapper>
+                      <CliTextButton
+                        color="green"
+                        onClick={() => shouldShowAcceptTuneConfirm() ? setShowAcceptModal(true) : handleAcceptTune()}
+                        data-testid="accept-tune-button"
+                      >
+                        Accept tune
+                      </CliTextButton>
+                      <AcceptTuneTooltip data-tooltip>
+                        Apply recommended values as your new baseline
+                      </AcceptTuneTooltip>
+                    </AcceptTuneWrapper>
+                  )}
+                </>
+              )}
+            </CliBarSecondaryRow>
           </CliBarInner>
           {cliExpanded && (
-            <CliPreview>{cliCommands}</CliPreview>
+            <>
+              <CliPreview>{cliCommands}</CliPreview>
+              {unresolvedCount > 0 && (
+                <PreviewHint onClick={uiStore.openSettingsImport}>
+                  {unresolvedCount} command{unresolvedCount !== 1 ? 's are' : ' is'} commented out because the current values are unknown. Click Import Settings to paste your Betaflight CLI output and resolve them.
+                </PreviewHint>
+              )}
+            </>
           )}
         </CliBar>
       )}
@@ -925,6 +1078,7 @@ export const RecommendationsPanel = observer(() => {
                   recommendation={rec}
                   pidProfile={pidProfile}
                   filterSettings={filterSettings}
+                  importedValues={settingsStore.baselineValues}
                 />
               ))}
             </RecList>
@@ -936,6 +1090,13 @@ export const RecommendationsPanel = observer(() => {
           </FixesSection>
         )}
       </TabContent>
+
+      {showAcceptModal && (
+        <AcceptTuneModal
+          onAccept={handleAcceptTune}
+          onClose={() => setShowAcceptModal(false)}
+        />
+      )}
     </PanelWrapper>
   )
 })
@@ -987,7 +1148,7 @@ const IssueCard = observer(({ issue, onNavigateToRec }: { issue: DetectedIssue; 
       const viewEnd = frames[endFrame]?.time ?? Infinity
       if (occTime >= viewStart && occTime <= viewEnd) return
 
-      // Occurrence is off-screen — navigate to center it
+      // Occurrence is off-screen - navigate to center it
       let lo = 0, hi = frames.length - 1
       while (lo < hi) {
         const mid = (lo + hi) >> 1
@@ -1119,15 +1280,16 @@ const IssueCard = observer(({ issue, onNavigateToRec }: { issue: DetectedIssue; 
 /**
  * Format a change with direction arrow and value transition
  */
-function ChangeDisplay({ change, pidProfile, filterSettings }: {
+function ChangeDisplay({ change, pidProfile, filterSettings, importedValues }: {
   change: ParameterChange
   pidProfile?: PidProfile
   filterSettings?: FilterSettings
+  importedValues?: Map<string, number>
 }) {
   const displayName = PARAMETER_DISPLAY_NAMES[change.parameter] ?? change.parameter
   const axisLabel = change.axis ? ` (${change.axis.charAt(0).toUpperCase() + change.axis.slice(1)})` : ''
 
-  const { current, resolved } = computeTransition(change, pidProfile, filterSettings)
+  const { current, resolved } = computeTransition(change, pidProfile, filterSettings, importedValues)
 
   // Determine direction
   const isIncrease = resolved !== null && current !== undefined && resolved > current
@@ -1156,10 +1318,11 @@ function ChangeDisplay({ change, pidProfile, filterSettings }: {
 }
 
 const RecommendationCard = observer(
-  ({ recommendation, pidProfile, filterSettings }: {
+  ({ recommendation, pidProfile, filterSettings, importedValues }: {
     recommendation: Recommendation
     pidProfile?: Parameters<typeof getPidValue>[0]
     filterSettings?: Parameters<typeof getGlobalValue>[2]
+    importedValues?: Map<string, number>
   }) => {
     const analysisStore = useAnalysisStore()
     const uiStore = useUIStore()
@@ -1215,6 +1378,7 @@ const RecommendationCard = observer(
                   change={change}
                   pidProfile={pidProfile}
                   filterSettings={filterSettings}
+                  importedValues={importedValues}
                 />
               ))}
             </ChangesList>

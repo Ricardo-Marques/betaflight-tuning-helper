@@ -8,6 +8,7 @@ import { RecommendationsPanel } from './components/RecommendationsPanel'
 import { FileUpload } from './components/FileUpload'
 import { ThemeToggle } from './components/ThemeToggle'
 import { ChangelogModal } from './components/ChangelogModal'
+import { SettingsImportModal } from './components/SettingsImportModal'
 import { useUIStore, useLogStore, useAnalysisStore } from './stores/RootStore'
 import { useObservableState } from './lib/mobx-reactivity'
 import { getLastSeenBuild } from './lib/changelog/lastSeenBuild'
@@ -525,6 +526,7 @@ export const App = observer(() => {
         </WhatsNewButton>
       </Footer>
       <ChangelogModal />
+      <SettingsImportModal />
     </AppContainer>
   )
 })

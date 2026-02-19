@@ -1,6 +1,7 @@
 import { LogStore } from './LogStore'
 import { AnalysisStore } from './AnalysisStore'
 import { UIStore } from './UIStore'
+import { SettingsStore } from './SettingsStore'
 import { ThemeStore } from '../theme/ThemeStore'
 import { createContext, useContext } from 'react'
 
@@ -11,12 +12,14 @@ export class RootStore {
   logStore: LogStore
   analysisStore: AnalysisStore
   uiStore: UIStore
+  settingsStore: SettingsStore
   themeStore: ThemeStore
 
   constructor() {
     this.logStore = new LogStore()
     this.analysisStore = new AnalysisStore(this.logStore)
     this.uiStore = new UIStore()
+    this.settingsStore = new SettingsStore()
     this.themeStore = new ThemeStore()
 
     // Wire auto-analyze: when parse completes, trigger analysis automatically
@@ -30,6 +33,7 @@ export class RootStore {
     this.logStore.reset()
     this.analysisStore.reset()
     this.uiStore.reset()
+    this.settingsStore.reset()
   }
 }
 
@@ -60,4 +64,8 @@ export function useUIStore(): UIStore {
 
 export function useThemeStore(): ThemeStore {
   return useStores().themeStore
+}
+
+export function useSettingsStore(): SettingsStore {
+  return useStores().settingsStore
 }

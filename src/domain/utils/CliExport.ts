@@ -1,5 +1,6 @@
 import { Recommendation, ParameterChange, BetaflightParameter, Axis } from '../types/Analysis'
 import { PidProfile, FilterSettings } from '../types/LogFrame'
+import { CLI_OPTIONS } from '../../lib/betaflight/cliOptions'
 
 /**
  * Maps BetaflightParameter to CLI command patterns
@@ -167,12 +168,25 @@ export function getGlobalValue(
 }
 
 /**
+ * Clamp a resolved value to the CLI_OPTIONS range for the given parameter name.
+ * Returns the clamped value, or the original if no range is defined.
+ */
+function clampToRange(cliName: string, value: number): number {
+  const option = CLI_OPTIONS[cliName]
+  if (option && option.type === 'range') {
+    return Math.max(option.min, Math.min(option.max, value))
+  }
+  return value
+}
+
+/**
  * Generate a CLI set command for a single parameter change
  */
 function generateSetCommand(
   change: ParameterChange,
   pidProfile?: PidProfile,
-  filterSettings?: FilterSettings
+  filterSettings?: FilterSettings,
+  importedValues?: Map<string, number>
 ): string {
   const { parameter, axis, recommendedChange } = change
 
@@ -185,11 +199,13 @@ function generateSetCommand(
 
     for (const a of axes) {
       const cliName = `${mapping.cliPrefix}_${a}`
-      const currentValue = change.currentValue ?? getPidValue(pidProfile, parameter, a)
-      const [newValue, resolved] = resolveChange(recommendedChange, currentValue, true)
+      const currentValue = change.currentValue
+        ?? getPidValue(pidProfile, parameter, a)
+        ?? importedValues?.get(cliName)
+      const [rawValue, resolved] = resolveChange(recommendedChange, currentValue, true)
 
-      if (resolved && newValue !== null) {
-        lines.push(`set ${cliName} = ${newValue}`)
+      if (resolved && rawValue !== null) {
+        lines.push(`set ${cliName} = ${clampToRange(cliName, rawValue)}`)
       } else {
         lines.push(`# ${parameter}[${a}]: ${recommendedChange} (current value unknown)`)
       }
@@ -204,14 +220,63 @@ function generateSetCommand(
     return `# ${parameter}: ${recommendedChange} (unknown CLI mapping)`
   }
 
-  const currentValue = change.currentValue ?? getGlobalValue(parameter, pidProfile, filterSettings)
-  const [newValue, resolved] = resolveChange(recommendedChange, currentValue, false)
+  const currentValue = change.currentValue
+    ?? getGlobalValue(parameter, pidProfile, filterSettings)
+    ?? importedValues?.get(cliName)
+  const [rawValue, resolved] = resolveChange(recommendedChange, currentValue, false)
 
-  if (resolved && newValue !== null) {
-    return `set ${cliName} = ${newValue}`
+  if (resolved && rawValue !== null) {
+    return `set ${cliName} = ${clampToRange(cliName, rawValue)}`
   }
 
   return `# ${parameter}: ${recommendedChange} (current value unknown)`
+}
+
+/**
+ * Resolve all recommendation changes to a map of CLI parameter name → new value.
+ * Used by "Accept Tune" to treat recommended values as the new current settings.
+ */
+export function resolveAllChanges(
+  recommendations: Recommendation[],
+  pidProfile?: PidProfile,
+  filterSettings?: FilterSettings,
+  importedValues?: Map<string, number>
+): Map<string, number> {
+  const resolved = new Map<string, number>()
+
+  for (const rec of recommendations) {
+    for (const change of rec.changes) {
+      const { parameter, axis, recommendedChange } = change
+      const isPerAxisPid = parameter in PER_AXIS_PARAMS
+
+      if (isPerAxisPid) {
+        const mapping = PER_AXIS_PARAMS[parameter]
+        const axes: Axis[] = axis ? [axis] : ['roll', 'pitch', 'yaw']
+        for (const a of axes) {
+          const cliName = `${mapping.cliPrefix}_${a}`
+          const currentValue = change.currentValue
+            ?? getPidValue(pidProfile, parameter, a)
+            ?? importedValues?.get(cliName)
+          const [rawValue, ok] = resolveChange(recommendedChange, currentValue, true)
+          if (ok && rawValue !== null) {
+            resolved.set(cliName, clampToRange(cliName, rawValue))
+          }
+        }
+      } else {
+        const cliName = GLOBAL_PARAM_MAP[parameter]
+        if (!cliName) continue
+        const currentValue = change.currentValue
+          ?? getGlobalValue(parameter, pidProfile, filterSettings)
+          ?? importedValues?.get(cliName)
+        const [rawValue, ok] = resolveChange(recommendedChange, currentValue, false)
+        if (ok && rawValue !== null) {
+          resolved.set(cliName, clampToRange(cliName, rawValue))
+        }
+      }
+    }
+  }
+
+  return resolved
 }
 
 /**
@@ -220,7 +285,8 @@ function generateSetCommand(
 export function generateCliCommands(
   recommendations: Recommendation[],
   pidProfile?: PidProfile,
-  filterSettings?: FilterSettings
+  filterSettings?: FilterSettings,
+  importedValues?: Map<string, number>
 ): string {
   const lines: string[] = [
     '# Betaflight Tuning Helper - CLI Commands',
@@ -232,7 +298,7 @@ export function generateCliCommands(
     lines.push(`# Recommendation: ${rec.title}`)
 
     for (const change of rec.changes) {
-      lines.push(generateSetCommand(change, pidProfile, filterSettings))
+      lines.push(generateSetCommand(change, pidProfile, filterSettings, importedValues))
     }
 
     lines.push('')
