@@ -57,17 +57,21 @@ export function useIssuePopover(
         : theme.colors.severity.lowText
 
     const parts: string[] = []
+    const hasHint = issues.length > 1
     issues.forEach((issue, idx) => {
       const isSelected = issue.id === analysisStore.selectedIssueId
       const borderStyle = isSelected
         ? `border-left:3px solid ${sevColor(issue.severity)};padding-left:0.5rem;margin-left:-0.25rem`
         : ''
-      const divider = idx > 0 ? `<hr style="border:none;border-top:1px solid ${theme.colors.border.main};margin:0.5rem 0"/>` : ''
+      const isLast = idx === issues.length - 1
+      const separatorStyle = !isLast || hasHint
+        ? `;border-bottom:1px solid ${theme.colors.border.main};padding-bottom:0.5rem;margin-bottom:0.5rem`
+        : ''
       const metrics: string[] = []
       if (issue.metrics.overshoot !== undefined) metrics.push(`<p>Overshoot: ${issue.metrics.overshoot.toFixed(1)}</p>`)
       if (issue.metrics.frequency !== undefined) metrics.push(`<p>Frequency: ${issue.metrics.frequency.toFixed(1)} Hz</p>`)
       if (issue.metrics.amplitude !== undefined) metrics.push(`<p>Amplitude: ${issue.metrics.amplitude.toFixed(1)} deg/s</p>`)
-      parts.push(`<div style="break-inside:avoid">${divider}<div style="${borderStyle}">
+      parts.push(`<div style="break-inside:avoid${separatorStyle}"><div style="${borderStyle}">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;margin-bottom:0.25rem">
           <p style="font-size:0.875rem;font-weight:${isSelected ? 700 : 500};color:${theme.colors.text.primary}">${issue.description}</p>
           <span style="padding:0.125rem 0.375rem;border-radius:0.25rem;font-size:0.75rem;font-weight:500;flex-shrink:0;background-color:${sevBgColor(issue.severity)};color:${sevTextColor(issue.severity)}">${issue.severity.toUpperCase()}</span>
@@ -76,8 +80,8 @@ export function useIssuePopover(
         <div style="font-size:0.75rem;color:${theme.colors.text.secondary}">${metrics.join('')}</div>
       </div></div>`)
     })
-    if (issues.length > 1) {
-      parts.push(`<div style="break-inside:avoid"><hr style="border:none;border-top:1px solid ${theme.colors.border.main};margin:0.5rem 0"/>
+    if (hasHint) {
+      parts.push(`<div style="break-inside:avoid">
         <p style="font-size:0.75rem;color:${theme.colors.text.muted};font-style:italic">Click to cycle through issues</p></div>`)
     }
     return parts.join('')
