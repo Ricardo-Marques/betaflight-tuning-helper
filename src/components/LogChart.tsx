@@ -107,7 +107,7 @@ export const LogChart = observer(() => {
             {axis.charAt(0).toUpperCase() + axis.slice(1)}
           </AxisButton>
         ))}
-        <ToggleBar>
+        <ToggleBar compact={uiStore.isMobileLayout}>
           <ToggleChip data-testid="toggle-gyro" role="checkbox" aria-checked={uiStore.showGyro} isActive={uiStore.showGyro} chipColor={theme.colors.chart.gyro} onClick={uiStore.toggleGyro}>
             <ToggleChipDot dotColor={theme.colors.chart.gyro} />Gyro
           </ToggleChip>
@@ -159,8 +159,11 @@ export const LogChart = observer(() => {
                       })
                       const occIdx = inViewIdx >= 0 ? inViewIdx : 0
                       analysisStore.selectIssue(issue.id, occIdx)
+                      if (uiStore.isMobileLayout) {
+                        uiStore.setMobileActiveTab('tune')
+                      }
                       uiStore.setActiveRightTab('issues')
-                      if (!uiStore.rightPanelOpen) uiStore.toggleRightPanel()
+                      if (!uiStore.isMobileLayout && !uiStore.rightPanelOpen) uiStore.toggleRightPanel()
                       if (inViewIdx < 0) {
                         const frames = logStore.frames
                         if (times.length > 0 && frames.length > 0) {

@@ -18,9 +18,10 @@ export const EmptyState = styled.div`
 export const AxisBar = styled.div`
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.5rem 1rem;
   padding: 0.5rem 1rem;
   background-color: ${p => p.theme.colors.background.section};
+  flex-wrap: wrap;
 `
 
 export const AxisLabel = styled.span`
@@ -61,11 +62,14 @@ export const AxisSwitchToast = styled.div`
   animation: axis-toast 1.5s ease-out forwards;
 `
 
-export const ToggleBar = styled.div`
-  margin-left: auto;
+export const ToggleBar = styled.div<{ compact?: boolean }>`
   display: flex;
   align-items: center;
   gap: 0.375rem;
+  flex-wrap: wrap;
+  ${p => p.compact
+    ? 'flex: 1 0 100%; padding-top: 0.25rem;'
+    : 'margin-left: auto;'}
 `
 
 export const ToggleChip = styled.button<{ isActive: boolean; chipColor?: string }>`

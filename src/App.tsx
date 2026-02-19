@@ -1,7 +1,7 @@
 import { observer } from 'mobx-react-lite'
 import styled from '@emotion/styled'
-import { useRef } from 'react'
-import { runInAction } from 'mobx'
+import { useRef, useEffect } from 'react'
+import { runInAction, reaction } from 'mobx'
 import { LeftPanel } from './components/LeftPanel'
 import { LogChart } from './components/LogChart'
 import { RecommendationsPanel } from './components/RecommendationsPanel'
@@ -12,6 +12,7 @@ import { SettingsImportModal } from './components/SettingsImportModal'
 import { SettingsReviewModal } from './components/SettingsReviewModal'
 import { SerialProgressModal } from './components/SerialProgressModal'
 import { FlashDownloadModal } from './components/FlashDownloadModal'
+import { BottomTabBar } from './components/BottomTabBar'
 import { Toast } from './components/Toast'
 import { useUIStore, useLogStore, useAnalysisStore } from './stores/RootStore'
 import { useObservableState } from './lib/mobx-reactivity'
@@ -227,12 +228,35 @@ const NewDot = styled.span`
   animation: attention-pulse 2s ease-in-out infinite;
 `
 
+
 const FullScreenUpload = styled.div`
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(to bottom in oklab, ${p => p.theme.colors.background.panel}, ${p => p.theme.colors.background.appGradientEnd});
+`
+
+const MobileContent = styled.div`
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+`
+
+const MobileChartArea = styled.div`
+  flex: 1;
+  position: relative;
+  background: linear-gradient(to bottom in oklab, ${p => p.theme.colors.background.panel}, ${p => p.theme.colors.background.appGradientEnd});
+  min-height: 0;
+  overflow: hidden;
+`
+
+const MobilePanelArea = styled.div`
+  flex: 1;
+  overflow: auto;
+  background-color: ${p => p.theme.colors.background.panel};
 `
 
 const GlobalDropOverlay = styled.div`
@@ -391,6 +415,16 @@ export const App = observer(() => {
   }
 
   const isLoaded = logStore.isLoaded
+  const isMobile = uiStore.isMobileLayout
+
+  useEffect(() => reaction(
+    () => logStore.isLoaded,
+    (loaded) => {
+      if (loaded && uiStore.isMobileLayout) {
+        uiStore.setMobileActiveTab('chart')
+      }
+    },
+  ), []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <AppContainer
@@ -449,7 +483,7 @@ export const App = observer(() => {
             </circle>
           </svg>
           <HeaderTitle>Betaflight Tuning Helper</HeaderTitle>
-          <HeaderSubtitle>Analyze blackbox logs and get actionable tuning recommendations</HeaderSubtitle>
+          {!isMobile && <HeaderSubtitle>Analyze blackbox logs and get actionable tuning recommendations</HeaderSubtitle>}
         </TitleRow>
         <ThemeToggle />
       </Header>
@@ -458,6 +492,35 @@ export const App = observer(() => {
         <FullScreenUpload>
           <FileUpload />
         </FullScreenUpload>
+      ) : isMobile ? (
+        <MobileContent>
+          {analysisStore.isReanalyzing && (
+            <ReanalyzingOverlay>
+              <ReanalyzingLabel>Updating analysis...</ReanalyzingLabel>
+            </ReanalyzingOverlay>
+          )}
+          {analysisStore.analysisStatus === 'analyzing' && !analysisStore.isReanalyzing && (
+            <AnalysisOverlay>
+              <AnalysisOverlayCard>
+                <AnalysisOverlayText>{analysisStore.analysisMessage || 'Detecting issues...'}</AnalysisOverlayText>
+                <AnalysisOverlayTrack>
+                  <AnalysisOverlayFill width={analysisStore.analysisProgress} />
+                </AnalysisOverlayTrack>
+              </AnalysisOverlayCard>
+            </AnalysisOverlay>
+          )}
+          {uiStore.mobileActiveTab === 'upload' && <LeftPanel />}
+          {uiStore.mobileActiveTab === 'chart' && (
+            <MobileChartArea>
+              <LogChart />
+            </MobileChartArea>
+          )}
+          {uiStore.mobileActiveTab === 'tune' && (
+            <MobilePanelArea>
+              <RecommendationsPanel />
+            </MobilePanelArea>
+          )}
+        </MobileContent>
       ) : (
         <MainContent>
           {analysisStore.isReanalyzing && (
@@ -524,6 +587,8 @@ export const App = observer(() => {
           )}
         </MainContent>
       )}
+
+      {isMobile && isLoaded && <BottomTabBar />}
 
       <Footer>
         Betaflight Tuning Helper
