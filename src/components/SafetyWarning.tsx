@@ -4,7 +4,7 @@ const Container = styled.div`
   background: ${p => p.theme.colors.severity.mediumBg};
   border-radius: 0.5rem;
   padding: 0.75rem 1rem;
-  margin-top: 1.25rem;
+  margin-top: 2.5rem;
   text-align: left;
 `
 
