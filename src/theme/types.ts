@@ -9,6 +9,7 @@ export interface ThemeColors {
     hover: string
     selected: string
     cliPreview: string
+    appGradientEnd: string
   }
   text: {
     primary: string

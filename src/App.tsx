@@ -64,7 +64,7 @@ const MainContent = styled.div`
 const ChartArea = styled.div`
   flex: 1;
   position: relative;
-  background-color: ${p => p.theme.colors.background.panel};
+  background: linear-gradient(to bottom in oklab, ${p => p.theme.colors.background.panel}, ${p => p.theme.colors.background.appGradientEnd});
   min-width: 0;
   overflow: hidden;
 `
@@ -232,7 +232,7 @@ const FullScreenUpload = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: ${p => p.theme.colors.background.panel};
+  background: linear-gradient(to bottom in oklab, ${p => p.theme.colors.background.panel}, ${p => p.theme.colors.background.appGradientEnd});
 `
 
 const GlobalDropOverlay = styled.div`

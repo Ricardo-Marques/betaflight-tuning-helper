@@ -12,6 +12,7 @@ export const darkTheme: Theme = {
       hover: '#374151',     // gray-700
       selected: '#1e3a5f',
       cliPreview: '#0f172a',
+      appGradientEnd: '#111827',
     },
     text: {
       primary: '#e5e7eb',   // gray-200

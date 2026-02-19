@@ -12,6 +12,7 @@ export const lightTheme: Theme = {
       hover: '#f3f4f6',     // gray-100
       selected: '#dbeafe',  // blue-100
       cliPreview: '#111827', // gray-900
+      appGradientEnd: '#f6f7f9',
     },
     text: {
       primary: '#374151',   // gray-700
