@@ -121,6 +121,27 @@ const FeatureItem = styled.div`
   align-items: center;
   gap: 0.375rem;
   max-width: 9rem;
+  opacity: 0;
+  animation: featureEnter 0.6s ease-out forwards;
+
+  &:nth-of-type(1) { animation-delay: 0.15s; }
+  &:nth-of-type(2) { animation-delay: 0.3s; }
+  &:nth-of-type(3) { animation-delay: 0.45s; }
+
+  &:hover .feature-icon {
+    transform: translateY(-2px);
+  }
+
+  @keyframes featureEnter {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 `
 
 const FeatureIcon = styled.span`
@@ -134,6 +155,7 @@ const FeatureIcon = styled.span`
   border-radius: 0.5rem;
   background-color: ${p => p.theme.colors.background.section};
   color: ${p => p.theme.colors.text.secondary};
+  transition: transform 0.3s ease;
 `
 
 const FeatureText = styled.span`
@@ -362,27 +384,50 @@ export const FileUpload = observer(() => {
             </FormatHint>
             <FeatureList>
               <FeatureItem>
-                <FeatureIcon>
+                <FeatureIcon className="feature-icon">
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                    <polyline points="1,12 4,5 7,8 10,2 15,7" />
+                    <polyline points="1,12 4,5 7,8 10,2 15,7" strokeDasharray="26" strokeDashoffset="26">
+                      <animate attributeName="stroke-dashoffset" from="26" to="0" dur="0.8s" fill="freeze" begin="0.4s" />
+                      <animate attributeName="points"
+                        values="1,12 4,5 7,8 10,2 15,7;1,7 4,12 7,5 10,8 15,2;1,2 4,7 7,12 10,5 15,8;1,8 4,2 7,7 10,12 15,5;1,5 4,8 7,2 10,7 15,12;1,12 4,5 7,8 10,2 15,7"
+                        dur="4s" repeatCount="indefinite" begin="1.5s" />
+                    </polyline>
                   </svg>
                 </FeatureIcon>
                 <FeatureText>Detect oscillations, noise &amp; bounceback</FeatureText>
               </FeatureItem>
               <FeatureItem>
-                <FeatureIcon>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M2 14V6l4-4h4l4 4v8H2z" />
-                    <path d="M6 14v-4h4v4" />
+                <FeatureIcon className="feature-icon">
+                  <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 13 A7 7 0 0 1 15 13" strokeDasharray="22" strokeDashoffset="22">
+                      <animate attributeName="stroke-dashoffset" from="22" to="0" dur="0.7s" fill="freeze" begin="0.55s" />
+                    </path>
+                    <line x1="8" y1="13" x2="8" y2="5" strokeDasharray="8" strokeDashoffset="8">
+                      <animate attributeName="stroke-dashoffset" from="8" to="0" dur="0.3s" fill="freeze" begin="1s" />
+                      <animateTransform attributeName="transform" type="rotate"
+                        values="0 8 13;-40 8 13;35 8 13;-10 8 13;15 8 13;0 8 13;0 8 13"
+                        keyTimes="0;0.15;0.4;0.58;0.72;0.82;1"
+                        dur="3.5s" repeatCount="indefinite" begin="1.3s" />
+                    </line>
+                    <circle cx="8" cy="13" r="1" fill="currentColor" stroke="none" opacity="0">
+                      <animate attributeName="opacity" from="0" to="1" dur="0.2s" fill="freeze" begin="1.2s" />
+                    </circle>
                   </svg>
                 </FeatureIcon>
                 <FeatureText>Get PID &amp; filter tuning recommendations</FeatureText>
               </FeatureItem>
               <FeatureItem>
-                <FeatureIcon>
+                <FeatureIcon className="feature-icon">
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="3" width="12" height="10" rx="1" />
-                    <path d="M5 7l2 2 4-4" />
+                    <rect x="2" y="3" width="12" height="10" rx="1" strokeDasharray="44" strokeDashoffset="44">
+                      <animate attributeName="stroke-dashoffset" from="44" to="0" dur="0.7s" fill="freeze" begin="0.7s" />
+                    </rect>
+                    <path d="M5 7l2 2 4-4" strokeDasharray="9" strokeDashoffset="9">
+                      <animate attributeName="stroke-dashoffset"
+                        values="9;0;0;9;9"
+                        keyTimes="0;0.15;0.6;0.75;1"
+                        dur="3s" repeatCount="indefinite" begin="1.3s" />
+                    </path>
                   </svg>
                 </FeatureIcon>
                 <FeatureText>Export ready-to-paste CLI commands</FeatureText>
