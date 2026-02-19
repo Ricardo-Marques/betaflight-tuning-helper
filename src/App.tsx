@@ -411,25 +411,25 @@ export const App = observer(() => {
               <ellipse cx="36" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85"/>
               <ellipse cx="36" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(120 36 36)"/>
               <ellipse cx="36" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(240 36 36)"/>
-              <animateTransform attributeName="transform" type="rotate" from="0 36 36" to="360 36 36" dur="0.8s" repeatCount="indefinite"/>
+              <animateTransform attributeName="transform" type="rotate" from="360 36 36" to="0 36 36" dur="0.8s" repeatCount="indefinite"/>
             </g>
             <g>
               <ellipse cx="164" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85"/>
               <ellipse cx="164" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(120 164 36)"/>
               <ellipse cx="164" cy="20" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(240 164 36)"/>
-              <animateTransform attributeName="transform" type="rotate" from="360 164 36" to="0 164 36" dur="0.7s" repeatCount="indefinite"/>
+              <animateTransform attributeName="transform" type="rotate" from="0 164 36" to="360 164 36" dur="0.7s" repeatCount="indefinite"/>
             </g>
             <g>
               <ellipse cx="164" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85"/>
               <ellipse cx="164" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(120 164 164)"/>
               <ellipse cx="164" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(240 164 164)"/>
-              <animateTransform attributeName="transform" type="rotate" from="0 164 164" to="360 164 164" dur="0.8s" repeatCount="indefinite"/>
+              <animateTransform attributeName="transform" type="rotate" from="360 164 164" to="0 164 164" dur="0.8s" repeatCount="indefinite"/>
             </g>
             <g>
               <ellipse cx="36" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85"/>
               <ellipse cx="36" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(120 36 164)"/>
               <ellipse cx="36" cy="148" rx="3.5" ry="16" fill="#3b82f6" opacity="0.85" transform="rotate(240 36 164)"/>
-              <animateTransform attributeName="transform" type="rotate" from="360 36 164" to="0 36 164" dur="0.7s" repeatCount="indefinite"/>
+              <animateTransform attributeName="transform" type="rotate" from="0 36 164" to="360 36 164" dur="0.7s" repeatCount="indefinite"/>
             </g>
             <rect x="72" y="64" width="56" height="72" rx="8" fill="#2563eb"/>
             <rect x="86" y="52" width="28" height="14" rx="3" fill="#334155" transform="rotate(0 100 59)"/>
