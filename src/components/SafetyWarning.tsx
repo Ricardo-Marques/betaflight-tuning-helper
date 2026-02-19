@@ -27,6 +27,16 @@ const BulletList = styled.ul`
   line-height: 1.5;
 `
 
+const StyledLink = styled.a`
+  color: ${p => p.theme.colors.severity.medium};
+  text-decoration: underline;
+  text-underline-offset: 2px;
+
+  &:hover {
+    opacity: 0.8;
+  }
+`
+
 const Disclaimer = styled.p`
   margin: 0.5rem 0 0;
   color: ${p => p.theme.colors.severity.mediumText};
@@ -47,6 +57,7 @@ export function SafetyWarning(): React.ReactElement {
         Safety Notice
       </Header>
       <BulletList>
+        <li>Before making changes, <StyledLink href="https://www.betaflight.com/docs/development/Cli#dump-using-cli" target="_blank" rel="noopener noreferrer">save a <strong>CLI dump</strong></StyledLink> so you can restore your settings if needed</li>
         <li>Suggestions are not expert advice - <strong>always verify</strong> before applying</li>
         <li>Test tuning changes <strong>outdoors in a wide open area</strong>, away from people and property</li>
         <li>Keep a safe distance and <strong>be ready to disarm</strong> at any moment</li>
