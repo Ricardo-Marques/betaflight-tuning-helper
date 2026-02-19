@@ -6,6 +6,7 @@ import { App } from './App'
 import './index.css'
 import { RootStore, StoreProvider } from './stores/RootStore'
 import { GlobalStyles } from './theme'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 // Create global store instance
 const rootStore = new RootStore()
@@ -24,8 +25,17 @@ const ThemedApp = observer(() => (
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <StoreProvider value={rootStore}>
-      <ThemedApp />
-    </StoreProvider>
+    <ErrorBoundary>
+      <StoreProvider value={rootStore}>
+        <ThemedApp />
+      </StoreProvider>
+    </ErrorBoundary>
   </React.StrictMode>
 )
+
+// Fade out and remove the loading screen once React has rendered
+const loader = document.getElementById('loader')
+if (loader) {
+  loader.classList.add('fade-out')
+  loader.addEventListener('transitionend', () => loader.remove())
+}
