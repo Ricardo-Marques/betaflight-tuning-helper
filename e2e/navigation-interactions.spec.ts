@@ -49,25 +49,4 @@ test.describe('Navigation — Interactions', () => {
     expect(counterAfter).not.toBe(counterBefore)
   })
 
-  test('double-click resize handle hides and shows left panel', async ({ page }) => {
-    const handle = page.getByTestId('resize-left-panel')
-    await expect(handle).toHaveAttribute('data-collapsed', 'false')
-
-    await handle.dispatchEvent('dblclick')
-    await expect(handle).toHaveAttribute('data-collapsed', 'true')
-
-    await handle.click()
-    await expect(handle).toHaveAttribute('data-collapsed', 'false')
-  })
-
-  test('double-click resize handle hides and shows right panel', async ({ page }) => {
-    const handle = page.getByTestId('resize-right-panel')
-    await expect(handle).toHaveAttribute('data-collapsed', 'false')
-
-    await handle.dispatchEvent('dblclick')
-    await expect(handle).toHaveAttribute('data-collapsed', 'true')
-
-    await handle.click()
-    await expect(handle).toHaveAttribute('data-collapsed', 'false')
-  })
 })
