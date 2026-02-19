@@ -8,6 +8,10 @@ import type { ChangelogEntry } from '../domain/types/Changelog'
  * is user-facing (new feature, meaningful fix, or UX improvement).
  */
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // 2026-02-19
+  { hash: 'b15255b', date: '2026-02-19', message: 'Mobile-friendly layout with bottom tab navigation', category: 'feature' },
+  { hash: 'b15255b', date: '2026-02-19', message: 'Install as an app on your phone or tablet (PWA)', category: 'feature' },
+
   // 2026-02-18
   { hash: '35838eb', date: '2026-02-18', message: 'Download blackbox logs directly from the FC via USB', category: 'feature' },
   { hash: '889be0a', date: '2026-02-18', message: 'Offer to clear blackbox logs from the FC after writing a tune', category: 'improvement' },
