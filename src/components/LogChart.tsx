@@ -265,8 +265,19 @@ export const LogChart = observer(() => {
                       stroke={severityColor(l.issue.severity)} strokeWidth={10} strokeOpacity={0.25} ifOverflow="hidden" />
                   )
                 }
+                const hasSelection = analysisStore.selectedIssueId !== null
                 const isOnAxis = l.issue.axis === uiStore.selectedAxis
-                const lineOpacity = showAsSelected || isOnAxis ? undefined : 0.25
+                const lineOpacity = showAsSelected
+                  ? undefined
+                  : hasSelection
+                    ? 0.3
+                    : isOnAxis ? undefined : 0.25
+                if (showAsSelected) {
+                  elements.push(
+                    <ReferenceLine key={`issue-outline-${l.issue.id}-${l.idx}`} x={l.x} yAxisId="primary"
+                      stroke={theme.colors.background.app} strokeWidth={7} ifOverflow="hidden" />
+                  )
+                }
                 elements.push(
                   <ReferenceLine key={`issue-${l.issue.id}-${l.idx}`} x={l.x} yAxisId="primary"
                     stroke={severityColor(l.issue.severity)} strokeWidth={showAsSelected ? 3.5 : 1.5}
