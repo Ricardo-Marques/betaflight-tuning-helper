@@ -9,6 +9,8 @@ import type { ChangelogEntry } from '../domain/types/Changelog'
  */
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   // 2026-02-19
+  { hash: '7102fa3', date: '2026-02-19', message: 'Selected issue line now stands out clearly on busy charts', category: 'improvement' },
+  { hash: '5068134', date: '2026-02-19', message: 'Chart waveform no longer shifts when zooming in and out', category: 'fix' },
   { hash: '41c0f5f', date: '2026-02-19', message: 'Bigger touch targets and text on mobile for easier tapping', category: 'improvement' },
   { hash: 'b15255b', date: '2026-02-19', message: 'Mobile-friendly layout with bottom tab navigation', category: 'feature' },
   { hash: 'b15255b', date: '2026-02-19', message: 'Install as an app on your phone or tablet (PWA)', category: 'feature' },
