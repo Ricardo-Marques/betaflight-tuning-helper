@@ -142,6 +142,13 @@ const WarningText = styled.p`
   line-height: 1.4;
 `
 
+const EraseHint = styled.p`
+  font-size: 0.8125rem;
+  color: ${p => p.theme.colors.text.secondary};
+  margin: 0;
+  line-height: 1.4;
+`
+
 const ModalFooter = styled.div`
   display: flex;
   align-items: center;
@@ -278,6 +285,11 @@ export const SerialProgressModal = observer(() => {
     void serialStore.writeToFC(cliCommands)
   }
 
+  const handleClearFlash = (): void => {
+    uiStore.closeSerialProgress()
+    uiStore.openFlashErase()
+  }
+
   const handleRetry = (): void => {
     // If connection is lost, reconnect first — the auto-read/write
     // confirmation flow will handle the rest once connected
@@ -357,6 +369,9 @@ export const SerialProgressModal = observer(() => {
                   ))}
                 </WarningList>
               )}
+              <EraseHint>
+                Clear your old blackbox logs so your next flight reflects the new tune.
+              </EraseHint>
             </>
           )}
 
@@ -387,7 +402,12 @@ export const SerialProgressModal = observer(() => {
 
           {/* Write success close */}
           {writeSuccess && (
-            <ActionButton onClick={handleClose}>Done</ActionButton>
+            <>
+              <ActionButton variant="secondary" onClick={handleClose}>Done</ActionButton>
+              <ActionButton variant="danger" onClick={handleClearFlash}>
+                Clear Blackbox Logs
+              </ActionButton>
+            </>
           )}
 
           {/* Error retry */}

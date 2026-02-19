@@ -2,24 +2,36 @@ import { observer } from 'mobx-react-lite'
 import styled from '@emotion/styled'
 import { useStores } from '../stores/RootStore'
 import { useObservableState } from '../lib/mobx-reactivity'
+import { isSerialSupported } from '../serial/SerialPort'
 import { SafetyWarning } from './SafetyWarning'
 
 const UploadWrapper = styled.div<{ isIdle?: boolean }>`
   padding: 1rem;
   width: 100%;
-  max-width: ${p => p.isIdle ? '40rem' : '32rem'};
+  max-width: ${(p) => (p.isIdle ? '40rem' : '32rem')};
 `
 
-const Dropzone = styled.div<{ isDragging: boolean; compact?: boolean; noBorder?: boolean }>`
-  border: ${p => p.noBorder ? 'none' : `2px dashed ${p.isDragging ? p.theme.colors.border.focus : p.compact ? 'transparent' : p.theme.colors.border.main}`};
+const Dropzone = styled.div<{
+  isDragging: boolean
+  compact?: boolean
+  noBorder?: boolean
+}>`
+  border: ${(p) =>
+    p.noBorder
+      ? 'none'
+      : `2px dashed ${p.isDragging ? p.theme.colors.border.focus : p.compact ? 'transparent' : p.theme.colors.border.main}`};
   border-radius: 0.75rem;
-  padding: ${p => p.compact || p.noBorder ? '0' : '3rem 2rem'};
+  padding: ${(p) => (p.compact || p.noBorder ? '0' : '3rem 2rem')};
   text-align: center;
-  transition: border-color 0.15s, background-color 0.15s;
-  background-color: ${p => p.isDragging ? p.theme.colors.severity.lowBg : 'transparent'};
+  transition:
+    border-color 0.15s,
+    background-color 0.15s;
+  background-color: ${(p) =>
+    p.isDragging ? p.theme.colors.severity.lowBg : 'transparent'};
 
   &:hover {
-    border-color: ${p => (p.compact || p.noBorder) ? 'transparent' : p.theme.colors.text.muted};
+    border-color: ${(p) =>
+      p.compact || p.noBorder ? 'transparent' : p.theme.colors.text.muted};
   }
 `
 
@@ -27,7 +39,7 @@ const UploadIcon = styled.svg`
   margin: 0 auto 1rem;
   height: 4rem;
   width: 4rem;
-  color: ${p => p.theme.colors.text.muted};
+  color: ${(p) => p.theme.colors.text.muted};
 `
 
 const IconWrapper = styled.div`
@@ -37,13 +49,13 @@ const IconWrapper = styled.div`
 const UploadTitle = styled.p`
   font-size: 1.25rem;
   font-weight: 600;
-  color: ${p => p.theme.colors.text.primary};
+  color: ${(p) => p.theme.colors.text.primary};
   margin-bottom: 0.5rem;
 `
 
 const UploadSubtext = styled.p`
   font-size: 0.875rem;
-  color: ${p => p.theme.colors.text.muted};
+  color: ${(p) => p.theme.colors.text.muted};
   margin-bottom: 1rem;
 `
 
@@ -55,13 +67,13 @@ const UploadButton = styled.label`
   font-weight: 600;
   border-radius: 0.5rem;
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
-  color: ${p => p.theme.colors.button.primaryText};
-  background-color: ${p => p.theme.colors.button.primary};
+  color: ${(p) => p.theme.colors.button.primaryText};
+  background-color: ${(p) => p.theme.colors.button.primary};
   cursor: pointer;
   transition: background-color 0.15s;
 
   &:hover {
-    background-color: ${p => p.theme.colors.button.primaryHover};
+    background-color: ${(p) => p.theme.colors.button.primaryHover};
   }
 `
 
@@ -76,33 +88,45 @@ const ButtonRow = styled.div`
   justify-content: center;
 `
 
-const SampleButton = styled.button`
+const SecondaryUploadButton = styled.label`
   display: inline-flex;
   align-items: center;
   padding: 0.625rem 1.5rem;
   font-size: 0.9375rem;
   font-weight: 600;
   border-radius: 0.5rem;
-  border: 1px solid ${p => p.theme.colors.border.main};
-  color: ${p => p.theme.colors.text.secondary};
+  border: 1px solid ${(p) => p.theme.colors.border.main};
+  color: ${(p) => p.theme.colors.text.secondary};
   background-color: transparent;
   cursor: pointer;
-  transition: background-color 0.15s, color 0.15s;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
 
   &:hover {
-    background-color: ${p => p.theme.colors.button.secondary};
-    color: ${p => p.theme.colors.text.primary};
+    background-color: ${(p) => p.theme.colors.button.secondary};
+    color: ${(p) => p.theme.colors.text.primary};
   }
+`
 
-  &:disabled {
-    opacity: 0.5;
-    cursor: default;
+const SampleLink = styled.button<{ disabled?: boolean }>`
+  font-size: 0.8125rem;
+  color: ${(p) => p.theme.colors.text.muted};
+  background: none;
+  border: none;
+  cursor: ${(p) => (p.disabled ? 'default' : 'pointer')};
+  padding: 0;
+  margin-top: 0.75rem;
+  opacity: ${(p) => (p.disabled ? 0.5 : 1)};
+
+  &:hover:not(:disabled) {
+    color: ${(p) => p.theme.colors.text.secondary};
   }
 `
 
 const FormatHint = styled.p`
   font-size: 0.75rem;
-  color: ${p => p.theme.colors.text.muted};
+  color: ${(p) => p.theme.colors.text.muted};
   margin-top: 1rem;
 `
 
@@ -112,7 +136,7 @@ const FeatureList = styled.div`
   justify-content: center;
   margin-top: 2rem;
   padding-top: 1.5rem;
-  border-top: 1px solid ${p => p.theme.colors.border.subtle};
+  border-top: 1px solid ${(p) => p.theme.colors.border.subtle};
 `
 
 const FeatureItem = styled.div`
@@ -124,9 +148,15 @@ const FeatureItem = styled.div`
   opacity: 0;
   animation: featureEnter 0.6s ease-out forwards;
 
-  &:nth-of-type(1) { animation-delay: 0.15s; }
-  &:nth-of-type(2) { animation-delay: 0.3s; }
-  &:nth-of-type(3) { animation-delay: 0.45s; }
+  &:nth-of-type(1) {
+    animation-delay: 0.15s;
+  }
+  &:nth-of-type(2) {
+    animation-delay: 0.3s;
+  }
+  &:nth-of-type(3) {
+    animation-delay: 0.45s;
+  }
 
   &:hover .feature-icon {
     transform: translateY(-2px);
@@ -153,44 +183,44 @@ const FeatureIcon = styled.span`
   align-items: center;
   justify-content: center;
   border-radius: 0.5rem;
-  background-color: ${p => p.theme.colors.background.section};
-  color: ${p => p.theme.colors.text.secondary};
+  background-color: ${(p) => p.theme.colors.background.section};
+  color: ${(p) => p.theme.colors.text.secondary};
   transition: transform 0.3s ease;
 `
 
 const FeatureText = styled.span`
   font-size: 0.75rem;
-  color: ${p => p.theme.colors.text.secondary};
+  color: ${(p) => p.theme.colors.text.secondary};
   text-align: center;
   line-height: 1.3;
 `
 
 const ProgressBarTrack = styled.div`
   width: 100%;
-  background-color: ${p => p.theme.colors.button.secondary};
+  background-color: ${(p) => p.theme.colors.button.secondary};
   border-radius: 9999px;
   height: 0.625rem;
   margin-bottom: 0.5rem;
 `
 
 const ProgressBarFill = styled.div<{ width: number }>`
-  background-color: ${p => p.theme.colors.button.primary};
+  background-color: ${(p) => p.theme.colors.button.primary};
   height: 0.625rem;
   border-radius: 9999px;
   transition: width 0.3s;
-  width: ${p => p.width}%;
+  width: ${(p) => p.width}%;
 `
 
 const StatusText = styled.p`
   font-size: 1.125rem;
   font-weight: 500;
-  color: ${p => p.theme.colors.text.primary};
+  color: ${(p) => p.theme.colors.text.primary};
   margin-bottom: 0.5rem;
 `
 
 const StatusSubtext = styled.p`
   font-size: 0.875rem;
-  color: ${p => p.theme.colors.text.muted};
+  color: ${(p) => p.theme.colors.text.muted};
 `
 
 const Spinner = styled.div`
@@ -203,7 +233,9 @@ const Spinner = styled.div`
   animation: spin 1s linear infinite;
 
   @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
   }
 `
 
@@ -211,24 +243,24 @@ const ErrorIcon = styled.svg`
   margin: 0 auto 1rem;
   height: 3rem;
   width: 3rem;
-  color: ${p => p.theme.colors.severity.high};
+  color: ${(p) => p.theme.colors.severity.high};
 `
 
 const ErrorTitle = styled.p`
   font-size: 1.125rem;
   font-weight: 500;
-  color: ${p => p.theme.colors.severity.high};
+  color: ${(p) => p.theme.colors.severity.high};
   margin-bottom: 0.5rem;
 `
 
 const ErrorDetail = styled.p`
   font-size: 0.875rem;
-  color: ${p => p.theme.colors.severity.high};
+  color: ${(p) => p.theme.colors.severity.high};
 `
 
 const MetadataBlock = styled.div`
   font-size: 0.75rem;
-  color: ${p => p.theme.colors.text.secondary};
+  color: ${(p) => p.theme.colors.text.secondary};
   text-align: left;
 
   & > p + p {
@@ -244,14 +276,14 @@ const LinkButton = styled.button`
   margin-top: 0.5rem;
   padding: 0;
   font-size: 0.75rem;
-  color: ${p => p.theme.colors.text.link};
+  color: ${(p) => p.theme.colors.text.link};
   background: none;
   border: none;
   cursor: pointer;
   text-align: left;
 
   &:hover {
-    color: ${p => p.theme.colors.text.linkHover};
+    color: ${(p) => p.theme.colors.text.linkHover};
   }
 `
 
@@ -260,15 +292,15 @@ const ChangeFileButton = styled.button`
   padding: 0.375rem 0.875rem;
   font-size: 0.75rem;
   font-weight: 500;
-  color: ${p => p.theme.colors.button.primaryText};
-  background-color: ${p => p.theme.colors.button.primary};
+  color: ${(p) => p.theme.colors.button.primaryText};
+  background-color: ${(p) => p.theme.colors.button.primary};
   border: none;
   border-radius: 0.375rem;
   cursor: pointer;
   transition: background-color 0.15s;
 
   &:hover {
-    background-color: ${p => p.theme.colors.button.primaryHover};
+    background-color: ${(p) => p.theme.colors.button.primaryHover};
   }
 `
 
@@ -282,7 +314,9 @@ export const FileUpload = observer(() => {
     try {
       const response = await fetch(`${import.meta.env.BASE_URL}sample.BFL`)
       const blob = await response.blob()
-      const file = new File([blob], 'sample.BFL', { type: 'application/octet-stream' })
+      const file = new File([blob], 'sample.BFL', {
+        type: 'application/octet-stream',
+      })
       uiStore.setZoom(0, 100)
       logStore.uploadFile(file)
     } finally {
@@ -333,11 +367,7 @@ export const FileUpload = observer(() => {
         {logStore.parseStatus === 'idle' && (
           <>
             <IconWrapper>
-              <UploadIcon
-                stroke="currentColor"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
+              <UploadIcon stroke="currentColor" fill="none" viewBox="0 0 24 24">
                 <path
                   d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"
                   strokeWidth={1.5}
@@ -360,7 +390,7 @@ export const FileUpload = observer(() => {
               </UploadIcon>
             </IconWrapper>
             <UploadTitle>Drop blackbox log here</UploadTitle>
-            <UploadSubtext>or click to browse</UploadSubtext>
+            <UploadSubtext>or</UploadSubtext>
             <HiddenInput
               type="file"
               accept=".bbl,.bfl,.txt,.csv"
@@ -368,93 +398,291 @@ export const FileUpload = observer(() => {
               id="file-upload"
             />
             <ButtonRow>
-              <UploadButton htmlFor="file-upload">
-                Select File
-              </UploadButton>
-              <SampleButton
-                data-testid="load-sample-log"
-                disabled={loadingSample}
-                onClick={handleLoadSample}
-              >
-                {loadingSample ? 'Loading...' : 'Try sample log'}
-              </SampleButton>
+              {isSerialSupported() && (
+                <UploadButton
+                  as="button"
+                  onClick={() => uiStore.openFlashDownload()}
+                >
+                  Download from FC
+                </UploadButton>
+              )}
+
+              <SecondaryUploadButton htmlFor="file-upload">
+                Select file
+              </SecondaryUploadButton>
             </ButtonRow>
+            <SampleLink
+              data-testid="load-sample-log"
+              disabled={loadingSample}
+              onClick={handleLoadSample}
+            >
+              {loadingSample ? 'Loading...' : 'or try with a sample log'}
+            </SampleLink>
             <FormatHint>
               Supports .bbl, .bfl, .txt, .csv (Betaflight Blackbox)
             </FormatHint>
             <FeatureList>
               <FeatureItem>
                 <FeatureIcon className="feature-icon">
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                    <polyline points="1,12 4,5 7,8 10,2 15,7" strokeDasharray="26" strokeDashoffset="26">
-                      <animate attributeName="stroke-dashoffset" from="26" to="0" dur="0.8s" fill="freeze" begin="0.4s" />
-                      <animate attributeName="points"
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  >
+                    <polyline
+                      points="1,12 4,5 7,8 10,2 15,7"
+                      strokeDasharray="26"
+                      strokeDashoffset="26"
+                    >
+                      <animate
+                        attributeName="stroke-dashoffset"
+                        from="26"
+                        to="0"
+                        dur="0.8s"
+                        fill="freeze"
+                        begin="0.4s"
+                      />
+                      <animate
+                        attributeName="points"
                         values="1,12 4,5 7,8 10,2 15,7;1,7 4,12 7,5 10,8 15,2;1,2 4,7 7,12 10,5 15,8;1,8 4,2 7,7 10,12 15,5;1,5 4,8 7,2 10,7 15,12;1,12 4,5 7,8 10,2 15,7"
-                        dur="4s" repeatCount="indefinite" begin="1.5s" />
+                        dur="4s"
+                        repeatCount="indefinite"
+                        begin="1.5s"
+                      />
                     </polyline>
                   </svg>
                 </FeatureIcon>
-                <FeatureText>Detect oscillations, noise &amp; bounceback</FeatureText>
+                <FeatureText>
+                  Detect oscillations, noise &amp; bounceback
+                </FeatureText>
               </FeatureItem>
               <FeatureItem>
                 <FeatureIcon className="feature-icon">
-                  <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M1 13 A7 7 0 0 1 15 13" strokeDasharray="22" strokeDashoffset="22">
-                      <animate attributeName="stroke-dashoffset" from="22" to="0" dur="0.7s" fill="freeze" begin="0.55s" />
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path
+                      d="M1 13 A7 7 0 0 1 15 13"
+                      strokeDasharray="22"
+                      strokeDashoffset="22"
+                    >
+                      <animate
+                        attributeName="stroke-dashoffset"
+                        from="22"
+                        to="0"
+                        dur="0.7s"
+                        fill="freeze"
+                        begin="0.55s"
+                      />
                     </path>
-                    <line x1="8" y1="13" x2="8" y2="5" strokeDasharray="8" strokeDashoffset="8">
-                      <animate attributeName="stroke-dashoffset" from="8" to="0" dur="0.3s" fill="freeze" begin="1s" />
-                      <animateTransform attributeName="transform" type="rotate"
+                    <line
+                      x1="8"
+                      y1="13"
+                      x2="8"
+                      y2="5"
+                      strokeDasharray="8"
+                      strokeDashoffset="8"
+                    >
+                      <animate
+                        attributeName="stroke-dashoffset"
+                        from="8"
+                        to="0"
+                        dur="0.3s"
+                        fill="freeze"
+                        begin="1s"
+                      />
+                      <animateTransform
+                        attributeName="transform"
+                        type="rotate"
                         values="0 8 13;-40 8 13;35 8 13;-10 8 13;15 8 13;0 8 13;0 8 13"
                         keyTimes="0;0.15;0.4;0.58;0.72;0.82;1"
-                        dur="3.5s" repeatCount="indefinite" begin="1.3s" />
+                        dur="3.5s"
+                        repeatCount="indefinite"
+                        begin="1.3s"
+                      />
                     </line>
-                    <circle cx="8" cy="13" r="1" fill="currentColor" stroke="none" opacity="0">
-                      <animate attributeName="opacity" from="0" to="1" dur="0.2s" fill="freeze" begin="1.2s" />
+                    <circle
+                      cx="8"
+                      cy="13"
+                      r="1"
+                      fill="currentColor"
+                      stroke="none"
+                      opacity="0"
+                    >
+                      <animate
+                        attributeName="opacity"
+                        from="0"
+                        to="1"
+                        dur="0.2s"
+                        fill="freeze"
+                        begin="1.2s"
+                      />
                     </circle>
                   </svg>
                 </FeatureIcon>
-                <FeatureText>Get PID &amp; filter tuning recommendations</FeatureText>
+                <FeatureText>
+                  Get PID &amp; filter tuning recommendations
+                </FeatureText>
               </FeatureItem>
               <FeatureItem>
                 <FeatureIcon className="feature-icon">
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="8" y1="2" x2="8" y2="13" strokeDasharray="11" strokeDashoffset="11">
-                      <animate attributeName="stroke-dashoffset" from="11" to="0" dur="0.6s" fill="freeze" begin="0.7s" />
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <line
+                      x1="8"
+                      y1="2"
+                      x2="8"
+                      y2="13"
+                      strokeDasharray="11"
+                      strokeDashoffset="11"
+                    >
+                      <animate
+                        attributeName="stroke-dashoffset"
+                        from="11"
+                        to="0"
+                        dur="0.6s"
+                        fill="freeze"
+                        begin="0.7s"
+                      />
                     </line>
-                    <polyline points="5.5,10.5 8,13 10.5,10.5" strokeDasharray="7" strokeDashoffset="7">
-                      <animate attributeName="stroke-dashoffset" from="7" to="0" dur="0.3s" fill="freeze" begin="1s" />
+                    <polyline
+                      points="5.5,10.5 8,13 10.5,10.5"
+                      strokeDasharray="7"
+                      strokeDashoffset="7"
+                    >
+                      <animate
+                        attributeName="stroke-dashoffset"
+                        from="7"
+                        to="0"
+                        dur="0.3s"
+                        fill="freeze"
+                        begin="1s"
+                      />
                     </polyline>
-                    <circle cx="8" cy="2" r="1" fill="currentColor" stroke="none" opacity="0">
-                      <animate attributeName="opacity" from="0" to="1" dur="0.2s" fill="freeze" begin="0.9s" />
+                    <circle
+                      cx="8"
+                      cy="2"
+                      r="1"
+                      fill="currentColor"
+                      stroke="none"
+                      opacity="0"
+                    >
+                      <animate
+                        attributeName="opacity"
+                        from="0"
+                        to="1"
+                        dur="0.2s"
+                        fill="freeze"
+                        begin="0.9s"
+                      />
                     </circle>
                     <g>
-                      <path d="M8 5.5L11.5 3.5" strokeDasharray="5" strokeDashoffset="5">
-                        <animate attributeName="stroke-dashoffset" from="5" to="0" dur="0.3s" fill="freeze" begin="1.1s" />
+                      <path
+                        d="M8 5.5L11.5 3.5"
+                        strokeDasharray="5"
+                        strokeDashoffset="5"
+                      >
+                        <animate
+                          attributeName="stroke-dashoffset"
+                          from="5"
+                          to="0"
+                          dur="0.3s"
+                          fill="freeze"
+                          begin="1.1s"
+                        />
                       </path>
-                      <rect x="11" y="2.5" width="2" height="2" strokeDasharray="8" strokeDashoffset="8">
-                        <animate attributeName="stroke-dashoffset" from="8" to="0" dur="0.3s" fill="freeze" begin="1.2s" />
+                      <rect
+                        x="11"
+                        y="2.5"
+                        width="2"
+                        height="2"
+                        strokeDasharray="8"
+                        strokeDashoffset="8"
+                      >
+                        <animate
+                          attributeName="stroke-dashoffset"
+                          from="8"
+                          to="0"
+                          dur="0.3s"
+                          fill="freeze"
+                          begin="1.2s"
+                        />
                       </rect>
-                      <animateTransform attributeName="transform" type="rotate"
+                      <animateTransform
+                        attributeName="transform"
+                        type="rotate"
                         values="0 8 5.5;-20 8 5.5;15 8 5.5;-8 8 5.5;5 8 5.5;0 8 5.5;0 8 5.5"
                         keyTimes="0;0.15;0.4;0.58;0.72;0.85;1"
-                        dur="3.5s" repeatCount="indefinite" begin="1.8s" />
+                        dur="3.5s"
+                        repeatCount="indefinite"
+                        begin="1.8s"
+                      />
                     </g>
                     <g>
-                      <path d="M8 8.5L4.5 6.5" strokeDasharray="5" strokeDashoffset="5">
-                        <animate attributeName="stroke-dashoffset" from="5" to="0" dur="0.3s" fill="freeze" begin="1.15s" />
+                      <path
+                        d="M8 8.5L4.5 6.5"
+                        strokeDasharray="5"
+                        strokeDashoffset="5"
+                      >
+                        <animate
+                          attributeName="stroke-dashoffset"
+                          from="5"
+                          to="0"
+                          dur="0.3s"
+                          fill="freeze"
+                          begin="1.15s"
+                        />
                       </path>
-                      <circle cx="4" cy="6" r="1.25" strokeDasharray="8" strokeDashoffset="8">
-                        <animate attributeName="stroke-dashoffset" from="8" to="0" dur="0.3s" fill="freeze" begin="1.25s" />
+                      <circle
+                        cx="4"
+                        cy="6"
+                        r="1.25"
+                        strokeDasharray="8"
+                        strokeDashoffset="8"
+                      >
+                        <animate
+                          attributeName="stroke-dashoffset"
+                          from="8"
+                          to="0"
+                          dur="0.3s"
+                          fill="freeze"
+                          begin="1.25s"
+                        />
                       </circle>
-                      <animateTransform attributeName="transform" type="rotate"
+                      <animateTransform
+                        attributeName="transform"
+                        type="rotate"
                         values="0 8 8.5;15 8 8.5;-12 8 8.5;6 8 8.5;-3 8 8.5;0 8 8.5;0 8 8.5"
                         keyTimes="0;0.18;0.42;0.6;0.74;0.85;1"
-                        dur="3.5s" repeatCount="indefinite" begin="2s" />
+                        dur="3.5s"
+                        repeatCount="indefinite"
+                        begin="2s"
+                      />
                     </g>
                   </svg>
                 </FeatureIcon>
-                <FeatureText>Read &amp; write settings to your FC via USB</FeatureText>
+                <FeatureText>
+                  Read &amp; write settings to your FC via USB
+                </FeatureText>
               </FeatureItem>
             </FeatureList>
             <SafetyWarning />
@@ -496,7 +724,11 @@ export const FileUpload = observer(() => {
             )}
             <ChangeFileButton
               data-testid="upload-different-file"
-              onClick={() => { logStore.reset(); analysisStore.reset(); uiStore.reset() }}
+              onClick={() => {
+                logStore.reset()
+                analysisStore.reset()
+                uiStore.reset()
+              }}
             >
               Upload different file
             </ChangeFileButton>
@@ -506,11 +738,7 @@ export const FileUpload = observer(() => {
         {logStore.parseStatus === 'error' && (
           <>
             <IconWrapper>
-              <ErrorIcon
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <ErrorIcon fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -522,7 +750,11 @@ export const FileUpload = observer(() => {
             <ErrorTitle data-testid="parse-error-text">Parse failed</ErrorTitle>
             <ErrorDetail>{logStore.parseError}</ErrorDetail>
             <LinkButton
-              onClick={() => { logStore.reset(); analysisStore.reset(); uiStore.reset() }}
+              onClick={() => {
+                logStore.reset()
+                analysisStore.reset()
+                uiStore.reset()
+              }}
             >
               Try again
             </LinkButton>

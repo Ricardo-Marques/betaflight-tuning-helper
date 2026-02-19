@@ -41,6 +41,8 @@ export class UIStore {
   settingsReviewOpen: boolean = false
   serialProgressOpen: boolean = false
   serialProgressMode: 'read' | 'write' = 'read'
+  flashDownloadOpen: boolean = false
+  flashEraseMode: boolean = false
   deferredCliAction: 'preview' | 'copy' | 'acceptTune' | null = null
 
   axisHighlight: Axis | null = null
@@ -179,6 +181,21 @@ export class UIStore {
 
   closeSerialProgress = (): void => {
     this.serialProgressOpen = false
+  }
+
+  openFlashDownload = (): void => {
+    this.flashEraseMode = false
+    this.flashDownloadOpen = true
+  }
+
+  openFlashErase = (): void => {
+    this.flashEraseMode = true
+    this.flashDownloadOpen = true
+  }
+
+  closeFlashDownload = (): void => {
+    this.flashDownloadOpen = false
+    this.flashEraseMode = false
   }
 
   showToast = (message: string, type: ToastType = 'error', durationMs = 5000): void => {

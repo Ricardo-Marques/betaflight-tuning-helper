@@ -11,6 +11,7 @@ import { ChangelogModal } from './components/ChangelogModal'
 import { SettingsImportModal } from './components/SettingsImportModal'
 import { SettingsReviewModal } from './components/SettingsReviewModal'
 import { SerialProgressModal } from './components/SerialProgressModal'
+import { FlashDownloadModal } from './components/FlashDownloadModal'
 import { Toast } from './components/Toast'
 import { useUIStore, useLogStore, useAnalysisStore } from './stores/RootStore'
 import { useObservableState } from './lib/mobx-reactivity'
@@ -532,6 +533,7 @@ export const App = observer(() => {
       <SettingsImportModal />
       <SettingsReviewModal />
       <SerialProgressModal />
+      <FlashDownloadModal />
       <Toast />
     </AppContainer>
   )
