@@ -48,34 +48,52 @@ const SHOWCASE_CARDS: ShowcaseCard[] = [
     rawFile: 'raw-02-issue.png',
     title: 'Pinpoint Tuning Problems',
     description:
-      'Click any issue marker to zoom in and see exactly where the problem occurs. Detailed metrics — frequency, amplitude, overshoot, and confidence — help you understand severity and root cause.',
+      'Click any issue marker to zoom in and see exactly where the problem occurs. Detailed metrics - frequency, amplitude, overshoot, and confidence - help you understand severity and root cause.',
     accent: '#ef4444',
   },
   {
     id: 3,
-    filename: '03-actionable-fixes.png',
-    rawFile: 'raw-03-fixes.png',
+    filename: '03-import-settings.png',
+    rawFile: 'raw-03-import.png',
+    title: 'Import Your Settings',
+    description:
+      'Paste your current Betaflight CLI dump so the app knows your starting point. Recommendations compare against your actual values instead of defaults - no more guessing what changed.',
+    accent: '#14b8a6',
+  },
+  {
+    id: 4,
+    filename: '04-cli-commands.png',
+    rawFile: 'raw-04-cli.png',
     title: 'Copy-Paste CLI Fixes',
     description:
       'Every detected issue comes with specific Betaflight parameter changes. See current vs. recommended values, understand the rationale, and copy the CLI commands directly into your configurator.',
     accent: '#10b981',
   },
   {
-    id: 4,
-    filename: '04-signal-analysis.png',
-    rawFile: 'raw-04-signals.png',
+    id: 5,
+    filename: '05-accept-tune.png',
+    rawFile: 'raw-05-accept.png',
+    title: 'Accept & Keep Tuning',
+    description:
+      'Happy with the changes? Accept the tune to update your baseline settings. Upload your next log and the app picks up where you left off - iterative tuning without losing track.',
+    accent: '#059669',
+  },
+  {
+    id: 6,
+    filename: '06-signal-analysis.png',
+    rawFile: 'raw-06-signals.png',
     title: 'Deep Signal Analysis',
     description:
       'Toggle gyro, setpoint, D-term, and motor traces to isolate problems. Zoom and pan through your entire flight to trace oscillations, noise, or tracking errors back to their source.',
     accent: '#8b5cf6',
   },
   {
-    id: 5,
-    filename: '05-light-mode.png',
-    rawFile: 'raw-05-light.png',
+    id: 7,
+    filename: '07-light-mode.png',
+    rawFile: 'raw-07-light.png',
     title: 'Personalized Experience',
     description:
-      'Switch between dark and light themes. Choose your quad profile and analysis level — from beginner-friendly basics to expert-level diagnostics — for tailored recommendations.',
+      'Switch between dark and light themes. Choose your quad profile and analysis level - from beginner-friendly basics to expert-level diagnostics - for tailored recommendations.',
     accent: '#f59e0b',
   },
 ]
@@ -116,6 +134,58 @@ async function ensureToggle(toggle: ReturnType<Page['getByTestId']>, wanted: boo
   if (wanted && !checked) await toggle.check()
   if (!wanted && checked) await toggle.uncheck()
 }
+
+/** Common Betaflight 4.5 defaults — enough to resolve all CLI commands */
+const BF_DEFAULTS = `
+set p_roll = 45
+set i_roll = 80
+set d_roll = 40
+set f_roll = 120
+set p_pitch = 47
+set i_pitch = 84
+set d_pitch = 46
+set f_pitch = 125
+set p_yaw = 45
+set i_yaw = 80
+set d_yaw = 0
+set f_yaw = 120
+set d_min_roll = 30
+set d_min_pitch = 34
+set d_min_yaw = 0
+set d_max_gain = 37
+set d_max_advance = 20
+set simplified_master_multiplier = 100
+set simplified_i_gain = 100
+set simplified_d_gain = 100
+set simplified_pi_gain = 100
+set simplified_dmax_gain = 100
+set simplified_feedforward_gain = 100
+set simplified_pitch_d_gain = 105
+set simplified_pitch_pi_gain = 105
+set dyn_idle_min_rpm = 35
+set dyn_idle_p_gain = 50
+set dyn_idle_i_gain = 50
+set dyn_idle_d_gain = 50
+set motor_output_limit = 100
+set throttle_limit_percent = 100
+set tpa_rate = 65
+set tpa_breakpoint = 1350
+set simplified_dterm_filter = ON
+set simplified_dterm_filter_multiplier = 100
+set simplified_gyro_filter = ON
+set simplified_gyro_filter_multiplier = 100
+set gyro_lpf1_static_hz = 250
+set gyro_lpf2_static_hz = 500
+set dterm_lpf1_static_hz = 75
+set dterm_lpf2_static_hz = 150
+set gyro_lpf1_dyn_min_hz = 250
+set gyro_lpf1_dyn_max_hz = 500
+set dterm_lpf1_dyn_min_hz = 75
+set dterm_lpf1_dyn_max_hz = 150
+set feedforward_smooth_factor = 25
+set feedforward_jitter_factor = 7
+set iterm_relax_cutoff = 15
+`.trim()
 
 // ── Individual screenshot captures ──────────────────────────────────
 
@@ -181,12 +251,43 @@ async function capture2(page: Page): Promise<void> {
 }
 
 async function capture3(page: Page): Promise<void> {
-  console.log('Taking screenshot 3: Fixes & CLI (dark)...')
+  console.log('Taking screenshot 3: Import Settings modal (dark)...')
   await enableDarkMode(page)
 
   // Reset zoom
   await page.getByTestId('zoom-reset-button').click()
   await waitForStable(page, 500)
+
+  // Switch to Fixes tab so the Import settings button is visible
+  await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Fixes/ }).click()
+  await waitForStable(page, 500)
+
+  // Open Settings Import modal
+  await page.getByTestId('import-settings-button').click()
+  await page.getByTestId('settings-paste-textarea').waitFor({ state: 'visible', timeout: 5000 })
+  await waitForStable(page, 500)
+
+  await page.screenshot({ path: path.join(RAW_DIR, 'raw-03-import.png') })
+
+  // Import settings so CLI commands resolve for capture 4 & 5
+  const pasteArea = page.getByTestId('settings-paste-textarea')
+  await pasteArea.fill(BF_DEFAULTS)
+  await waitForStable(page, 300)
+  // Click the Import button inside the modal (use the last matching testid since the modal one is rendered after the panel one)
+  const importBtns = page.getByTestId('import-settings-button')
+  await importBtns.last().click({ force: true })
+  await waitForStable(page, 500)
+
+  // Close the modal
+  const closeBtn = page.locator('button[title="Close"]')
+  if ((await closeBtn.count()) > 0) {
+    await closeBtn.first().click({ force: true })
+    await waitForStable(page, 500)
+  }
+}
+
+async function capture4(page: Page): Promise<void> {
+  console.log('Taking screenshot 4: CLI commands (dark)...')
 
   // Switch to Fixes tab
   await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Fixes/ }).click()
@@ -199,11 +300,29 @@ async function capture3(page: Page): Promise<void> {
     await waitForStable(page, 500)
   }
 
-  await page.screenshot({ path: path.join(RAW_DIR, 'raw-03-fixes.png') })
+  await page.screenshot({ path: path.join(RAW_DIR, 'raw-04-cli.png') })
 }
 
-async function capture4(page: Page): Promise<void> {
-  console.log('Taking screenshot 4: Signal analysis (dark)...')
+async function capture5(page: Page): Promise<void> {
+  console.log('Taking screenshot 5: Accept Tune modal (dark)...')
+
+  // Click Accept tune button to open confirmation modal
+  await page.getByTestId('accept-tune-button').click()
+  await page.locator('h2:has-text("Accept Tune")').waitFor({ state: 'visible', timeout: 5000 })
+  await waitForStable(page, 500)
+
+  await page.screenshot({ path: path.join(RAW_DIR, 'raw-05-accept.png') })
+
+  // Close the modal — click the X button
+  const closeBtn = page.locator('button[title="Close"]')
+  if ((await closeBtn.count()) > 0) {
+    await closeBtn.first().click()
+    await waitForStable(page, 300)
+  }
+}
+
+async function capture6(page: Page): Promise<void> {
+  console.log('Taking screenshot 6: Signal analysis (dark)...')
   await enableDarkMode(page)
 
   // Switch to Pitch axis
@@ -228,11 +347,11 @@ async function capture4(page: Page): Promise<void> {
   }
   await waitForStable(page, 800)
 
-  await page.screenshot({ path: path.join(RAW_DIR, 'raw-04-signals.png') })
+  await page.screenshot({ path: path.join(RAW_DIR, 'raw-06-signals.png') })
 }
 
-async function capture5(page: Page): Promise<void> {
-  console.log('Taking screenshot 5: Light mode overview...')
+async function capture7(page: Page): Promise<void> {
+  console.log('Taking screenshot 7: Light mode overview...')
 
   // Reset zoom
   await page.getByTestId('zoom-reset-button').click()
@@ -254,11 +373,11 @@ async function capture5(page: Page): Promise<void> {
   await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Summary/ }).click()
   await waitForStable(page, 500)
 
-  await page.screenshot({ path: path.join(RAW_DIR, 'raw-05-light.png') })
+  await page.screenshot({ path: path.join(RAW_DIR, 'raw-07-light.png') })
 }
 
 const CAPTURE_FNS: Record<number, (page: Page) => Promise<void>> = {
-  1: capture1, 2: capture2, 3: capture3, 4: capture4, 5: capture5,
+  1: capture1, 2: capture2, 3: capture3, 4: capture4, 5: capture5, 6: capture6, 7: capture7,
 }
 
 // ── Compositing ─────────────────────────────────────────────────────
@@ -399,14 +518,14 @@ async function main(): Promise<void> {
 
   // "composite" mode — just re-render composites from existing raws
   if (args.includes('composite')) {
-    const ids = args.filter(a => a !== 'composite').map(Number).filter(n => n >= 1 && n <= 5)
+    const ids = args.filter(a => a !== 'composite').map(Number).filter(n => n >= 1 && n <= 7)
     await compositeCards(ids)
     return
   }
 
   // Determine which screenshots to take
-  const requested = args.map(Number).filter(n => n >= 1 && n <= 5)
-  const ids = requested.length > 0 ? requested : [1, 2, 3, 4, 5]
+  const requested = args.map(Number).filter(n => n >= 1 && n <= 7)
+  const ids = requested.length > 0 ? requested : [1, 2, 3, 4, 5, 6, 7]
 
   console.log(`Capturing screenshot(s): ${ids.join(', ')}`)
   console.log('Launching browser...')

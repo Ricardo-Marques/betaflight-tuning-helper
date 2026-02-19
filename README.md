@@ -29,11 +29,15 @@ Everything runs 100% client-side. No data leaves your browser, no account requir
 
 ![Pinpoint Tuning Problems](screenshots/02-issue-detection.png)
 
-![Copy-Paste CLI Fixes](screenshots/03-actionable-fixes.png)
+![Import Your Settings](screenshots/03-import-settings.png)
 
-![Deep Signal Analysis](screenshots/04-signal-analysis.png)
+![Copy-Paste CLI Fixes](screenshots/04-cli-commands.png)
 
-![Light & Dark Themes](screenshots/05-light-mode.png)
+![Accept & Keep Tuning](screenshots/05-accept-tune.png)
+
+![Deep Signal Analysis](screenshots/06-signal-analysis.png)
+
+![Personalized Experience](screenshots/07-light-mode.png)
 
 ## Features
 
