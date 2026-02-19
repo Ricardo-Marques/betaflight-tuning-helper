@@ -35,62 +35,71 @@ interface ShowcaseCard {
 const SHOWCASE_CARDS: ShowcaseCard[] = [
   {
     id: 1,
-    filename: '01-analysis-overview.png',
-    rawFile: 'raw-01-overview.png',
-    title: 'Instant Flight Analysis',
+    filename: '01-download-from-fc.png',
+    rawFile: 'raw-01-download-fc.png',
+    title: 'Download Logs Directly from FC',
     description:
-      'Upload a Blackbox log and instantly see detected issues overlaid on your flight data. The summary panel shows overall flight health, severity breakdown, and top priorities at a glance.',
-    accent: '#3b82f6',
+      'Plug in your flight controller via USB and download blackbox logs straight from the onboard flash. No SD card removal, no Configurator needed — just click and pick a flight.',
+    accent: '#6366f1',
   },
   {
     id: 2,
-    filename: '02-issue-detection.png',
-    rawFile: 'raw-02-issue.png',
+    filename: '02-analysis-overview.png',
+    rawFile: 'raw-02-overview.png',
+    title: 'Instant Flight Analysis',
+    description:
+      'See detected issues overlaid on your flight data. The summary panel shows overall flight health, severity breakdown, and top priorities at a glance.',
+    accent: '#3b82f6',
+  },
+  {
+    id: 3,
+    filename: '03-issue-detection.png',
+    rawFile: 'raw-03-issue.png',
     title: 'Pinpoint Tuning Problems',
     description:
       'Click any issue marker to zoom in and see exactly where the problem occurs. Detailed metrics - frequency, amplitude, overshoot, and confidence - help you understand severity and root cause.',
     accent: '#ef4444',
   },
   {
-    id: 3,
-    filename: '03-read-from-fc.png',
-    rawFile: 'raw-03-read-fc.png',
+    id: 4,
+    filename: '04-read-from-fc.png',
+    rawFile: 'raw-04-read-fc.png',
     title: 'Read Settings from FC',
     description:
       'Connect your flight controller via USB and read current settings directly. The app picks up your actual values so recommendations are precise.',
     accent: '#14b8a6',
   },
   {
-    id: 4,
-    filename: '04-accept-write.png',
-    rawFile: 'raw-04-accept-write.png',
+    id: 5,
+    filename: '05-accept-write.png',
+    rawFile: 'raw-05-accept-write.png',
     title: 'Review & Write to FC',
     description:
       "See exactly what will change - current vs. recommended values for every parameter. In 2 clicks you'll be sending your new tune directly to your flight controller.",
     accent: '#10b981',
   },
   {
-    id: 5,
-    filename: '05-write-confirm.png',
-    rawFile: 'raw-05-write-confirm.png',
+    id: 6,
+    filename: '06-write-confirm.png',
+    rawFile: 'raw-06-write-confirm.png',
     title: 'Apply Changes Directly',
     description:
       'Preview the exact CLI commands that will be sent, then write and save to your FC in one step. No switching apps, no copy-paste, no mistakes.',
     accent: '#059669',
   },
   {
-    id: 6,
-    filename: '06-signal-analysis.png',
-    rawFile: 'raw-06-signals.png',
+    id: 7,
+    filename: '07-signal-analysis.png',
+    rawFile: 'raw-07-signals.png',
     title: 'Deep Signal Analysis',
     description:
       'Toggle gyro, setpoint, D-term, and motor traces to isolate problems. Zoom and pan through your entire flight to trace oscillations, noise, or tracking errors back to their source.',
     accent: '#8b5cf6',
   },
   {
-    id: 7,
-    filename: '07-light-mode.png',
-    rawFile: 'raw-07-light.png',
+    id: 8,
+    filename: '08-light-mode.png',
+    rawFile: 'raw-08-light.png',
     title: 'Personalized Experience',
     description:
       'Switch between dark and light themes. Choose your quad profile and analysis level - from beginner-friendly basics to expert-level diagnostics - for tailored recommendations.',
@@ -197,7 +206,65 @@ set iterm_relax_cutoff = 15
 // ── Individual screenshot captures ──────────────────────────────────
 
 async function capture1(page: Page): Promise<void> {
-  console.log('Taking screenshot 1: Analysis overview (dark)...')
+  console.log('Taking screenshot 1: Download from FC (dark)...')
+  await enableDarkMode(page)
+
+  // Mock the FlashDownloadStore to show the pick_log state with realistic log entries
+  await page.evaluate(() => {
+    const root = (window as unknown as Record<string, unknown>).__rootStore as {
+      flashDownloadStore: {
+        status: string
+        flashTotalSize: number
+        flashUsedSize: number
+        bytesDownloaded: number
+        logs: Array<{ index: number; startOffset: number; size: number; craftName: string | undefined; firmwareVersion: string | undefined }>
+      }
+      uiStore: { flashDownloadOpen: boolean; flashEraseMode: boolean }
+    }
+    root.flashDownloadStore.status = 'pick_log'
+    root.flashDownloadStore.flashTotalSize = 16 * 1024 * 1024
+    root.flashDownloadStore.flashUsedSize = 8_420_000
+    root.flashDownloadStore.bytesDownloaded = 8_420_000
+    root.flashDownloadStore.logs = [
+      { index: 1, startOffset: 0, size: 2_150_000, craftName: 'Freestyle 5"', firmwareVersion: 'Betaflight 4.5.1' },
+      { index: 2, startOffset: 2_150_000, size: 3_870_000, craftName: 'Freestyle 5"', firmwareVersion: 'Betaflight 4.5.1' },
+      { index: 3, startOffset: 6_020_000, size: 2_400_000, craftName: 'Freestyle 5"', firmwareVersion: 'Betaflight 4.5.1' },
+    ]
+    root.uiStore.flashEraseMode = false
+    root.uiStore.flashDownloadOpen = true
+  })
+
+  await page
+    .locator('h2:has-text("Download from FC")')
+    .waitFor({ state: 'visible', timeout: 5000 })
+  await waitForStable(page, 500)
+
+  await page.screenshot({ path: path.join(RAW_DIR, 'raw-01-download-fc.png') })
+
+  // Close the modal and reset store state
+  await page.evaluate(() => {
+    const root = (window as unknown as Record<string, unknown>).__rootStore as {
+      flashDownloadStore: {
+        status: string
+        flashTotalSize: number
+        flashUsedSize: number
+        bytesDownloaded: number
+        logs: unknown[]
+      }
+      uiStore: { flashDownloadOpen: boolean; flashEraseMode: boolean }
+    }
+    root.uiStore.flashDownloadOpen = false
+    root.flashDownloadStore.status = 'idle'
+    root.flashDownloadStore.flashTotalSize = 0
+    root.flashDownloadStore.flashUsedSize = 0
+    root.flashDownloadStore.bytesDownloaded = 0
+    root.flashDownloadStore.logs = []
+  })
+  await waitForStable(page, 300)
+}
+
+async function capture2(page: Page): Promise<void> {
+  console.log('Taking screenshot 2: Analysis overview (dark)...')
   await enableDarkMode(page)
   await waitForStable(page, 800)
 
@@ -207,11 +274,11 @@ async function capture1(page: Page): Promise<void> {
   await ensureToggle(page.getByTestId('toggle-throttle'), false)
   await waitForStable(page, 500)
 
-  await page.screenshot({ path: path.join(RAW_DIR, 'raw-01-overview.png') })
+  await page.screenshot({ path: path.join(RAW_DIR, 'raw-02-overview.png') })
 }
 
-async function capture2(page: Page): Promise<void> {
-  console.log('Taking screenshot 2: Issue detection (dark)...')
+async function capture3(page: Page): Promise<void> {
+  console.log('Taking screenshot 3: Issue detection (dark)...')
   await enableDarkMode(page)
 
   // Switch to Issues tab
@@ -264,11 +331,11 @@ async function capture2(page: Page): Promise<void> {
     }
   }
 
-  await page.screenshot({ path: path.join(RAW_DIR, 'raw-02-issue.png') })
+  await page.screenshot({ path: path.join(RAW_DIR, 'raw-03-issue.png') })
 }
 
-async function capture3(page: Page): Promise<void> {
-  console.log('Taking screenshot 3: Read from FC modal (dark)...')
+async function capture4(page: Page): Promise<void> {
+  console.log('Taking screenshot 4: Read from FC modal (dark)...')
   await enableDarkMode(page)
 
   // Reset zoom
@@ -287,7 +354,7 @@ async function capture3(page: Page): Promise<void> {
   await page.getByTestId('import-settings-button').click()
   await waitForStable(page, 800)
 
-  await page.screenshot({ path: path.join(RAW_DIR, 'raw-03-read-fc.png') })
+  await page.screenshot({ path: path.join(RAW_DIR, 'raw-04-read-fc.png') })
 
   // Close the import modal
   const closeBtn = page.locator('button[title="Close"]')
@@ -296,7 +363,7 @@ async function capture3(page: Page): Promise<void> {
     await waitForStable(page, 300)
   }
 
-  // Import settings via paste so CLI commands resolve for capture 4 & 5
+  // Import settings via paste so CLI commands resolve for capture 5 & 6
   await importSettingsViaPaste(page)
 }
 
@@ -332,8 +399,8 @@ async function importSettingsViaPaste(page: Page): Promise<void> {
   }
 }
 
-async function capture4(page: Page): Promise<void> {
-  console.log('Taking screenshot 4: Accept & Write to FC modal (dark)...')
+async function capture5(page: Page): Promise<void> {
+  console.log('Taking screenshot 5: Accept & Write to FC modal (dark)...')
   await enableDarkMode(page)
 
   // Click Accept tune to open the AcceptTuneModal
@@ -343,7 +410,7 @@ async function capture4(page: Page): Promise<void> {
     .waitFor({ state: 'visible', timeout: 5000 })
   await waitForStable(page, 500)
 
-  await page.screenshot({ path: path.join(RAW_DIR, 'raw-04-accept-write.png') })
+  await page.screenshot({ path: path.join(RAW_DIR, 'raw-05-accept-write.png') })
 
   // Close the modal
   const closeBtn = page.locator('button[title="Close"]')
@@ -353,8 +420,8 @@ async function capture4(page: Page): Promise<void> {
   }
 }
 
-async function capture5(page: Page): Promise<void> {
-  console.log('Taking screenshot 5: Write to FC confirmation (dark)...')
+async function capture6(page: Page): Promise<void> {
+  console.log('Taking screenshot 6: Write to FC confirmation (dark)...')
   await enableDarkMode(page)
 
   // Open SerialProgressModal in write mode and mock the "connected" state
@@ -378,7 +445,7 @@ async function capture5(page: Page): Promise<void> {
   await waitForStable(page, 500)
 
   await page.screenshot({
-    path: path.join(RAW_DIR, 'raw-05-write-confirm.png'),
+    path: path.join(RAW_DIR, 'raw-06-write-confirm.png'),
   })
 
   // Close the modal
@@ -400,8 +467,8 @@ async function capture5(page: Page): Promise<void> {
   })
 }
 
-async function capture6(page: Page): Promise<void> {
-  console.log('Taking screenshot 6: Signal analysis (dark)...')
+async function capture7(page: Page): Promise<void> {
+  console.log('Taking screenshot 7: Signal analysis (dark)...')
   await enableDarkMode(page)
 
   // Switch to Pitch axis
@@ -430,11 +497,11 @@ async function capture6(page: Page): Promise<void> {
   }
   await waitForStable(page, 800)
 
-  await page.screenshot({ path: path.join(RAW_DIR, 'raw-06-signals.png') })
+  await page.screenshot({ path: path.join(RAW_DIR, 'raw-07-signals.png') })
 }
 
-async function capture7(page: Page): Promise<void> {
-  console.log('Taking screenshot 7: Light mode overview...')
+async function capture8(page: Page): Promise<void> {
+  console.log('Taking screenshot 8: Light mode overview...')
 
   // Reset zoom
   await page.getByTestId('zoom-reset-button').click()
@@ -460,7 +527,7 @@ async function capture7(page: Page): Promise<void> {
     .click()
   await waitForStable(page, 500)
 
-  await page.screenshot({ path: path.join(RAW_DIR, 'raw-07-light.png') })
+  await page.screenshot({ path: path.join(RAW_DIR, 'raw-08-light.png') })
 }
 
 const CAPTURE_FNS: Record<number, (page: Page) => Promise<void>> = {
@@ -471,6 +538,7 @@ const CAPTURE_FNS: Record<number, (page: Page) => Promise<void>> = {
   5: capture5,
   6: capture6,
   7: capture7,
+  8: capture8,
 }
 
 // ── Compositing ─────────────────────────────────────────────────────
@@ -615,14 +683,14 @@ async function main(): Promise<void> {
     const ids = args
       .filter((a) => a !== 'composite')
       .map(Number)
-      .filter((n) => n >= 1 && n <= 7)
+      .filter((n) => n >= 1 && n <= 8)
     await compositeCards(ids)
     return
   }
 
   // Determine which screenshots to take
-  const requested = args.map(Number).filter((n) => n >= 1 && n <= 7)
-  const ids = requested.length > 0 ? requested : [1, 2, 3, 4, 5, 6, 7]
+  const requested = args.map(Number).filter((n) => n >= 1 && n <= 8)
+  const ids = requested.length > 0 ? requested : [1, 2, 3, 4, 5, 6, 7, 8]
 
   console.log(`Capturing screenshot(s): ${ids.join(', ')}`)
   console.log('Launching browser...')
