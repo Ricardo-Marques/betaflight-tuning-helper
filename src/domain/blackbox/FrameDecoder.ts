@@ -1,5 +1,5 @@
 /**
- * FrameDecoder — core decode loop for BBL binary frames.
+ * FrameDecoder - core decode loop for BBL binary frames.
  *
  * Processes fields one-by-one (not in pre-computed groups), matching the reference
  * implementation in blackbox-log-viewer. Multi-field encoders consume a fixed number
@@ -56,7 +56,7 @@ export function decodeFrames(
 
   const fieldCount = headers.iFieldDefs.length
 
-  // Prediction history — after I-frame both slots point to I-frame values
+  // Prediction history - after I-frame both slots point to I-frame values
   let previous = new Array<number>(fieldCount).fill(0)
   let previousPrevious = new Array<number>(fieldCount).fill(0)
   let hasPrevious = false
@@ -113,7 +113,7 @@ export function decodeFrames(
           stream.readByte()
 
           if (!hasPrevious) {
-            // Can't decode P-frame without a preceding I-frame — skip
+            // Can't decode P-frame without a preceding I-frame - skip
             scanToNextFrame(stream)
             break
           }
@@ -326,7 +326,7 @@ function decodeAndApplyFields(
       }
 
       default: {
-        // Unknown encoding — treat as zero
+        // Unknown encoding - treat as zero
         current[i] = 0
         i++
       }
@@ -354,7 +354,7 @@ function skipEventFrame(stream: ByteStream): void {
         if (bytes[i] !== endMsg.charCodeAt(i)) { isEnd = false; break }
       }
       if (!isEnd) {
-        // False positive — not a real log end, scan forward
+        // False positive - not a real log end, scan forward
         scanToNextFrame(stream)
       }
       // If it is a real log end, stop at current position
@@ -375,7 +375,7 @@ function skipEventFrame(stream: ByteStream): void {
       stream.readUnsignedVB() // reason
       break
     default:
-      // Unknown event — scan to next frame
+      // Unknown event - scan to next frame
       scanToNextFrame(stream)
       break
   }

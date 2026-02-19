@@ -92,7 +92,7 @@ export const WobbleRule: TuningRule = {
       const band = issue.metrics.dominantBand
 
       if (band === 'low') {
-        // Low-frequency wobble (< 20 Hz) — typically I-term hunting or structural
+        // Low-frequency wobble (< 20 Hz) - typically I-term hunting or structural
         // Sub-20Hz oscillation without stick input is usually I-term building up,
         // overshooting, and correcting in a slow cycle. Increasing P would be wrong.
         recommendations.push({
@@ -204,7 +204,7 @@ export const WobbleRule: TuningRule = {
           }
         )
       } else {
-        // Mid-frequency wobble (20-80 Hz) — likely P oscillation
+        // Mid-frequency wobble (20-80 Hz) - likely P oscillation
         // 20-50Hz oscillation without stick input is the classic P-too-high signature.
         // The correct response is to increase D to damp it, or reduce P.
         recommendations.push({
@@ -214,11 +214,11 @@ export const WobbleRule: TuningRule = {
           priority: 8,
           confidence: 0.85,
           title: `Increase D on ${issue.axis}`,
-          description: 'Mid-frequency wobble (20-80Hz) indicates P oscillation — needs more damping',
+          description: 'Mid-frequency wobble (20-80Hz) indicates P oscillation - needs more damping',
           rationale:
             'Mid-frequency oscillation without stick input is typically P gain driving the quad past its target faster than D can damp it. Increasing D provides more damping to suppress the oscillation.',
           risks: [
-            'High D amplifies gyro noise — monitor motor temperatures',
+            'High D amplifies gyro noise - monitor motor temperatures',
             'May need filter adjustment if D-term noise increases',
           ],
           changes: [

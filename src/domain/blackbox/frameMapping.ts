@@ -1,5 +1,5 @@
 /**
- * Frame mapping — converts decoded field arrays into LogFrame/LogMetadata interfaces.
+ * Frame mapping - converts decoded field arrays into LogFrame/LogMetadata interfaces.
  *
  * This bridges the raw parser output to the existing domain types used by the rest of the app.
  */

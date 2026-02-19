@@ -1,5 +1,5 @@
 /**
- * Elias Delta coding — bit-level decoder for unsigned and signed variants.
+ * Elias Delta coding - bit-level decoder for unsigned and signed variants.
  *
  * Elias Delta encoding:
  * 1. Read number of leading zeros → that's the length of the "length" part

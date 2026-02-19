@@ -1,5 +1,5 @@
 /**
- * TAG8_8SVB decoder — consumes up to 8 fields.
+ * TAG8_8SVB decoder - consumes up to 8 fields.
  *
  * When count == 1: reads a single signedVB directly (NO header byte).
  * When count > 1: reads a header byte where each bit indicates non-zero, then signedVB per set bit.

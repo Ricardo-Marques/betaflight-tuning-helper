@@ -284,13 +284,13 @@ async function parseTxtLog(file: File): Promise<void> {
   }
 
   if (frames.length < 100) {
-    console.warn(`Only ${frames.length} frames found — log may be too short for meaningful analysis.`)
+    console.warn(`Only ${frames.length} frames found - log may be too short for meaningful analysis.`)
   }
 
   // Update metadata with actual frame count and duration
   metadata.frameCount = frames.length
 
-  // Betaflight CSV exports always store time in microseconds — no conversion needed.
+  // Betaflight CSV exports always store time in microseconds - no conversion needed.
 
   // Zero-base timestamps so chart starts at 0
   if (frames.length > 0) {

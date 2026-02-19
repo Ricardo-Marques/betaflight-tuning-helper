@@ -44,7 +44,7 @@ export const DTermNoiseRule: TuningRule = {
     const gyroRMS = calculateRMS(gyroSignal)
 
     // FFT on D-term signal to check high-band energy ratio
-    // This is the primary metric — what fraction of D-term energy is high-frequency noise
+    // This is the primary metric - what fraction of D-term energy is high-frequency noise
     const dtermSpectrum = analyzeFrequency(dtermSignal, sampleRate)
     const dtermTotalEnergy = dtermSpectrum.bandEnergy.low + dtermSpectrum.bandEnergy.mid + dtermSpectrum.bandEnergy.high
     const dtermHighRatio = dtermTotalEnergy > 0 ? dtermSpectrum.bandEnergy.high / dtermTotalEnergy : 0
@@ -105,7 +105,7 @@ export const DTermNoiseRule: TuningRule = {
         priority: 8,
         confidence: issue.confidence,
         title: `Increase D-term filtering on ${issue.axis}`,
-        description: 'D-term is amplifying high-frequency noise — lower the D-term filter cutoff',
+        description: 'D-term is amplifying high-frequency noise - lower the D-term filter cutoff',
         rationale:
           'The D-term differentiates the gyro signal, amplifying high-frequency noise. Lowering the D-term filter multiplier lowers the cutoff frequency, blocking more noise before it reaches the motors.',
         risks: [
@@ -156,7 +156,7 @@ export const DTermNoiseRule: TuningRule = {
         priority: 6,
         confidence: issue.confidence * 0.8,
         title: 'Verify RPM filter configuration',
-        description: 'RPM filter removes motor noise at source — ensure it is properly configured',
+        description: 'RPM filter removes motor noise at source - ensure it is properly configured',
         rationale:
           'The RPM filter uses motor telemetry to precisely notch out motor noise harmonics. With 3 harmonics enabled, it covers the fundamental and first two overtones.',
         risks: [

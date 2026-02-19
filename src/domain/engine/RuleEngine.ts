@@ -38,7 +38,7 @@ function parseChangeDirection(change: string): { sign: 1 | -1 | 0; magnitude: nu
     }
   }
 
-  // Absolute value — no direction
+  // Absolute value - no direction
   const absMatch = trimmed.match(/^(\d+(?:\.\d+)?)$/)
   if (absMatch) {
     return { sign: 0, magnitude: parseFloat(absMatch[1]) }
@@ -208,7 +208,7 @@ export class RuleEngine {
    *
    * Resolves conflicts at the individual parameter+axis level across ALL recommendations,
    * not just those with identical change sets. For example, "Adjust P/D balance on roll"
-   * (pidPGain+pidDGain) can conflict with "Reduce D on roll" (pidDGain) — both touch
+   * (pidPGain+pidDGain) can conflict with "Reduce D on roll" (pidDGain) - both touch
    * pidDGain:roll and must be resolved together.
    *
    * Algorithm:
@@ -237,18 +237,18 @@ export class RuleEngine {
       }
     }
 
-    // Phase 2: Resolve each param:axis — assign winner rec + resolved change
+    // Phase 2: Resolve each param:axis - assign winner rec + resolved change
     const resolvedByRec = new Map<number, ParameterChange[]>()
     const extraIssuesByRec = new Map<number, Set<string>>()
 
     for (const [, entries] of byParamAxis) {
       if (entries.length === 1) {
-        // Single rec owns this change — keep as-is
+        // Single rec owns this change - keep as-is
         this.addResolvedChange(resolvedByRec, entries[0].recIdx, entries[0].change)
         continue
       }
 
-      // Multiple recs touch this param:axis — find winner
+      // Multiple recs touch this param:axis - find winner
       const winnerIdx = entries.reduce((bestIdx, e) => {
         const best = recommendations[bestIdx]
         const curr = recommendations[e.recIdx]
@@ -273,9 +273,9 @@ export class RuleEngine {
         if (merged) {
           this.addResolvedChange(resolvedByRec, winnerIdx, merged)
         }
-        // If null, changes cancelled out — no change for anyone
+        // If null, changes cancelled out - no change for anyone
       } else {
-        // No conflict — keep the winner's version
+        // No conflict - keep the winner's version
         const winnerEntry = entries.find(e => e.recIdx === winnerIdx)!
         this.addResolvedChange(resolvedByRec, winnerIdx, winnerEntry.change)
       }
@@ -295,7 +295,7 @@ export class RuleEngine {
     for (let i = 0; i < recommendations.length; i++) {
       const rec = recommendations[i]
 
-      // Title-only recs (no changes) — dedup by title
+      // Title-only recs (no changes) - dedup by title
       if (rec.changes.length === 0) {
         if (titleSeen.has(rec.title)) continue
         titleSeen.add(rec.title)
@@ -559,7 +559,7 @@ export class RuleEngine {
         continue
       }
 
-      // Multiple entries for the same type+axis — collapse into one
+      // Multiple entries for the same type+axis - collapse into one
       const representative = group[0]
       const count = group.length
       const highestSeverity = group.reduce<DetectedIssue['severity']>(

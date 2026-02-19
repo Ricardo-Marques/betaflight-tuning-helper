@@ -1,5 +1,5 @@
 /**
- * TAG2_3SVariable decoder — Betaflight variant, consumes 3 fields.
+ * TAG2_3SVariable decoder - Betaflight variant, consumes 3 fields.
  *
  * Top 2 bits of lead byte select format:
  *   0 → 3 × 2-bit signed in remaining bits of lead byte (same as TAG2_3S32)

@@ -1,5 +1,5 @@
 /**
- * BBL binary format types — enums and interfaces for the Betaflight blackbox binary encoding.
+ * BBL binary format types - enums and interfaces for the Betaflight blackbox binary encoding.
  */
 
 /** Frame type marker bytes */

@@ -99,14 +99,14 @@ export function useChartData(isDraggingObs: boolean): ChartDataResult {
   const yDomain = useComputed((): [number, number] => {
     const tight = tightDomain
 
-    // Not dragging — snap to tight domain immediately
+    // Not dragging - snap to tight domain immediately
     if (!isDraggingObs) {
       displayedRef.current = tight
       seededRef.current = false
       return tight
     }
 
-    // First frame of a drag — seed so we don't lerp from stale values
+    // First frame of a drag - seed so we don't lerp from stale values
     if (!seededRef.current) {
       seededRef.current = true
       displayedRef.current = tight

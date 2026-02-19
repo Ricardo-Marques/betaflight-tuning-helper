@@ -1,5 +1,5 @@
 /**
- * HeaderParser — finds log start markers and parses BBL headers into structured data.
+ * HeaderParser - finds log start markers and parses BBL headers into structured data.
  *
  * P-frame field definitions inherit name/signed from I-frames but have their own predictor/encoding.
  * This matches the reference implementation in blackbox-log-viewer.

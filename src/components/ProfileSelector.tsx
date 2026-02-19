@@ -91,9 +91,9 @@ const HelpTooltip = styled.div`
 `
 
 const ANALYSIS_LEVELS: { id: AnalysisLevel; label: string; description: string }[] = [
-  { id: 'basic', label: 'Basic', description: 'Relaxed — only flags clear problems' },
-  { id: 'average', label: 'Average', description: 'Balanced — good starting point' },
-  { id: 'expert', label: 'Expert', description: 'Strict — flags subtle issues' },
+  { id: 'basic', label: 'Basic', description: 'Relaxed - only flags clear problems' },
+  { id: 'average', label: 'Average', description: 'Balanced - good starting point' },
+  { id: 'expert', label: 'Expert', description: 'Strict - flags subtle issues' },
 ]
 
 export const ProfileSelector = observer(() => {

@@ -50,8 +50,8 @@ export const GyroNoiseRule: TuningRule = {
     const totalEnergy = spectrum.bandEnergy.low + spectrum.bandEnergy.mid + spectrum.bandEnergy.high
     const highBandRatio = totalEnergy > 0 ? spectrum.bandEnergy.high / totalEnergy : 0
 
-    // Detected if: gyroRMS > threshold AND (high-band ratio > 0.3 OR gyroRMS > threshold) — scaled by profile
-    // 5 deg/s RMS baseline — healthy quads on soft-mounted FCs show 3-5 deg/s during hover
+    // Detected if: gyroRMS > threshold AND (high-band ratio > 0.3 OR gyroRMS > threshold) - scaled by profile
+    // 5 deg/s RMS baseline - healthy quads on soft-mounted FCs show 3-5 deg/s during hover
     if (gyroRMS <= 5 * scale || (highBandRatio <= 0.3 && gyroRMS <= 10 * scale)) {
       return []
     }
@@ -124,7 +124,7 @@ export const GyroNoiseRule: TuningRule = {
         priority: 8,
         confidence: issue.confidence,
         title: `Increase gyro filtering on ${issue.axis}`,
-        description: 'Excessive gyro noise floor — lower the gyro filter cutoff for stronger filtering',
+        description: 'Excessive gyro noise floor - lower the gyro filter cutoff for stronger filtering',
         rationale:
           'Gyro noise passes through to PID calculations, causing motor noise and heat. Lowering the filter multiplier lowers the cutoff frequency, blocking more noise before it affects PIDs.',
         risks: [

@@ -12,6 +12,6 @@ export function markBuildAsSeen(buildHash: string): void {
   try {
     localStorage.setItem(STORAGE_KEY, buildHash)
   } catch {
-    // localStorage unavailable — silently ignore
+    // localStorage unavailable - silently ignore
   }
 }

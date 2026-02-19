@@ -37,7 +37,7 @@ export function analyzeFrequency(
   const magnitudes: number[] = []
   const frequencies: number[] = []
 
-  // Hann window coherent gain is 0.5 — compensate by multiplying by 2
+  // Hann window coherent gain is 0.5 - compensate by multiplying by 2
   const hannCompensation = 2
   for (let i = 0; i < halfSize; i++) {
     const re = fftResult[i].real

@@ -1,5 +1,5 @@
 /**
- * TAG8_4S16 v2 decoder — consumes 4 fields.
+ * TAG8_4S16 v2 decoder - consumes 4 fields.
  *
  * Header byte: 4 × 2-bit width selectors, LSB-first (bits [1:0] = field 0).
  * Width codes:
@@ -21,7 +21,7 @@ export class Tag8_4S16Decoder {
   private nibbleBuffer: number = 0
   private hasNibble: boolean = false
 
-  /** Reset nibble buffer — called at start of each TAG8_4S16 decode call */
+  /** Reset nibble buffer - called at start of each TAG8_4S16 decode call */
   resetNibble(): void {
     this.hasNibble = false
     this.nibbleBuffer = 0
@@ -68,7 +68,7 @@ export class Tag8_4S16Decoder {
             const combined = ((this.nibbleBuffer & 0x0F) << 4) | (newByte >> 4)
             out[outOffset + i] = signExtend8(combined)
             this.nibbleBuffer = newByte
-            // hasNibble stays true — low nibble of newByte is pending
+            // hasNibble stays true - low nibble of newByte is pending
           }
           break
         }

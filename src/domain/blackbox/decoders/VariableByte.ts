@@ -1,5 +1,5 @@
 /**
- * Variable-byte decoders — thin wrappers around ByteStream VB methods
+ * Variable-byte decoders - thin wrappers around ByteStream VB methods
  * for the decoder dispatcher interface.
  */
 import { ByteStream } from '../ByteStream.ts'

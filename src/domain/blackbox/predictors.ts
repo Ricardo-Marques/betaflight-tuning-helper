@@ -1,5 +1,5 @@
 /**
- * Predictor functions — compute predicted value, which is added to the decoded residual.
+ * Predictor functions - compute predicted value, which is added to the decoded residual.
  * Matches the reference: actual = applyPrediction(fieldIndex, predictor, residual, current, previous, previous2)
  */
 import { PredictorType, type PredictorContext } from './types.ts'
@@ -43,7 +43,7 @@ export function applyPredictor(
       return residual + (ctx.current[ctx.motor0Index] ?? 0)
 
     case PredictorType.INCREMENT:
-      // INC predictor should never reach here — handled specially in FrameDecoder
+      // INC predictor should never reach here - handled specially in FrameDecoder
       return residual
 
     case PredictorType.CONST_1500:

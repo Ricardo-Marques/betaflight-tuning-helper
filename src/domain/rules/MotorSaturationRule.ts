@@ -87,7 +87,7 @@ export const MotorSaturationRule: TuningRule = {
           priority: 9,
           confidence: issue.confidence,
           title: 'Reduce PID master multiplier',
-          description: 'Significant motor saturation detected — PIDs are demanding more than motors can deliver',
+          description: 'Significant motor saturation detected - PIDs are demanding more than motors can deliver',
           rationale:
             'When motors hit max output, the flight controller loses authority. Reducing the master multiplier scales all PIDs proportionally, giving motors headroom.',
           risks: [
@@ -141,7 +141,7 @@ export const MotorSaturationRule: TuningRule = {
           priority: 6,
           confidence: issue.confidence * 0.85,
           title: 'Reduce P and D gains',
-          description: 'Moderate motor saturation — slight PID reduction may help',
+          description: 'Moderate motor saturation - slight PID reduction may help',
           rationale:
             'P and D gains are the main contributors to motor output demand. A small reduction can prevent occasional saturation.',
           risks: [

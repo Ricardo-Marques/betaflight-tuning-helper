@@ -1,5 +1,5 @@
 /**
- * TAG2_3S32 decoder — consumes 3 fields.
+ * TAG2_3S32 decoder - consumes 3 fields.
  *
  * The top 2 bits of the lead byte select the format (NOT a separate byte):
  *   0 → 3 × 2-bit signed in the remaining 6 bits of the lead byte

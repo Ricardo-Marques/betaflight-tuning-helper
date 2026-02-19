@@ -19,7 +19,7 @@ function uuidv4(): string {
 export const HighThrottleOscillationRule: TuningRule = {
   id: 'high-throttle-oscillation-detection',
   name: 'High Throttle Oscillation Detection',
-  description: 'Detects oscillations only at high throttle — TPA insufficient',
+  description: 'Detects oscillations only at high throttle - TPA insufficient',
   baseConfidence: 0.85,
   issueTypes: ['highThrottleOscillation'],
   applicableAxes: ['roll', 'pitch', 'yaw'],

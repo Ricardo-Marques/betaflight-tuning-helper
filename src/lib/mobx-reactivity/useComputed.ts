@@ -1,7 +1,7 @@
 import { computed } from 'mobx'
 
 /**
- * MobX computed value scoped to a component render. Replaces useMemo —
+ * MobX computed value scoped to a component render. Replaces useMemo -
  * no dependency arrays needed. MobX auto-tracks every observable read
  * inside `fn`.
  *

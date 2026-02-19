@@ -1,5 +1,5 @@
 /**
- * Elias Gamma coding — bit-level decoder for unsigned and signed variants.
+ * Elias Gamma coding - bit-level decoder for unsigned and signed variants.
  *
  * Simpler than Delta:
  * 1. Count leading zeros → N

@@ -1,5 +1,5 @@
 /**
- * BblParser — top-level orchestrator for parsing BBL binary files.
+ * BblParser - top-level orchestrator for parsing BBL binary files.
  *
  * Flow: find log → parse headers → decode frames → map to LogFrame → zero-base time
  */
