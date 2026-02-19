@@ -931,6 +931,7 @@ export const RecommendationsPanel = observer(() => {
     )
   })
   const recCount = actionableRecs.length
+  const actionableRecIds = useComputed(() => new Set(actionableRecs.map(r => r.id)))
 
   const severityOrder = ['high', 'medium', 'low'] as const
   const severityLabels: Record<string, string> = {
@@ -1075,7 +1076,7 @@ export const RecommendationsPanel = observer(() => {
                   </SeverityGroupTitle>
                   <IssueList key={analysisStore.selectedIssueId ?? ''} className={analysisStore.selectedIssueId ? 'dim-siblings' : undefined}>
                     {issues.map(issue => (
-                      <IssueCard key={issue.id} issue={issue} onNavigateToRec={navigateToRec} />
+                      <IssueCard key={issue.id} issue={issue} onNavigateToRec={navigateToRec} actionableRecIds={actionableRecIds} />
                     ))}
                   </IssueList>
                 </SeverityGroup>
@@ -1122,7 +1123,7 @@ export const RecommendationsPanel = observer(() => {
   )
 })
 
-const IssueCard = observer(({ issue, onNavigateToRec }: { issue: DetectedIssue; onNavigateToRec: (recId: string) => void }) => {
+const IssueCard = observer(({ issue, onNavigateToRec, actionableRecIds }: { issue: DetectedIssue; onNavigateToRec: (recId: string) => void; actionableRecIds: Set<string> }) => {
   const analysisStore = useAnalysisStore()
   const uiStore = useUIStore()
   const logStore = useLogStore()
@@ -1152,7 +1153,7 @@ const IssueCard = observer(({ issue, onNavigateToRec }: { issue: DetectedIssue; 
 
   const occurrences = issue.occurrences ?? [issue.timeRange]
   const hasMultiple = occurrences.length > 1
-  const linkedRecs = analysisStore.getRecommendationsForIssue(issue.id)
+  const linkedRecs = analysisStore.getRecommendationsForIssue(issue.id).filter(r => actionableRecIds.has(r.id))
 
   const zoomToOccurrence = (idx: number) => {
     analysisStore.selectIssue(issue.id, idx)
