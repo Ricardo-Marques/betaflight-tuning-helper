@@ -3,7 +3,6 @@ import { AnalysisResult, DetectedIssue, Recommendation, FlightSegment } from '..
 import { RuleEngine } from '../domain/engine/RuleEngine'
 import { QuadProfile, QuadSize, ThresholdScaling } from '../domain/types/QuadProfile'
 import { QUAD_PROFILES, DEFAULT_PROFILE } from '../domain/profiles/quadProfiles'
-import { detectQuadSize, DetectionResult } from '../domain/profiles/detectQuadSize'
 import { LogStore } from './LogStore'
 
 export type AnalysisStatus = 'idle' | 'analyzing' | 'complete' | 'error'
@@ -38,8 +37,6 @@ export class AnalysisStore {
   quadProfile: QuadProfile = DEFAULT_PROFILE
   analysisLevel: AnalysisLevel = 'average'
   isReanalyzing: boolean = false
-  detectionResult: DetectionResult | null = null
-
   private logStore: LogStore
   private ruleEngine: RuleEngine
 
@@ -148,14 +145,6 @@ export class AnalysisStore {
     })
 
     try {
-      if (this.logStore.metadata && !this.detectionResult) {
-        const detection = detectQuadSize(this.logStore.metadata)
-        runInAction(() => {
-          this.detectionResult = detection
-          this.quadProfile = QUAD_PROFILES[detection.suggestedSize]
-        })
-      }
-
       await new Promise(resolve => setTimeout(resolve, 100))
 
       runInAction(() => {
@@ -227,7 +216,6 @@ export class AnalysisStore {
     this.selectedRecommendationId = null
     this.quadProfile = DEFAULT_PROFILE
     this.analysisLevel = 'average'
-    this.detectionResult = null
   }
 
   selectSegment = (segmentId: string | null): void => {

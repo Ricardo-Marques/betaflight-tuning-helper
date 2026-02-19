@@ -22,14 +22,6 @@ const SelectorTitle = styled.h3`
   color: ${p => p.theme.colors.text.primary};
 `
 
-const DetectionBadge = styled.span<{ variant: 'good' | 'low' }>`
-  font-size: 0.75rem;
-  padding: 0.125rem 0.375rem;
-  border-radius: 0.25rem;
-  color: ${p => p.variant === 'good' ? p.theme.colors.accent.greenText : p.theme.colors.severity.mediumText};
-  background-color: ${p => p.variant === 'good' ? p.theme.colors.accent.greenBg : p.theme.colors.severity.mediumBg};
-`
-
 const ButtonGroup = styled.div`
   display: flex;
   gap: 0.25rem;
@@ -50,15 +42,6 @@ const ProfileBtn = styled.button<{ isActive: boolean }>`
   &:hover {
     background-color: ${p => p.isActive ? p.theme.colors.button.primaryHover : p.theme.colors.button.secondaryHover};
   }
-`
-
-const ReasoningText = styled.p`
-  font-size: 0.75rem;
-  color: ${p => p.theme.colors.text.muted};
-  margin-top: 0.375rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 `
 
 const HelpIconWrapper = styled.span`
@@ -115,19 +98,12 @@ const ANALYSIS_LEVELS: { id: AnalysisLevel; label: string; description: string }
 
 export const ProfileSelector = observer(() => {
   const analysisStore = useAnalysisStore()
-  const detection = analysisStore.detectionResult
 
   return (
     <>
       <SelectorWrapper>
         <SelectorHeader>
           <SelectorTitle>Quad Profile</SelectorTitle>
-          {detection && detection.confidence >= 0.5 && (
-            <DetectionBadge variant="good">Auto-detected</DetectionBadge>
-          )}
-          {detection && detection.confidence < 0.5 && (
-            <DetectionBadge variant="low">Low confidence</DetectionBadge>
-          )}
         </SelectorHeader>
         <ButtonGroup>
           {QUAD_SIZE_ORDER.map(sizeId => {
@@ -145,11 +121,6 @@ export const ProfileSelector = observer(() => {
             )
           })}
         </ButtonGroup>
-        {detection && detection.reasoning.length > 0 && (
-          <ReasoningText title={detection.reasoning.join('; ')}>
-            {detection.reasoning[0]}
-          </ReasoningText>
-        )}
       </SelectorWrapper>
       <SelectorWrapper>
         <SelectorHeader>

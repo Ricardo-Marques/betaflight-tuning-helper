@@ -9,6 +9,7 @@ import type { ChangelogEntry } from '../domain/types/Changelog'
  */
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   // 2026-02-18
+  { hash: 'c4c64f6', date: '2026-02-18', message: 'Quad profile now defaults to 5" instead of unreliable auto-detection', category: 'improvement' },
   { hash: '9058924', date: '2026-02-18', message: 'Fix text wrapping on recommendation cards', category: 'fix' },
   { hash: 'a7dfd93', date: '2026-02-18', message: 'Redesigned summary panel with severity badges and top priorities', category: 'improvement' },
   { hash: '02cfb82', date: '2026-02-18', message: 'Colored chart toggle chips replace checkboxes', category: 'improvement' },
@@ -29,7 +30,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   { hash: '0c5ff5e', date: '2026-02-17', message: 'Issues toggle and independent motor Y-axis scaling', category: 'feature' },
   { hash: '332cba8', date: '2026-02-17', message: 'Scroll-to-zoom on chart', category: 'feature' },
   { hash: 'c1bb0c5', date: '2026-02-17', message: 'Dark mode with theme toggle', category: 'feature' },
-  { hash: '8570440', date: '2026-02-17', message: 'Quad profile auto-detection (Whoop, 3", 5", 7", X-Class)', category: 'feature' },
+  { hash: '8570440', date: '2026-02-17', message: 'Quad profile selector (Whoop, 3", 5", 7", X-Class)', category: 'feature' },
   { hash: 'f0d18d1', date: '2026-02-17', message: 'Copy-paste CLI commands for all recommendations', category: 'feature' },
   { hash: 'f0d18d1', date: '2026-02-17', message: 'Navigate between multiple occurrences of the same issue', category: 'feature' },
   { hash: '3cf3aae', date: '2026-02-17', message: 'Native .bbl/.bfl binary parser (no WASM needed)', category: 'feature' },
