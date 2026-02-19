@@ -31,6 +31,13 @@ export class SerialStore {
   private connection: SerialConnection | null = null
   private onError: ((message: string) => void) | null = null
 
+  private async cleanupDeadConnection(): Promise<void> {
+    if (this.connection) {
+      try { await this.connection.close() } catch { /* already dead */ }
+      this.connection = null
+    }
+  }
+
   constructor() {
     makeAutoObservable<this, 'connection' | 'onError'>(this, {
       connection: false,
@@ -128,8 +135,9 @@ export class SerialStore {
     settingsStore: SettingsStore,
   ): Promise<boolean> => {
     if (!this.connection || !this.connection.isOpen) {
+      await this.cleanupDeadConnection()
       this.status = 'error'
-      this.errorMessage = 'Not connected to FC'
+      this.errorMessage = 'Connection lost. Click Retry to reconnect — you may need to unplug and re-plug the FC.'
       return false
     }
 
@@ -170,8 +178,9 @@ export class SerialStore {
 
   writeToFC = async (cliCommands: string): Promise<boolean> => {
     if (!this.connection || !this.connection.isOpen) {
+      await this.cleanupDeadConnection()
       this.status = 'error'
-      this.errorMessage = 'Not connected to FC'
+      this.errorMessage = 'Connection lost. Click Retry to reconnect — you may need to unplug and re-plug the FC.'
       return false
     }
 

@@ -279,8 +279,16 @@ export const SerialProgressModal = observer(() => {
   }
 
   const handleRetry = (): void => {
-    if (mode === 'read') handleStartRead()
-    else handleStartWrite()
+    // If connection is lost, reconnect first — the auto-read/write
+    // confirmation flow will handle the rest once connected
+    if (!serialStore.isConnected) {
+      serialStore.resetProgress()
+      void serialStore.connect()
+    } else if (mode === 'read') {
+      handleStartRead()
+    } else {
+      handleStartWrite()
+    }
   }
 
   const title = mode === 'read' ? 'Read Settings from FC' : 'Write Settings to FC'
