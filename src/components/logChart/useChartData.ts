@@ -1,4 +1,3 @@
-import { useRef } from 'react'
 import { useLogStore, useUIStore } from '../../stores/RootStore'
 import { useComputed } from '../../lib/mobx-reactivity'
 import type { LogFrame } from '../../domain/types/LogFrame'
@@ -24,6 +23,7 @@ interface ChartDataResult {
   chartData: ChartDataPoint[]
   yDomain: [number, number]
   motorDomain: [number, number]
+  pidDomain: [number, number]
 }
 
 export function useChartData(isDraggingObs: boolean): ChartDataResult {
@@ -39,12 +39,46 @@ export function useChartData(isDraggingObs: boolean): ChartDataResult {
     const startIdx = Math.floor((uiStore.zoomStart / 100) * totalFrames)
     const endIdx = Math.ceil((uiStore.zoomEnd / 100) * totalFrames)
 
-    // Downsample: fewer points while dragging for snappier panning
     const maxPoints = isDraggingObs ? 500 : 2000
-    const visibleRange = logStore.frames.slice(startIdx, endIdx)
-    const step = Math.max(1, Math.floor(visibleRange.length / maxPoints))
+    const rangeLen = endIdx - startIdx
 
-    return visibleRange.filter((_, i) => i % step === 0)
+    // No downsampling needed
+    if (rangeLen <= maxPoints) {
+      return logStore.frames.slice(startIdx, endIdx)
+    }
+
+    // Min-max bucket downsampling: preserve the gyro envelope
+    const axis = uiStore.selectedAxis
+    const bucketCount = maxPoints >> 1
+    const bucketSize = rangeLen / bucketCount
+    const result: LogFrame[] = []
+    const frames = logStore.frames
+
+    for (let b = 0; b < bucketCount; b++) {
+      const bStart = startIdx + Math.floor(b * bucketSize)
+      const bEnd = startIdx + Math.floor((b + 1) * bucketSize)
+
+      let minVal = Infinity
+      let maxVal = -Infinity
+      let minIdx = bStart
+      let maxIdx = bStart
+
+      for (let i = bStart; i < bEnd; i++) {
+        const v = frames[i].gyroADC[axis]
+        if (v < minVal) { minVal = v; minIdx = i }
+        if (v > maxVal) { maxVal = v; maxIdx = i }
+      }
+
+      if (minIdx === maxIdx) {
+        result.push(frames[minIdx])
+      } else if (minIdx < maxIdx) {
+        result.push(frames[minIdx], frames[maxIdx])
+      } else {
+        result.push(frames[maxIdx], frames[minIdx])
+      }
+    }
+
+    return result
   })
 
   const chartData = useComputed((): ChartDataPoint[] => {
@@ -64,68 +98,8 @@ export function useChartData(isDraggingObs: boolean): ChartDataResult {
     }))
   })
 
-  // Tight domain computed from visible frames
-  const tightDomain = useComputed((): [number, number] => {
-    if (visibleFrames.length === 0) return [0, 1]
-
-    let min = Infinity
-    let max = -Infinity
-
-    for (const frame of visibleFrames) {
-      for (const axis of ['roll', 'pitch', 'yaw'] as const) {
-        const g = frame.gyroADC[axis]
-        const s = frame.setpoint[axis]
-        const d = frame.pidD[axis]
-        if (g < min) min = g
-        if (g > max) max = g
-        if (s < min) min = s
-        if (s > max) max = s
-        if (d < min) min = d
-        if (d > max) max = d
-      }
-    }
-
-    const range = max - min
-    const margin = range * 0.05
-    return [min - margin, max + margin]
-  })
-
-  // Smoothed Y domain: lerp toward tight domain each pan frame (no RAF needed).
-  // MobX already re-evaluates this computed on every pan frame because tightDomain
-  // changes, so we piggyback on that reactivity for free synchronous easing.
-  const displayedRef = useRef<[number, number]>([0, 1])
-  const seededRef = useRef(false)
-
-  const yDomain = useComputed((): [number, number] => {
-    const tight = tightDomain
-
-    // Not dragging - snap to tight domain immediately
-    if (!isDraggingObs) {
-      displayedRef.current = tight
-      seededRef.current = false
-      return tight
-    }
-
-    // First frame of a drag - seed so we don't lerp from stale values
-    if (!seededRef.current) {
-      seededRef.current = true
-      displayedRef.current = tight
-      return tight
-    }
-
-    const prev = displayedRef.current
-    // Asymmetric lerp: expand fast (keep up with new peaks), shrink slow (avoid jitter)
-    const EXPAND = 0.6
-    const SHRINK = 0.08
-    const alphaMin = tight[0] < prev[0] ? EXPAND : SHRINK
-    const alphaMax = tight[1] > prev[1] ? EXPAND : SHRINK
-    const smoothed: [number, number] = [
-      prev[0] + (tight[0] - prev[0]) * alphaMin,
-      prev[1] + (tight[1] - prev[1]) * alphaMax,
-    ]
-    displayedRef.current = smoothed
-    return smoothed
-  })
+  // Global gyro/setpoint domain for the selected axis (cached in LogStore)
+  const yDomain = logStore.signalDomains[uiStore.selectedAxis]
 
   // Stable motor/throttle domain computed from the entire log (never changes during pan)
   const motorDomain = useComputed((): [number, number] => {
@@ -152,5 +126,8 @@ export function useChartData(isDraggingObs: boolean): ChartDataResult {
     return [min - margin, max + margin]
   })
 
-  return { zoomDuration, visibleFrames, chartData, yDomain, motorDomain }
+  // Global PID domain for the selected axis (cached in LogStore)
+  const pidDomain = logStore.pidDomains[uiStore.selectedAxis]
+
+  return { zoomDuration, visibleFrames, chartData, yDomain, motorDomain, pidDomain }
 }
