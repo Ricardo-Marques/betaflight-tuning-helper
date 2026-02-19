@@ -9,6 +9,11 @@ import type { ChangelogEntry } from '../domain/types/Changelog'
  */
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   // 2026-02-18
+  { hash: '35838eb', date: '2026-02-18', message: 'Download blackbox logs directly from the FC via USB', category: 'feature' },
+  { hash: '889be0a', date: '2026-02-18', message: 'Offer to clear blackbox logs from the FC after writing a tune', category: 'improvement' },
+  { hash: '9718e3c', date: '2026-02-18', message: 'Show a message when no tuning changes are recommended', category: 'improvement' },
+  { hash: '754f7d1', date: '2026-02-18', message: 'Let users reconnect to the FC after a connection error', category: 'fix' },
+  { hash: '8d2e4d9', date: '2026-02-18', message: 'Smoother scroll-to-zoom on the chart', category: 'improvement' },
   { hash: '2667971', date: '2026-02-18', message: 'Read and write settings directly to your FC via USB (Chrome/Edge)', category: 'feature' },
   { hash: '2667971', date: '2026-02-18', message: 'Accept tune now shows all changes with before/after values for review', category: 'improvement' },
   { hash: '2667971', date: '2026-02-18', message: 'Restore settings from your last session without re-importing', category: 'improvement' },
