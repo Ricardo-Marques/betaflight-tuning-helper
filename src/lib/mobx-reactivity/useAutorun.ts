@@ -12,5 +12,5 @@ import { useEffect, useRef } from 'react'
 export function useAutorun(fn: () => void): void {
   const fnRef = useRef(fn)
   fnRef.current = fn
-  useEffect(() => autorun(() => fnRef.current()), []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => autorun(() => fnRef.current()), [])
 }

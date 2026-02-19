@@ -129,9 +129,6 @@ test.describe('Issue Interactions — Scroll Behavior', () => {
     }
     await page.waitForTimeout(500)
 
-    const zoomLabel = page.getByTestId('zoom-reset-button').locator('..').locator('span').first()
-    const zoomBefore = await zoomLabel.textContent()
-
     // Click next occurrence — it may be off-screen now
     const nextBtn = multiOccCard.locator('button').filter({ hasText: '>' })
     const isDisabled = await nextBtn.isDisabled()
