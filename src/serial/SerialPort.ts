@@ -39,6 +39,17 @@ export function createSerialConnection(): SerialConnection {
 
   const handleDisconnect = (): void => {
     open = false
+    // Release reader lock and close the port so it can be reopened
+    // by a future connection (e.g., erase after write+reboot)
+    if (reader) {
+      try { reader.releaseLock() } catch { /* already released */ }
+      reader = null
+    }
+    if (port) {
+      port.removeEventListener('disconnect', handleDisconnect)
+      port.close().catch(() => { /* already closed */ })
+      port = null
+    }
     connection.onDisconnect?.()
   }
 

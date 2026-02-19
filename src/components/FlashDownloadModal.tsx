@@ -95,13 +95,6 @@ const DownloadStats = styled.div`
   margin: 0;
 `
 
-const SuccessText = styled.p`
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: ${p => p.theme.colors.accent.greenText};
-  margin: 0;
-`
-
 const ErrorText = styled.p`
   font-size: 0.875rem;
   color: ${p => p.theme.colors.severity.highText};
@@ -230,13 +223,25 @@ export const FlashDownloadModal = observer(() => {
   const isEraseMode = uiStore.flashEraseMode
 
   // Auto-connect/erase when modal opens
+  // Read flashEraseMode directly inside the autorun so MobX tracks it.
+  // Using the captured `isEraseMode` variable would be stale because
+  // autoruns fire before React re-renders the component.
   useAutorun(() => {
     if (uiStore.flashDownloadOpen && flashStore.status === 'idle') {
-      if (isEraseMode) {
+      if (uiStore.flashEraseMode) {
         void flashStore.eraseFlash()
       } else {
         void flashStore.connect()
       }
+    }
+  })
+
+  // Auto-close on erase complete and show toast
+  useAutorun(() => {
+    if (uiStore.flashDownloadOpen && uiStore.flashEraseMode && flashStore.status === 'erase_complete') {
+      void flashStore.disconnect()
+      uiStore.closeFlashDownload()
+      uiStore.showToast('Blackbox logs cleared. Your next flight will start fresh.', 'success')
     }
   })
 
@@ -315,11 +320,6 @@ export const FlashDownloadModal = observer(() => {
             <PhaseLabel>{flashStore.eraseMessage || 'Erasing flash...'}</PhaseLabel>
           )}
 
-          {/* Erase complete */}
-          {status === 'erase_complete' && (
-            <SuccessText>Blackbox logs cleared. Your next flight will start fresh.</SuccessText>
-          )}
-
           {/* Downloading — progress bar */}
           {isDownloading && (
             <>
@@ -389,11 +389,6 @@ export const FlashDownloadModal = observer(() => {
             <ActionButton variant="secondary" onClick={handleClose}>
               Cancel
             </ActionButton>
-          )}
-
-          {/* Erase complete */}
-          {status === 'erase_complete' && (
-            <ActionButton onClick={handleClose}>Done</ActionButton>
           )}
 
           {/* Log picker close */}
