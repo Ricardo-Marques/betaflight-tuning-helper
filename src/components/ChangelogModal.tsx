@@ -14,7 +14,6 @@ const Backdrop = styled.div`
   align-items: center;
   justify-content: center;
   background-color: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(2px);
 `
 
 const ModalContainer = styled.div`
@@ -92,7 +91,7 @@ const DateHeading = styled.h3`
 
 const EntryItem = styled.div`
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.5rem;
   padding: 0.375rem 0;
 `
