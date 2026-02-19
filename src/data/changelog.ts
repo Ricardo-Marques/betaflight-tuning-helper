@@ -9,6 +9,7 @@ import type { ChangelogEntry } from '../domain/types/Changelog'
  */
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   // 2026-02-19
+  { hash: '41c0f5f', date: '2026-02-19', message: 'Bigger touch targets and text on mobile for easier tapping', category: 'improvement' },
   { hash: 'b15255b', date: '2026-02-19', message: 'Mobile-friendly layout with bottom tab navigation', category: 'feature' },
   { hash: 'b15255b', date: '2026-02-19', message: 'Install as an app on your phone or tablet (PWA)', category: 'feature' },
 
