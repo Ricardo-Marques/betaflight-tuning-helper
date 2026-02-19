@@ -683,10 +683,13 @@ export class RuleEngine {
         startTime,
         endTime,
         phase,
-        description: `${phase.charAt(0).toUpperCase() + phase.slice(1)} (${(
-          (endTime - startTime) /
-          1_000_000
-        ).toFixed(1)}s)`,
+        description: (() => {
+          const dur = (endTime - startTime) / 1_000_000
+          const formatted = dur >= 60
+            ? `${Math.floor(dur / 60)}m:${String(Math.floor(dur % 60)).padStart(2, '0')}s`
+            : `${dur.toFixed(1)}s`
+          return `${phase.charAt(0).toUpperCase() + phase.slice(1)} (${formatted})`
+        })(),
         issueCount,
       })
     }
@@ -697,7 +700,10 @@ export class RuleEngine {
       if (last && last.phase === seg.phase) {
         last.endTime = seg.endTime
         const dur = (last.endTime - last.startTime) / 1_000_000
-        last.description = `${last.phase.charAt(0).toUpperCase() + last.phase.slice(1)} (${dur.toFixed(1)}s)`
+        const formatted = dur >= 60
+          ? `${Math.floor(dur / 60)}m:${String(Math.floor(dur % 60)).padStart(2, '0')}s`
+          : `${dur.toFixed(1)}s`
+        last.description = `${last.phase.charAt(0).toUpperCase() + last.phase.slice(1)} (${formatted})`
       } else {
         mergedSegments.push({ ...seg })
       }

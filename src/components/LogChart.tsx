@@ -208,9 +208,9 @@ export const LogChart = observer(() => {
               dataKey="time" type="number"
               domain={chartData.length > 0 ? [chartData[0].time, chartData[chartData.length - 1].time] : [0, 1]}
               allowDataOverflow height={50}
-              label={{ value: 'Time (s)', position: 'insideBottom', offset: -2 }}
+              label={{ value: 'Time', position: 'insideBottom', offset: -2 }}
               stroke={theme.colors.chart.axis} tick={{ dy: 4 }}
-              tickFormatter={(value: number) => value.toFixed(1)}
+              tickFormatter={(value: number) => value >= 60 ? `${Math.floor(value / 60)}m:${String(Math.floor(value % 60)).padStart(2, '0')}s` : `${value.toFixed(1)}s`}
             />
             <YAxis yAxisId="primary" width={65} domain={yDomain} allowDataOverflow
               label={{ value: 'deg/s', angle: -90, position: 'insideLeft' }} stroke={theme.colors.chart.axis}
@@ -218,6 +218,7 @@ export const LogChart = observer(() => {
             <YAxis yAxisId="motor" hide domain={motorDomain} allowDataOverflow />
             <Tooltip
               active={isDraggingObs ? false : undefined}
+              labelFormatter={(value: number) => value >= 60 ? `${Math.floor(value / 60)}m:${String(Math.floor(value % 60)).padStart(2, '0')}s` : `${value.toFixed(1)}s`}
               contentStyle={{
                 backgroundColor: theme.colors.chart.tooltipBg,
                 border: `1px solid ${theme.colors.chart.tooltipBorder}`,
@@ -358,7 +359,7 @@ export const LogChart = observer(() => {
 
       <ZoomControls>
         <ZoomHeader>
-          <ZoomInfoLabel>{zoomLevel.toFixed(1)}x ({windowSec.toFixed(1)}s window)</ZoomInfoLabel>
+          <ZoomInfoLabel>{zoomLevel.toFixed(1)}x ({windowSec >= 60 ? `${Math.floor(windowSec / 60)}m:${String(Math.floor(windowSec % 60)).padStart(2, '0')}s` : `${windowSec.toFixed(1)}s`} window)</ZoomInfoLabel>
           <ZoomResetBtn data-testid="zoom-reset-button" onClick={() => uiStore.setZoom(0, 100)}>Reset</ZoomResetBtn>
         </ZoomHeader>
         <RangeSlider

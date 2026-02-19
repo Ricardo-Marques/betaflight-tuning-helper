@@ -480,10 +480,12 @@ export const FileUpload = observer(() => {
           <MetadataBlock data-testid="parse-success-text">
             <p>
               <MetadataLabel>Duration:</MetadataLabel>{' '}
-              {logStore.metadata.duration.toFixed(1)}s
+              {logStore.metadata.duration >= 60
+                ? `${Math.floor(logStore.metadata.duration / 60)}m:${String(Math.floor(logStore.metadata.duration % 60)).padStart(2, '0')}s`
+                : `${logStore.metadata.duration.toFixed(1)}s`}
             </p>
             <p>
-              <MetadataLabel>Loop Rate:</MetadataLabel>{' '}
+              <MetadataLabel>Log Rate:</MetadataLabel>{' '}
               {(logStore.metadata.looptime / 1000).toFixed(1)}kHz
             </p>
             {logStore.metadata.craftName && (
