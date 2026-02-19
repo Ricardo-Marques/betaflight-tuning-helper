@@ -256,10 +256,11 @@ const SeverityGroupTitle = styled.h3<{ severity: string }>`
     : p.theme.colors.severity.low};
 `
 
-const NoItemsText = styled.div`
-  padding: 2rem;
+const TabEmptyState = styled.p`
+  padding: 2rem 1rem;
   text-align: center;
   color: ${p => p.theme.colors.text.muted};
+  margin: 0;
 `
 
 const FixesSection = styled.div`
@@ -910,14 +911,14 @@ export const RecommendationsPanel = observer(() => {
   return (
     <PanelWrapper>
       {/* Sticky CLI Action Bar */}
-      {cliCommands && (
-        <CliBar data-testid="cli-commands-section">
-          <CliBarInner>
-            <CliBarRow>
-              <CliLabel>
-                Implement suggested fixes
-              </CliLabel>
-            </CliBarRow>
+      <CliBar data-testid="cli-commands-section">
+        <CliBarInner>
+          <CliBarRow>
+            <CliLabel>
+              {commandCount > 0 ? 'Implement suggested fixes' : 'No recommended changes for this tune'}
+            </CliLabel>
+          </CliBarRow>
+          {commandCount > 0 && (
             <CliBarActions>
               <CliActionButton
                 variant="import"
@@ -926,33 +927,29 @@ export const RecommendationsPanel = observer(() => {
               >
                 {settingsStore.hasImportedSettings ? 'Update settings' : 'Import settings'}
               </CliActionButton>
-              {commandCount > 0 && (
-                <>
-                  {tuneAccepted ? (
-                    <CliSuccessText>Accepted!</CliSuccessText>
-                  ) : (
-                    <AcceptTuneWrapper>
-                      <CliActionButton
-                        variant="accept"
-                        disabled={!settingsStore.hasImportedSettings}
-                        onClick={() => guardPendingSettings() || setShowAcceptModal(true)}
-                        data-testid="accept-tune-button"
-                      >
-                        Accept tune
-                      </CliActionButton>
-                      <AcceptTuneTooltip data-tooltip>
-                        {settingsStore.hasImportedSettings
-                          ? 'Apply recommended values as your new baseline'
-                          : 'Import your current settings first so recommendations can be calculated accurately'}
-                      </AcceptTuneTooltip>
-                    </AcceptTuneWrapper>
-                  )}
-                </>
+              {tuneAccepted ? (
+                <CliSuccessText>Accepted!</CliSuccessText>
+              ) : (
+                <AcceptTuneWrapper>
+                  <CliActionButton
+                    variant="accept"
+                    disabled={!settingsStore.hasImportedSettings}
+                    onClick={() => guardPendingSettings() || setShowAcceptModal(true)}
+                    data-testid="accept-tune-button"
+                  >
+                    Accept tune
+                  </CliActionButton>
+                  <AcceptTuneTooltip data-tooltip>
+                    {settingsStore.hasImportedSettings
+                      ? 'Apply recommended values as your new baseline'
+                      : 'Import your current settings first so recommendations can be calculated accurately'}
+                  </AcceptTuneTooltip>
+                </AcceptTuneWrapper>
               )}
             </CliBarActions>
-          </CliBarInner>
-        </CliBar>
-      )}
+          )}
+        </CliBarInner>
+      </CliBar>
 
       {/* Tab Bar */}
       <TabBar>
@@ -1031,33 +1028,37 @@ export const RecommendationsPanel = observer(() => {
               )
             })}
             {issueCount === 0 && (
-              <NoItemsText>
-                <p>No issues detected</p>
-              </NoItemsText>
+              <TabEmptyState>
+                No issues detected
+              </TabEmptyState>
             )}
           </>
         )}
 
         {/* Fixes Tab */}
         {activeTab === 'fixes' && (
-          <FixesSection data-testid="recommendations-section">
-            <RecList key={analysisStore.selectedRecommendationId ?? ''} className={analysisStore.selectedRecommendationId ? 'dim-siblings' : undefined}>
-              {actionableRecs.map(rec => (
-                <RecommendationCard
-                  key={rec.id}
-                  recommendation={rec}
-                  pidProfile={pidProfile}
-                  filterSettings={filterSettings}
-                  importedValues={settingsStore.baselineValues}
-                />
-              ))}
-            </RecList>
-            {recCount === 0 && (
-              <NoItemsText>
-                <p>No recommendations</p>
-              </NoItemsText>
+          <>
+            {recCount > 0 && (
+              <FixesSection data-testid="recommendations-section">
+                <RecList key={analysisStore.selectedRecommendationId ?? ''} className={analysisStore.selectedRecommendationId ? 'dim-siblings' : undefined}>
+                  {actionableRecs.map(rec => (
+                    <RecommendationCard
+                      key={rec.id}
+                      recommendation={rec}
+                      pidProfile={pidProfile}
+                      filterSettings={filterSettings}
+                      importedValues={settingsStore.baselineValues}
+                    />
+                  ))}
+                </RecList>
+              </FixesSection>
             )}
-          </FixesSection>
+            {recCount === 0 && (
+              <TabEmptyState>
+                No recommendations
+              </TabEmptyState>
+            )}
+          </>
         )}
       </TabContent>
 
