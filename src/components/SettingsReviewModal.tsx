@@ -1,7 +1,8 @@
 import { observer } from 'mobx-react-lite'
 import styled from '@emotion/styled'
-import { useUIStore, useSettingsStore } from '../stores/RootStore'
-import { RELEVANT_CLI_NAMES } from '../domain/utils/CliExport'
+import { useUIStore, useSettingsStore, useAnalysisStore, useLogStore } from '../stores/RootStore'
+import { getCliName, getPidValue, getGlobalValue } from '../domain/utils/CliExport'
+import { ParameterChange } from '../domain/types/Analysis'
 
 /* ---- Styled Components ---- */
 
@@ -145,8 +146,32 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' }>`
 export const SettingsReviewModal = observer(() => {
   const uiStore = useUIStore()
   const settingsStore = useSettingsStore()
+  const analysisStore = useAnalysisStore()
+
+  const logStore = useLogStore()
 
   if (!uiStore.settingsReviewOpen || !settingsStore.hasPendingSettings) return null
+
+  const PER_AXIS_PID = new Set(['pidPGain', 'pidIGain', 'pidDGain', 'pidDMinGain', 'pidFeedforward'])
+  const pidProfile = logStore.metadata?.pidProfile
+  const filterSettings = logStore.metadata?.filterSettings
+
+  // Only show params needed by current recommendations that aren't already
+  // available from the blackbox log
+  const isAlreadyKnown = (change: ParameterChange): boolean => {
+    if (change.currentValue !== undefined) return true
+    if (PER_AXIS_PID.has(change.parameter)) {
+      return getPidValue(pidProfile, change.parameter, change.axis) !== undefined
+    }
+    return getGlobalValue(change.parameter, pidProfile, filterSettings) !== undefined
+  }
+
+  const neededCliNames = new Set(
+    analysisStore.recommendations
+      .flatMap(r => r.changes)
+      .filter(c => !isAlreadyKnown(c))
+      .map(c => getCliName(c.parameter, c.axis))
+  )
 
   const handleClose = (): void => {
     uiStore.closeSettingsReview()
@@ -166,7 +191,7 @@ export const SettingsReviewModal = observer(() => {
   }
 
   const entries = Array.from(settingsStore.pendingValues.entries())
-    .filter(([name]) => RELEVANT_CLI_NAMES.has(name))
+    .filter(([name]) => neededCliNames.has(name))
 
   return (
     <Backdrop onClick={handleBackdropClick} onKeyDown={handleKeyDown} data-testid="settings-review-modal">
