@@ -341,15 +341,17 @@ export const AcceptTuneModal = observer(({
           {/* Explanation */}
           {isSerialSupported() ? (
             <BodyText>
-              <strong>Accept &amp; Write to FC</strong> sends these commands
-              directly to your flight controller via USB.{' '}
-              <strong>Accept</strong> saves your tune for the next session &mdash;
+              <strong>Accept &amp; Write to FC</strong> applies these changes
+              directly to your flight controller via USB and saves your tune
+              for the next session.{' '}
+              <strong>Accept</strong> saves your tune without writing &mdash;
               copy and paste the commands into Betaflight CLI yourself.
             </BodyText>
           ) : (
             <BodyText>
-              Copy these commands and paste them into the Betaflight CLI to
-              apply the changes. Your tune is saved for the next session.
+              <strong>Accept</strong> saves your tune for the next session.
+              Copy the commands above and paste them into the Betaflight CLI
+              to apply the changes to your FC.
             </BodyText>
           )}
         </ModalBody>

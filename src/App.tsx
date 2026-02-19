@@ -398,7 +398,7 @@ export const App = observer(() => {
 
       <Header data-testid="app-header">
         <TitleRow>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" width="22" height="22">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" width="40" height="40">
             <line x1="100" y1="100" x2="36" y2="36" stroke="#1e293b" strokeWidth="8" strokeLinecap="round"/>
             <line x1="100" y1="100" x2="164" y2="36" stroke="#1e293b" strokeWidth="8" strokeLinecap="round"/>
             <line x1="100" y1="100" x2="164" y2="164" stroke="#1e293b" strokeWidth="8" strokeLinecap="round"/>
