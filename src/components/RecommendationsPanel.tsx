@@ -12,6 +12,8 @@ import {
   resolveChange,
   getPidValue,
   getGlobalValue,
+  isNoOpChange,
+  isNoOpRecommendation,
 } from '../domain/utils/CliExport'
 import { useObservableState, useComputed, useAutorun } from '../lib/mobx-reactivity'
 import { ISSUE_CHART_DESCRIPTIONS } from '../domain/issueChartDescriptions'
@@ -686,8 +688,8 @@ const RiskList = styled.ul`
   list-style-position: inside;
   font-size: 0.75rem;
   color: ${p => p.theme.colors.accent.orangeText};
-  margin-left: 1rem;
   margin-top: 0.25rem;
+  padding-left: 0.875rem;
 
   & > li + li {
     margin-top: 0.25rem;
@@ -770,8 +772,7 @@ const ChangeItem = styled.li`
 const ChangeRow = styled.div`
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.75rem;
 `
 
 const ValueTransition = styled.span`
@@ -903,7 +904,14 @@ export const RecommendationsPanel = observer(() => {
   const { summary } = analysisStore.result!
   const activeTab = uiStore.activeRightTab
   const issueCount = analysisStore.issues.length
-  const recCount = analysisStore.recommendations.length
+
+  const actionableRecs = useComputed(() => {
+    void settingsStore.baselineValues.size
+    return analysisStore.recommendations.filter(
+      rec => !isNoOpRecommendation(rec, pidProfile, filterSettings, settingsStore.baselineValues)
+    )
+  })
+  const recCount = actionableRecs.length
 
   const severityOrder = ['high', 'medium', 'low'] as const
   const severityLabels: Record<string, string> = {
@@ -1072,7 +1080,7 @@ export const RecommendationsPanel = observer(() => {
         {activeTab === 'fixes' && (
           <FixesSection data-testid="recommendations-section">
             <RecList key={analysisStore.selectedRecommendationId ?? ''} className={analysisStore.selectedRecommendationId ? 'dim-siblings' : undefined}>
-              {analysisStore.recommendations.map(rec => (
+              {actionableRecs.map(rec => (
                 <RecommendationCard
                   key={rec.id}
                   recommendation={rec}
@@ -1286,6 +1294,8 @@ function ChangeDisplay({ change, pidProfile, filterSettings, importedValues }: {
   filterSettings?: FilterSettings
   importedValues?: Map<string, number>
 }) {
+  if (isNoOpChange(change, pidProfile, filterSettings, importedValues)) return null
+
   const displayName = PARAMETER_DISPLAY_NAMES[change.parameter] ?? change.parameter
   const axisLabel = change.axis ? ` (${change.axis.charAt(0).toUpperCase() + change.axis.slice(1)})` : ''
 

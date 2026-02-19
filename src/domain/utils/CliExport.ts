@@ -180,6 +180,67 @@ function clampToRange(cliName: string, value: number): number {
 }
 
 /**
+ * Returns true when a single ParameterChange resolves to the same value
+ * the quad already has. Unknown current values are never treated as no-ops.
+ * For per-axis params without a specific axis, returns true only if ALL 3 axes are no-ops.
+ */
+export function isNoOpChange(
+  change: ParameterChange,
+  pidProfile?: PidProfile,
+  filterSettings?: FilterSettings,
+  importedValues?: Map<string, number>
+): boolean {
+  const { parameter, axis, recommendedChange } = change
+  const isPerAxisPid = parameter in PER_AXIS_PARAMS
+
+  if (isPerAxisPid) {
+    const mapping = PER_AXIS_PARAMS[parameter]
+    const axes: Axis[] = axis ? [axis] : ['roll', 'pitch', 'yaw']
+
+    for (const a of axes) {
+      const cliName = `${mapping.cliPrefix}_${a}`
+      const currentValue = change.currentValue
+        ?? getPidValue(pidProfile, parameter, a)
+        ?? importedValues?.get(cliName)
+
+      if (currentValue === undefined) return false
+      const [rawValue, resolved] = resolveChange(recommendedChange, currentValue, true)
+      if (!resolved || rawValue === null) return false
+      if (clampToRange(cliName, rawValue) !== currentValue) return false
+    }
+
+    return true
+  }
+
+  // Global parameter
+  const cliName = GLOBAL_PARAM_MAP[parameter]
+  if (!cliName) return false
+
+  const currentValue = change.currentValue
+    ?? getGlobalValue(parameter, pidProfile, filterSettings)
+    ?? importedValues?.get(cliName)
+
+  if (currentValue === undefined) return false
+  const [rawValue, resolved] = resolveChange(recommendedChange, currentValue, false)
+  if (!resolved || rawValue === null) return false
+  return clampToRange(cliName, rawValue) === currentValue
+}
+
+/**
+ * Returns true when every change in a recommendation is a no-op.
+ * Recommendations with no changes are NOT considered no-ops.
+ */
+export function isNoOpRecommendation(
+  rec: Recommendation,
+  pidProfile?: PidProfile,
+  filterSettings?: FilterSettings,
+  importedValues?: Map<string, number>
+): boolean {
+  if (rec.changes.length === 0) return false
+  return rec.changes.every(change => isNoOpChange(change, pidProfile, filterSettings, importedValues))
+}
+
+/**
  * Generate a CLI set command for a single parameter change
  */
 function generateSetCommand(
@@ -205,7 +266,9 @@ function generateSetCommand(
       const [rawValue, resolved] = resolveChange(recommendedChange, currentValue, true)
 
       if (resolved && rawValue !== null) {
-        lines.push(`set ${cliName} = ${clampToRange(cliName, rawValue)}`)
+        const clamped = clampToRange(cliName, rawValue)
+        if (currentValue !== undefined && clamped === currentValue) continue
+        lines.push(`set ${cliName} = ${clamped}`)
       } else {
         lines.push(`# ${parameter}[${a}]: ${recommendedChange} (current value unknown)`)
       }
@@ -226,7 +289,9 @@ function generateSetCommand(
   const [rawValue, resolved] = resolveChange(recommendedChange, currentValue, false)
 
   if (resolved && rawValue !== null) {
-    return `set ${cliName} = ${clampToRange(cliName, rawValue)}`
+    const clamped = clampToRange(cliName, rawValue)
+    if (currentValue !== undefined && clamped === currentValue) return ''
+    return `set ${cliName} = ${clamped}`
   }
 
   return `# ${parameter}: ${recommendedChange} (current value unknown)`
@@ -259,7 +324,10 @@ export function resolveAllChanges(
             ?? importedValues?.get(cliName)
           const [rawValue, ok] = resolveChange(recommendedChange, currentValue, true)
           if (ok && rawValue !== null) {
-            resolved.set(cliName, clampToRange(cliName, rawValue))
+            const clamped = clampToRange(cliName, rawValue)
+            if (currentValue === undefined || clamped !== currentValue) {
+              resolved.set(cliName, clamped)
+            }
           }
         }
       } else {
@@ -270,7 +338,10 @@ export function resolveAllChanges(
           ?? importedValues?.get(cliName)
         const [rawValue, ok] = resolveChange(recommendedChange, currentValue, false)
         if (ok && rawValue !== null) {
-          resolved.set(cliName, clampToRange(cliName, rawValue))
+          const clamped = clampToRange(cliName, rawValue)
+          if (currentValue === undefined || clamped !== currentValue) {
+            resolved.set(cliName, clamped)
+          }
         }
       }
     }
@@ -295,10 +366,13 @@ export function generateCliCommands(
   ]
 
   for (const rec of recommendations) {
+    if (isNoOpRecommendation(rec, pidProfile, filterSettings, importedValues)) continue
+
     lines.push(`# Recommendation: ${rec.title}`)
 
     for (const change of rec.changes) {
-      lines.push(generateSetCommand(change, pidProfile, filterSettings, importedValues))
+      const cmd = generateSetCommand(change, pidProfile, filterSettings, importedValues)
+      if (cmd) lines.push(cmd)
     }
 
     lines.push('')
