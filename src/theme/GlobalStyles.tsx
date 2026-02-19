@@ -6,6 +6,12 @@ export function GlobalStyles() {
   return (
     <Global
       styles={css`
+        @media (pointer: coarse) {
+          html {
+            font-size: 18px;
+          }
+        }
+
         ::-webkit-scrollbar {
           width: 8px;
           height: 8px;

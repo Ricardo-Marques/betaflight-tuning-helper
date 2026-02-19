@@ -115,7 +115,7 @@ const SampleLink = styled.button<{ disabled?: boolean }>`
   background: none;
   border: none;
   cursor: ${(p) => (p.disabled ? 'default' : 'pointer')};
-  padding: 0;
+  padding: 0.5rem 0;
   margin-top: 0.75rem;
   opacity: ${(p) => (p.disabled ? 0.5 : 1)};
 
@@ -274,7 +274,7 @@ const MetadataLabel = styled.span`
 
 const LinkButton = styled.button`
   margin-top: 0.5rem;
-  padding: 0;
+  padding: 0.5rem 0;
   font-size: 0.75rem;
   color: ${(p) => p.theme.colors.text.link};
   background: none;
@@ -301,6 +301,10 @@ const ChangeFileButton = styled.button`
 
   &:hover {
     background-color: ${(p) => p.theme.colors.button.primaryHover};
+  }
+
+  @media (pointer: coarse) {
+    padding: 0.5rem 1rem;
   }
 `
 

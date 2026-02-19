@@ -42,6 +42,10 @@ const ProfileBtn = styled.button<{ isActive: boolean }>`
   &:hover {
     background-color: ${p => p.isActive ? p.theme.colors.button.primaryHover : p.theme.colors.button.secondaryHover};
   }
+
+  @media (pointer: coarse) {
+    padding: 0.5rem;
+  }
 `
 
 const HelpIconWrapper = styled.span`

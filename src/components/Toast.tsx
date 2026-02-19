@@ -58,7 +58,12 @@ const ToastMessage = styled.span<{ toastType: ToastType }>`
 const DismissButton = styled.button<{ toastType: ToastType }>`
   background: none;
   border: none;
-  padding: 0;
+  padding: 0.5rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   font-size: 1rem;
   line-height: 1;

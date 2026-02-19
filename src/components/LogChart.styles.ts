@@ -44,6 +44,10 @@ export const AxisButton = styled.button<{ isActive: boolean }>`
   &:hover {
     background-color: ${p => p.isActive ? p.theme.colors.button.primaryHover : p.theme.colors.button.secondaryHover};
   }
+
+  @media (pointer: coarse) {
+    padding: 0.5rem 0.75rem;
+  }
 `
 
 export const AxisSwitchToast = styled.div`
@@ -96,6 +100,10 @@ export const ToggleChip = styled.button<{ isActive: boolean; chipColor?: string 
     border-color: ${p => p.chipColor ?? p.theme.colors.border.focus};
     color: ${p => p.theme.colors.text.primary};
   }
+
+  @media (pointer: coarse) {
+    padding: 0.375rem 0.625rem;
+  }
 `
 
 export const ToggleChipDot = styled.span<{ dotColor: string }>`
@@ -126,7 +134,7 @@ export const IssueSummaryLink = styled.button`
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0;
+  padding: 0.25rem 0;
 
   &:hover {
     color: ${p => p.theme.colors.text.linkHover};
@@ -145,6 +153,7 @@ export const IssuePill = styled.button`
   display: flex;
   align-items: center;
   gap: 0.25rem;
+  padding: 0.25rem 0;
   font-size: 0.75rem;
   background: none;
   border: none;
@@ -152,6 +161,10 @@ export const IssuePill = styled.button`
 
   &:hover {
     text-decoration: underline;
+  }
+
+  @media (pointer: coarse) {
+    padding: 0.5rem 0.25rem;
   }
 `
 
@@ -228,6 +241,7 @@ export const ZoomInfoLabel = styled.span`
 
 export const ZoomResetBtn = styled.button`
   font-size: 0.75rem;
+  padding: 0.25rem 0;
   color: ${p => p.theme.colors.text.link};
   flex-shrink: 0;
   background: none;

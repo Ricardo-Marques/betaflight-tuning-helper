@@ -57,6 +57,15 @@ const CloseButton = styled.button`
   &:hover {
     color: ${p => p.theme.colors.text.primary};
   }
+
+  @media (pointer: coarse) {
+    padding: 0.5rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 `
 
 const ModalBody = styled.div`

@@ -74,6 +74,15 @@ const CloseButton = styled.button`
   &:hover {
     color: ${p => p.theme.colors.text.primary};
   }
+
+  @media (pointer: coarse) {
+    padding: 0.5rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 `
 
 const ModalBody = styled.div`
@@ -186,6 +195,10 @@ const CopyButton = styled.button<{ copied: boolean }>`
 
   &:hover {
     opacity: 0.9;
+  }
+
+  @media (pointer: coarse) {
+    padding: 0.5rem 0.75rem;
   }
 `
 

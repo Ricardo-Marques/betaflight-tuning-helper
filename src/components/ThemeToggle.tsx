@@ -6,7 +6,7 @@ const ToggleButton = styled.button`
   background: none;
   border: none;
   cursor: pointer;
-  padding: 6px;
+  padding: 8px;
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -21,6 +21,11 @@ const ToggleButton = styled.button`
   svg {
     width: 22px;
     height: 22px;
+  }
+
+  @media (pointer: coarse) {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
   }
 `
 

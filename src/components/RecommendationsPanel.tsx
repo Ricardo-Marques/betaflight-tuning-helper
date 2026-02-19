@@ -111,6 +111,10 @@ const Tab = styled.button<{ isActive: boolean }>`
   &:hover {
     color: ${p => p.isActive ? p.theme.colors.text.link : p.theme.colors.text.primary};
   }
+
+  @media (pointer: coarse) {
+    padding: 0.75rem 1rem;
+  }
 `
 
 const TabBadge = styled.span<{ isActive: boolean }>`
@@ -428,6 +432,14 @@ const NavButton = styled.button`
     opacity: 0.4;
     cursor: default;
   }
+
+  @media (pointer: coarse) {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
 `
 
 const NavLabel = styled.span`
@@ -454,6 +466,7 @@ const LinkedRecLink = styled.button`
   color: ${p => p.theme.colors.text.link};
   background: none;
   border: none;
+  padding: 0.375rem 0;
   cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -501,7 +514,7 @@ const ChartHintToggle = styled.button`
   align-items: center;
   gap: 0.25rem;
   margin-top: 0.5rem;
-  padding: 0;
+  padding: 0.375rem 0;
   font-size: 0.75rem;
   font-weight: 500;
   color: ${p => p.theme.colors.text.link};
@@ -665,6 +678,7 @@ const LinkedIssueLink = styled.button`
   color: ${p => p.theme.colors.text.link};
   background: none;
   border: none;
+  padding: 0.375rem 0;
   cursor: pointer;
   text-align: left;
 

@@ -206,7 +206,7 @@ const WhatsNewButton = styled.button`
   position: relative;
   background: none;
   border: none;
-  padding: 0;
+  padding: 0.25rem 0.5rem;
   cursor: pointer;
   font-size: 0.75rem;
   color: ${p => p.theme.colors.text.muted};
@@ -590,16 +590,18 @@ export const App = observer(() => {
 
       {isMobile && isLoaded && <BottomTabBar />}
 
-      <Footer>
-        Betaflight Tuning Helper
-        <FooterDivider>|</FooterDivider>
-        Built for Betaflight 4.4/4.5
-        <FooterDivider>|</FooterDivider>
-        <WhatsNewButton onClick={uiStore.openChangelog}>
-          What&apos;s New
-          {getLastSeenBuild() !== changelogData.buildHash && <NewDot />}
-        </WhatsNewButton>
-      </Footer>
+      {!(isMobile && isLoaded) && (
+        <Footer>
+          Betaflight Tuning Helper
+          <FooterDivider>|</FooterDivider>
+          Built for Betaflight 4.4/4.5
+          <FooterDivider>|</FooterDivider>
+          <WhatsNewButton onClick={uiStore.openChangelog}>
+            What&apos;s New
+            {getLastSeenBuild() !== changelogData.buildHash && <NewDot />}
+          </WhatsNewButton>
+        </Footer>
+      )}
       <ChangelogModal />
       <SettingsImportModal />
       <SettingsReviewModal />
