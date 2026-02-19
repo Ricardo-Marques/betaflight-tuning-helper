@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, Page } from '@playwright/test'
 import { uploadAndAnalyze } from './helpers'
 
 const BF_SETTINGS = `
@@ -12,6 +12,15 @@ set p_yaw = 45
 set i_yaw = 80
 `.trim()
 
+async function pasteSettings(page: Page) {
+  await page.getByTestId('import-settings-button').click()
+  await page.getByTestId('paste-cli-option').click()
+  await page.getByTestId('settings-paste-textarea').waitFor({ state: 'visible', timeout: 5000 })
+  await page.getByTestId('settings-paste-textarea').fill(BF_SETTINGS)
+  const importBtns = page.getByTestId('import-settings-button')
+  await importBtns.last().click({ force: true })
+}
+
 test.beforeEach(async ({ page }) => {
   // Clear localStorage so previous sessions don't interfere
   await page.goto('/')
@@ -22,14 +31,7 @@ test.beforeEach(async ({ page }) => {
 
 test.describe('Settings review modal', () => {
   test('import opens review modal for acceptance', async ({ page }) => {
-    // Open import modal
-    await page.getByTestId('import-settings-button').click()
-    await page.getByTestId('settings-paste-textarea').waitFor({ state: 'visible', timeout: 5000 })
-
-    // Paste and import
-    await page.getByTestId('settings-paste-textarea').fill(BF_SETTINGS)
-    const importBtns = page.getByTestId('import-settings-button')
-    await importBtns.last().click({ force: true })
+    await pasteSettings(page)
 
     // Review modal should appear
     await page.getByTestId('settings-review-modal').waitFor({ state: 'visible', timeout: 5000 })
@@ -39,12 +41,7 @@ test.describe('Settings review modal', () => {
   })
 
   test('accepting pending settings applies them as baseline', async ({ page }) => {
-    // Import settings
-    await page.getByTestId('import-settings-button').click()
-    await page.getByTestId('settings-paste-textarea').waitFor({ state: 'visible', timeout: 5000 })
-    await page.getByTestId('settings-paste-textarea').fill(BF_SETTINGS)
-    const importBtns = page.getByTestId('import-settings-button')
-    await importBtns.last().click({ force: true })
+    await pasteSettings(page)
 
     // Accept in review modal
     await page.getByTestId('settings-review-modal').waitFor({ state: 'visible', timeout: 5000 })
@@ -58,12 +55,7 @@ test.describe('Settings review modal', () => {
   })
 
   test('cancelling review modal keeps settings pending', async ({ page }) => {
-    // Import settings
-    await page.getByTestId('import-settings-button').click()
-    await page.getByTestId('settings-paste-textarea').waitFor({ state: 'visible', timeout: 5000 })
-    await page.getByTestId('settings-paste-textarea').fill(BF_SETTINGS)
-    const importBtns = page.getByTestId('import-settings-button')
-    await importBtns.last().click({ force: true })
+    await pasteSettings(page)
 
     // Cancel in review modal
     await page.getByTestId('settings-review-modal').waitFor({ state: 'visible', timeout: 5000 })
@@ -75,58 +67,50 @@ test.describe('Settings review modal', () => {
     // Settings not accepted — still shows "Import settings"
     await expect(page.getByTestId('import-settings-button').first()).toContainText('Import settings')
 
-    // Clicking Copy re-opens review modal (guard)
-    await page.getByTestId('copy-cli-button').click()
-    await page.getByTestId('settings-review-modal').waitFor({ state: 'visible', timeout: 3000 })
+    // Accept tune should be disabled (settings not imported)
+    await expect(page.getByTestId('accept-tune-button')).toBeDisabled()
   })
 
-  test('preview click opens review modal when settings are pending', async ({ page }) => {
-    // Import settings and cancel review
-    await page.getByTestId('import-settings-button').click()
-    await page.getByTestId('settings-paste-textarea').waitFor({ state: 'visible', timeout: 5000 })
-    await page.getByTestId('settings-paste-textarea').fill(BF_SETTINGS)
-    const importBtns = page.getByTestId('import-settings-button')
-    await importBtns.last().click({ force: true })
+  test('accept tune guard opens review modal when settings are pending', async ({ page }) => {
+    // Import and accept settings first
+    await pasteSettings(page)
+    await page.getByTestId('settings-review-modal').waitFor({ state: 'visible', timeout: 5000 })
+    await page.getByTestId('settings-review-accept').click()
+
+    // Import more settings (creates new pending)
+    await pasteSettings(page)
     await page.getByTestId('settings-review-modal').waitFor({ state: 'visible', timeout: 5000 })
     await page.getByTestId('settings-review-cancel').click()
 
-    // Click Preview — should open review modal instead of expanding CLI
-    const previewBtn = page.getByTestId('cli-commands-section').locator('button').filter({ hasText: 'Preview' })
-    await previewBtn.click()
+    // Click Accept tune — guard fires, review modal opens
+    await page.getByTestId('accept-tune-button').click()
     await page.getByTestId('settings-review-modal').waitFor({ state: 'visible', timeout: 3000 })
   })
 
   test('accepting from guard executes the deferred action', async ({ page }) => {
-    // Import settings and cancel review
-    await page.getByTestId('import-settings-button').click()
-    await page.getByTestId('settings-paste-textarea').waitFor({ state: 'visible', timeout: 5000 })
-    await page.getByTestId('settings-paste-textarea').fill(BF_SETTINGS)
-    const importBtns = page.getByTestId('import-settings-button')
-    await importBtns.last().click({ force: true })
+    // Import and accept settings
+    await pasteSettings(page)
+    await page.getByTestId('settings-review-modal').waitFor({ state: 'visible', timeout: 5000 })
+    await page.getByTestId('settings-review-accept').click()
+
+    // Import more settings (creates pending)
+    await pasteSettings(page)
     await page.getByTestId('settings-review-modal').waitFor({ state: 'visible', timeout: 5000 })
     await page.getByTestId('settings-review-cancel').click()
 
-    // Click Preview — guard opens review modal
-    const previewBtn = page.getByTestId('cli-commands-section').locator('button').filter({ hasText: 'Preview' })
-    await previewBtn.click()
+    // Click Accept tune — guard opens review modal
+    await page.getByTestId('accept-tune-button').click()
     await page.getByTestId('settings-review-modal').waitFor({ state: 'visible', timeout: 3000 })
 
-    // Accept — should close modal AND expand CLI preview
+    // Accept — should close review and open accept tune modal
     await page.getByTestId('settings-review-accept').click()
     await expect(page.getByTestId('settings-review-modal')).not.toBeVisible()
-
-    // CLI preview should now be expanded (contains "set" commands)
-    const cliPreview = page.getByTestId('cli-commands-section').locator('pre')
-    await expect(cliPreview).toBeVisible({ timeout: 3000 })
+    await page.getByTestId('accept-tune-modal').waitFor({ state: 'visible', timeout: 3000 })
   })
 
   test('settings from previous session require re-acceptance', async ({ page }) => {
     // Import and accept settings
-    await page.getByTestId('import-settings-button').click()
-    await page.getByTestId('settings-paste-textarea').waitFor({ state: 'visible', timeout: 5000 })
-    await page.getByTestId('settings-paste-textarea').fill(BF_SETTINGS)
-    const importBtns = page.getByTestId('import-settings-button')
-    await importBtns.last().click({ force: true })
+    await pasteSettings(page)
     await page.getByTestId('settings-review-modal').waitFor({ state: 'visible', timeout: 5000 })
     await page.getByTestId('settings-review-accept').click()
 
@@ -134,9 +118,17 @@ test.describe('Settings review modal', () => {
     await page.reload()
     await uploadAndAnalyze(page)
 
-    // Click Copy — should open review modal (settings from storage need re-acceptance)
-    await page.getByTestId('copy-cli-button').click()
+    // Accept tune should be disabled (pending settings from storage not yet accepted)
+    await expect(page.getByTestId('accept-tune-button')).toBeDisabled()
+
+    // Import from last session
+    await page.getByTestId('import-settings-button').click()
+    await page.getByTestId('last-session-option').click()
     await page.getByTestId('settings-review-modal').waitFor({ state: 'visible', timeout: 5000 })
     await expect(page.getByTestId('settings-review-count')).toContainText('8 settings')
+    await page.getByTestId('settings-review-accept').click()
+
+    // Accept tune should now be enabled
+    await expect(page.getByTestId('accept-tune-button')).toBeEnabled()
   })
 })

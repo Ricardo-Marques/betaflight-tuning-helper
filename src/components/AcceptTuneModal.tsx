@@ -285,7 +285,7 @@ export const AcceptTuneModal = observer(({
 
   return (
     <Backdrop onClick={handleBackdropClick} onKeyDown={handleKeyDown}>
-      <ModalContainer>
+      <ModalContainer data-testid="accept-tune-modal">
         <ModalHeader>
           <ModalTitle>Accept Tune</ModalTitle>
           <CloseButton onClick={onClose} title="Close">&times;</CloseButton>
@@ -335,7 +335,7 @@ export const AcceptTuneModal = observer(({
                 {copied ? 'Copied!' : 'Copy'}
               </CopyButton>
             </CliHeader>
-            <CliPreview>{cliCommands}</CliPreview>
+            <CliPreview data-testid="cli-preview">{cliCommands}</CliPreview>
           </CliSection>
 
           {/* Explanation */}

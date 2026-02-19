@@ -342,6 +342,7 @@ export const SettingsImportModal = observer(() => {
             <OptionGrid>
               {hasSaved && (
                 <OptionCard
+                  data-testid="last-session-option"
                   onClick={() => {
                     uiStore.closeSettingsImport()
                     uiStore.openSettingsReview()
@@ -364,7 +365,7 @@ export const SettingsImportModal = observer(() => {
                   <OptionHint>via USB</OptionHint>
                 </OptionCard>
               )}
-              <OptionCard isActive={showManual} onClick={() => setShowManual(true)}>
+              <OptionCard isActive={showManual} onClick={() => setShowManual(true)} data-testid="paste-cli-option">
                 <OptionIcon><TerminalIcon /></OptionIcon>
                 <OptionLabel>Paste CLI</OptionLabel>
                 <OptionHint>manual</OptionHint>

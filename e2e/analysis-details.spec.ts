@@ -106,19 +106,15 @@ test.describe('Analysis — Details', () => {
     // The rationale text follows the label — just check the label is there
   })
 
-  test('CLI commands section with copy button and preview', async ({ page }) => {
+  test('CLI bar shows command count and action buttons', async ({ page }) => {
     const cli = page.getByTestId('cli-commands-section')
     await expect(cli).toBeVisible()
 
-    const copyBtn = page.getByTestId('copy-cli-button')
-    await expect(copyBtn).toBeVisible()
+    // Shows command count
+    await expect(cli).toContainText(/\d+ CLI command/)
 
-    // Expand preview via toggle button
-    await cli.getByText('Preview').click()
-    const pre = cli.locator('pre')
-    await expect(pre).toBeVisible()
-    const commands = await pre.textContent()
-    expect(commands).toContain('set')
-    expect(commands).toContain('save')
+    // Has Import settings and Accept tune buttons
+    await expect(page.getByTestId('import-settings-button').first()).toBeVisible()
+    await expect(page.getByTestId('accept-tune-button')).toBeVisible()
   })
 })

@@ -1,6 +1,28 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, Page } from '@playwright/test'
 import { uploadAndAnalyze } from './helpers'
 import { extractIssues, VALID_CLI_PARAMS } from './data-verification-helpers'
+
+const BF_SETTINGS = `
+set p_roll = 45
+set i_roll = 80
+set d_roll = 40
+set p_pitch = 47
+set i_pitch = 84
+set d_pitch = 46
+set p_yaw = 45
+set i_yaw = 80
+`.trim()
+
+async function importAndAcceptSettings(page: Page) {
+  await page.getByTestId('import-settings-button').click()
+  await page.getByTestId('paste-cli-option').click()
+  await page.getByTestId('settings-paste-textarea').waitFor({ state: 'visible', timeout: 5000 })
+  await page.getByTestId('settings-paste-textarea').fill(BF_SETTINGS)
+  await page.getByTestId('import-settings-button').last().click({ force: true })
+  await page.getByTestId('settings-review-modal').waitFor({ state: 'visible', timeout: 5000 })
+  await page.getByTestId('settings-review-accept').click()
+  await expect(page.getByTestId('settings-review-modal')).not.toBeVisible()
+}
 
 test.describe('Data Verification — Recommendations & CLI', () => {
   test.beforeEach(async ({ page }) => {
@@ -49,10 +71,14 @@ test.describe('Data Verification — Recommendations & CLI', () => {
   })
 
   test('CLI commands reference only valid Betaflight parameters', async ({ page }) => {
-    const cli = page.getByTestId('cli-commands-section')
-    await cli.getByText('Preview').click()
-    const pre = cli.locator('pre')
-    const cliText = await pre.textContent()
+    // Import settings to enable accept tune
+    await importAndAcceptSettings(page)
+
+    // Open accept tune modal to access CLI commands
+    await page.getByTestId('accept-tune-button').click()
+    await page.getByTestId('accept-tune-modal').waitFor({ state: 'visible', timeout: 5000 })
+
+    const cliText = await page.getByTestId('cli-preview').textContent()
 
     // Extract all "set X = Y" lines
     const setLines = cliText!.split('\n').filter(l => l.trim().startsWith('set '))
@@ -67,9 +93,14 @@ test.describe('Data Verification — Recommendations & CLI', () => {
   })
 
   test('CLI commands end with save', async ({ page }) => {
-    const cli = page.getByTestId('cli-commands-section')
-    await cli.getByText('Preview').click()
-    const cliText = await cli.locator('pre').textContent()
+    // Import settings to enable accept tune
+    await importAndAcceptSettings(page)
+
+    // Open accept tune modal to access CLI commands
+    await page.getByTestId('accept-tune-button').click()
+    await page.getByTestId('accept-tune-modal').waitFor({ state: 'visible', timeout: 5000 })
+
+    const cliText = await page.getByTestId('cli-preview').textContent()
     const lines = cliText!.trim().split('\n').filter(l => l.trim().length > 0)
     expect(lines[lines.length - 1].trim()).toBe('save')
   })
