@@ -419,18 +419,42 @@ export const FileUpload = observer(() => {
               <FeatureItem>
                 <FeatureIcon className="feature-icon">
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="3" width="12" height="10" rx="1" strokeDasharray="44" strokeDashoffset="44">
-                      <animate attributeName="stroke-dashoffset" from="44" to="0" dur="0.7s" fill="freeze" begin="0.7s" />
-                    </rect>
-                    <path d="M5 7l2 2 4-4" strokeDasharray="9" strokeDashoffset="9">
-                      <animate attributeName="stroke-dashoffset"
-                        values="9;0;0;9;9"
-                        keyTimes="0;0.15;0.6;0.75;1"
-                        dur="3s" repeatCount="indefinite" begin="1.3s" />
-                    </path>
+                    <line x1="8" y1="2" x2="8" y2="13" strokeDasharray="11" strokeDashoffset="11">
+                      <animate attributeName="stroke-dashoffset" from="11" to="0" dur="0.6s" fill="freeze" begin="0.7s" />
+                    </line>
+                    <polyline points="5.5,10.5 8,13 10.5,10.5" strokeDasharray="7" strokeDashoffset="7">
+                      <animate attributeName="stroke-dashoffset" from="7" to="0" dur="0.3s" fill="freeze" begin="1s" />
+                    </polyline>
+                    <circle cx="8" cy="2" r="1" fill="currentColor" stroke="none" opacity="0">
+                      <animate attributeName="opacity" from="0" to="1" dur="0.2s" fill="freeze" begin="0.9s" />
+                    </circle>
+                    <g>
+                      <path d="M8 5.5L11.5 3.5" strokeDasharray="5" strokeDashoffset="5">
+                        <animate attributeName="stroke-dashoffset" from="5" to="0" dur="0.3s" fill="freeze" begin="1.1s" />
+                      </path>
+                      <rect x="11" y="2.5" width="2" height="2" strokeDasharray="8" strokeDashoffset="8">
+                        <animate attributeName="stroke-dashoffset" from="8" to="0" dur="0.3s" fill="freeze" begin="1.2s" />
+                      </rect>
+                      <animateTransform attributeName="transform" type="rotate"
+                        values="0 8 5.5;-20 8 5.5;15 8 5.5;-8 8 5.5;5 8 5.5;0 8 5.5;0 8 5.5"
+                        keyTimes="0;0.15;0.4;0.58;0.72;0.85;1"
+                        dur="3.5s" repeatCount="indefinite" begin="1.8s" />
+                    </g>
+                    <g>
+                      <path d="M8 8.5L4.5 6.5" strokeDasharray="5" strokeDashoffset="5">
+                        <animate attributeName="stroke-dashoffset" from="5" to="0" dur="0.3s" fill="freeze" begin="1.15s" />
+                      </path>
+                      <circle cx="4" cy="6" r="1.25" strokeDasharray="8" strokeDashoffset="8">
+                        <animate attributeName="stroke-dashoffset" from="8" to="0" dur="0.3s" fill="freeze" begin="1.25s" />
+                      </circle>
+                      <animateTransform attributeName="transform" type="rotate"
+                        values="0 8 8.5;15 8 8.5;-12 8 8.5;6 8 8.5;-3 8 8.5;0 8 8.5;0 8 8.5"
+                        keyTimes="0;0.18;0.42;0.6;0.74;0.85;1"
+                        dur="3.5s" repeatCount="indefinite" begin="2s" />
+                    </g>
                   </svg>
                 </FeatureIcon>
-                <FeatureText>Export ready-to-paste CLI commands</FeatureText>
+                <FeatureText>Read &amp; write settings to your FC via USB</FeatureText>
               </FeatureItem>
             </FeatureList>
             <SafetyWarning />

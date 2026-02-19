@@ -10,6 +10,8 @@ import { ThemeToggle } from './components/ThemeToggle'
 import { ChangelogModal } from './components/ChangelogModal'
 import { SettingsImportModal } from './components/SettingsImportModal'
 import { SettingsReviewModal } from './components/SettingsReviewModal'
+import { SerialProgressModal } from './components/SerialProgressModal'
+import { Toast } from './components/Toast'
 import { useUIStore, useLogStore, useAnalysisStore } from './stores/RootStore'
 import { useObservableState } from './lib/mobx-reactivity'
 import { getLastSeenBuild } from './lib/changelog/lastSeenBuild'
@@ -529,6 +531,8 @@ export const App = observer(() => {
       <ChangelogModal />
       <SettingsImportModal />
       <SettingsReviewModal />
+      <SerialProgressModal />
+      <Toast />
     </AppContainer>
   )
 })

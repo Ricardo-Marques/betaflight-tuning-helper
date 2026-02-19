@@ -11,7 +11,13 @@ export const MAX_PANEL_WIDTH = 600
 const DEFAULT_PANEL_WIDTH = 352 // ~22rem
 const COLLAPSE_THRESHOLD = 80
 
+export type ToastType = 'error' | 'success' | 'info'
+
 export class UIStore {
+  toastMessage: string = ''
+  toastType: ToastType = 'error'
+  toastVisible: boolean = false
+
   selectedAxis: Axis = 'roll'
   zoomStart: number = 0
   zoomEnd: number = 100
@@ -33,6 +39,8 @@ export class UIStore {
   changelogOpen: boolean = false
   settingsImportOpen: boolean = false
   settingsReviewOpen: boolean = false
+  serialProgressOpen: boolean = false
+  serialProgressMode: 'read' | 'write' = 'read'
   deferredCliAction: 'preview' | 'copy' | 'acceptTune' | null = null
 
   axisHighlight: Axis | null = null
@@ -40,11 +48,13 @@ export class UIStore {
 
   private _animationFrameId: number | null = null
   private _axisHighlightTimer: ReturnType<typeof setTimeout> | null = null
+  private _toastTimer: ReturnType<typeof setTimeout> | null = null
 
   constructor() {
-    makeAutoObservable<this, '_animationFrameId' | '_axisHighlightTimer'>(this, {
+    makeAutoObservable<this, '_animationFrameId' | '_axisHighlightTimer' | '_toastTimer'>(this, {
       _animationFrameId: false,
       _axisHighlightTimer: false,
+      _toastTimer: false,
     })
   }
 
@@ -160,6 +170,33 @@ export class UIStore {
 
   closeSettingsReview = (): void => {
     this.settingsReviewOpen = false
+  }
+
+  openSerialProgress = (mode: 'read' | 'write'): void => {
+    this.serialProgressMode = mode
+    this.serialProgressOpen = true
+  }
+
+  closeSerialProgress = (): void => {
+    this.serialProgressOpen = false
+  }
+
+  showToast = (message: string, type: ToastType = 'error', durationMs = 5000): void => {
+    if (this._toastTimer) clearTimeout(this._toastTimer)
+    this.toastMessage = message
+    this.toastType = type
+    this.toastVisible = true
+    this._toastTimer = setTimeout(() => {
+      this.dismissToast()
+    }, durationMs)
+  }
+
+  dismissToast = (): void => {
+    if (this._toastTimer) {
+      clearTimeout(this._toastTimer)
+      this._toastTimer = null
+    }
+    this.toastVisible = false
   }
 
   clearDeferredAction = (): void => {

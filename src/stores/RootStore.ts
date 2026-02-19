@@ -2,6 +2,7 @@ import { LogStore } from './LogStore'
 import { AnalysisStore } from './AnalysisStore'
 import { UIStore } from './UIStore'
 import { SettingsStore } from './SettingsStore'
+import { SerialStore } from './SerialStore'
 import { ThemeStore } from '../theme/ThemeStore'
 import { createContext, useContext } from 'react'
 
@@ -13,6 +14,7 @@ export class RootStore {
   analysisStore: AnalysisStore
   uiStore: UIStore
   settingsStore: SettingsStore
+  serialStore: SerialStore
   themeStore: ThemeStore
 
   constructor() {
@@ -20,10 +22,16 @@ export class RootStore {
     this.analysisStore = new AnalysisStore(this.logStore)
     this.uiStore = new UIStore()
     this.settingsStore = new SettingsStore()
+    this.serialStore = new SerialStore()
     this.themeStore = new ThemeStore()
 
     // Wire auto-analyze: when parse completes, trigger analysis automatically
     this.logStore.setAutoAnalyzer(this.analysisStore)
+
+    // Wire serial errors to toast notifications
+    this.serialStore.setErrorHandler((message) => {
+      this.uiStore.showToast(message, 'error')
+    })
   }
 
   /**
@@ -68,4 +76,8 @@ export function useThemeStore(): ThemeStore {
 
 export function useSettingsStore(): SettingsStore {
   return useStores().settingsStore
+}
+
+export function useSerialStore(): SerialStore {
+  return useStores().serialStore
 }

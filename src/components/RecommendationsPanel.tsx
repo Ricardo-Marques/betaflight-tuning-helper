@@ -17,8 +17,7 @@ import {
 } from '../domain/utils/CliExport'
 import { useObservableState, useComputed, useAutorun } from '../lib/mobx-reactivity'
 import { ISSUE_CHART_DESCRIPTIONS } from '../domain/issueChartDescriptions'
-import { AcceptTuneModal } from './AcceptTuneModal'
-import { shouldShowAcceptTuneConfirm } from '../lib/preferences/acceptTuneConfirm'
+import { AcceptTuneModal, TuneChangeDetail } from './AcceptTuneModal'
 
 // Per-axis PID params that use resolveChange with isPerAxisPid=true
 const PER_AXIS_PID_PARAMS = new Set([
@@ -84,65 +83,6 @@ const CliLabel = styled.span`
   font-size: 0.875rem;
   font-weight: 700;
   color: ${p => p.theme.colors.accent.indigoText};
-`
-
-const CliPreviewToggle = styled.button`
-  font-size: 0.75rem;
-  color: ${p => p.theme.colors.accent.indigo};
-  background: none;
-  border: none;
-  cursor: pointer;
-
-  &:hover {
-    opacity: 0.8;
-  }
-`
-
-const CopyButton = styled.button<{ copied: boolean }>`
-  padding: 0.375rem 0.75rem;
-  border-radius: 0.375rem;
-  font-size: 0.8125rem;
-  font-weight: 700;
-  transition: background-color 0.15s;
-  border: none;
-  cursor: pointer;
-  color: ${p => p.theme.colors.button.primaryText};
-  background-color: ${p => p.copied ? p.theme.colors.accent.green : p.theme.colors.accent.indigo};
-
-  &:hover {
-    opacity: 0.9;
-  }
-`
-
-const CliPreview = styled.pre`
-  padding: 0.75rem;
-  background-color: ${p => p.theme.colors.background.cliPreview};
-  color: ${p => p.theme.colors.accent.green};
-  font-size: 0.75rem;
-  font-family: monospace;
-  border-radius: 0 0 0.25rem 0.25rem;
-  overflow-x: auto;
-  max-height: 12rem;
-  overflow-y: auto;
-  margin: 0 0.75rem 0.75rem;
-`
-
-const PreviewHint = styled.button`
-  display: block;
-  margin: 0 0.75rem 0.75rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.375rem;
-  font-size: 0.75rem;
-  line-height: 1.4;
-  text-align: left;
-  cursor: pointer;
-  border: 1px dashed ${p => p.theme.colors.accent.indigo};
-  background-color: ${p => p.theme.colors.accent.indigoBg};
-  color: ${p => p.theme.colors.accent.indigoText};
-
-  &:hover {
-    background-color: ${p => p.theme.colors.accent.indigo}20;
-  }
 `
 
 const TabBar = styled.div`
@@ -345,6 +285,12 @@ const CliTextButton = styled.button<{ color?: 'green' }>`
 
   &:hover {
     text-decoration: underline;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+    text-decoration: none;
   }
 `
 
@@ -806,8 +752,6 @@ export const RecommendationsPanel = observer(() => {
   const logStore = useLogStore()
   const uiStore = useUIStore()
   const settingsStore = useSettingsStore()
-  const [copied, setCopied] = useObservableState(false)
-  const [cliExpanded, setCliExpanded] = useObservableState(false)
   const [tuneAccepted, setTuneAccepted] = useObservableState(false)
   const [showAcceptModal, setShowAcceptModal] = useObservableState(false)
 
@@ -828,8 +772,31 @@ export const RecommendationsPanel = observer(() => {
     return (cliCommands.match(/^set /gm) || []).length
   })
 
-  const unresolvedCount = useComputed(() => {
-    return (cliCommands.match(/current value unknown/gm) || []).length
+  const tuneChanges = useComputed((): TuneChangeDetail[] => {
+    if (!analysisStore.isComplete) return []
+    const { recommendations } = analysisStore.result!
+    void settingsStore.baselineValues.size
+    const seen = new Set<string>()
+    const details: TuneChangeDetail[] = []
+    for (const rec of recommendations) {
+      for (const change of rec.changes) {
+        if (isNoOpChange(change, pidProfile, filterSettings, settingsStore.baselineValues)) continue
+        const cliName = getCliName(change.parameter, change.axis)
+        if (seen.has(cliName)) continue
+        seen.add(cliName)
+        const displayName = PARAMETER_DISPLAY_NAMES[change.parameter] ?? change.parameter
+        const axisLabel = change.axis ? ` (${change.axis.charAt(0).toUpperCase() + change.axis.slice(1)})` : ''
+        const { current, resolved } = computeTransition(change, pidProfile, filterSettings, settingsStore.baselineValues)
+        details.push({
+          displayName: `${displayName}${axisLabel}`,
+          cliName,
+          current,
+          newValue: resolved,
+          rawChange: resolved === null ? change.recommendedChange : undefined,
+        })
+      }
+    }
+    return details
   })
 
   // Group issues by severity
@@ -869,22 +836,12 @@ export const RecommendationsPanel = observer(() => {
     })
   }
 
-  const guardPendingSettings = (action: 'preview' | 'copy' | 'acceptTune'): boolean => {
+  const guardPendingSettings = (): boolean => {
     if (settingsStore.hasPendingSettings) {
-      uiStore.openSettingsReview(action)
+      uiStore.openSettingsReview('acceptTune')
       return true
     }
     return false
-  }
-
-  const doCopy = async (): Promise<void> => {
-    try {
-      await navigator.clipboard.writeText(cliCommands)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      // Fallback: select text for manual copy
-    }
   }
 
   const doAcceptTune = (): void => {
@@ -896,6 +853,11 @@ export const RecommendationsPanel = observer(() => {
     setTimeout(() => setTuneAccepted(false), 2000)
   }
 
+  const doAcceptAndWrite = (): void => {
+    doAcceptTune()
+    uiStore.openSerialProgress('write')
+  }
+
   // Execute deferred action after review modal accept
   useAutorun(() => {
     if (uiStore.settingsReviewOpen) return
@@ -904,11 +866,8 @@ export const RecommendationsPanel = observer(() => {
     uiStore.clearDeferredAction()
     if (settingsStore.hasPendingSettings) return // cancelled, don't execute
 
-    if (action === 'preview') setCliExpanded(true)
-    else if (action === 'copy') void doCopy()
-    else if (action === 'acceptTune') {
-      if (shouldShowAcceptTuneConfirm()) setShowAcceptModal(true)
-      else doAcceptTune()
+    if (action === 'acceptTune') {
+      setShowAcceptModal(true)
     }
   })
 
@@ -950,18 +909,6 @@ export const RecommendationsPanel = observer(() => {
               <CliLabel>
                 {commandCount} CLI command{commandCount !== 1 ? 's' : ''}
               </CliLabel>
-              <CliBarRow>
-                <CliPreviewToggle onClick={() => guardPendingSettings('preview') || setCliExpanded(!cliExpanded)}>
-                  {cliExpanded ? 'Hide' : 'Preview'}
-                </CliPreviewToggle>
-                <CopyButton
-                  data-testid="copy-cli-button"
-                  copied={copied}
-                  onClick={() => guardPendingSettings('copy') || void doCopy()}
-                >
-                  {copied ? 'Copied!' : 'Copy'}
-                </CopyButton>
-              </CliBarRow>
             </CliBarRow>
             <CliBarSecondaryRow>
               <CliTextButton
@@ -979,13 +926,16 @@ export const RecommendationsPanel = observer(() => {
                     <AcceptTuneWrapper>
                       <CliTextButton
                         color="green"
-                        onClick={() => guardPendingSettings('acceptTune') || (shouldShowAcceptTuneConfirm() ? setShowAcceptModal(true) : doAcceptTune())}
+                        disabled={!settingsStore.hasImportedSettings}
+                        onClick={() => guardPendingSettings() || setShowAcceptModal(true)}
                         data-testid="accept-tune-button"
                       >
                         Accept tune
                       </CliTextButton>
                       <AcceptTuneTooltip data-tooltip>
-                        Apply recommended values as your new baseline
+                        {settingsStore.hasImportedSettings
+                          ? 'Apply recommended values as your new baseline'
+                          : 'Import your current settings first so recommendations can be calculated accurately'}
                       </AcceptTuneTooltip>
                     </AcceptTuneWrapper>
                   )}
@@ -993,16 +943,6 @@ export const RecommendationsPanel = observer(() => {
               )}
             </CliBarSecondaryRow>
           </CliBarInner>
-          {cliExpanded && (
-            <>
-              <CliPreview>{cliCommands}</CliPreview>
-              {unresolvedCount > 0 && (
-                <PreviewHint onClick={uiStore.openSettingsImport}>
-                  {unresolvedCount} command{unresolvedCount !== 1 ? 's are' : ' is'} commented out because the current values are unknown. Click Import Settings to paste your Betaflight CLI output and resolve them.
-                </PreviewHint>
-              )}
-            </>
-          )}
         </CliBar>
       )}
 
@@ -1115,7 +1055,10 @@ export const RecommendationsPanel = observer(() => {
 
       {showAcceptModal && (
         <AcceptTuneModal
+          changes={tuneChanges}
+          cliCommands={cliCommands}
           onAccept={doAcceptTune}
+          onAcceptAndWrite={doAcceptAndWrite}
           onClose={() => setShowAcceptModal(false)}
         />
       )}
