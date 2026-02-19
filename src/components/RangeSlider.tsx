@@ -159,6 +159,8 @@ export const RangeSlider = observer(({ start, end, onChange, onDragStart, onDrag
 
   // Scroll-to-zoom on range slider via useAutorun
   const wheelCleanupRef = useRef<(() => void) | null>(null)
+  const wheelEndTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const wheelActive = useRef(false)
   useAutorun(() => {
     wheelCleanupRef.current?.()
     wheelCleanupRef.current = null
@@ -166,21 +168,46 @@ export const RangeSlider = observer(({ start, end, onChange, onDragStart, onDrag
     if (!el) return
     const handleWheel = (e: WheelEvent): void => {
       e.preventDefault()
-      const { start: s, end: e2, onChange: cb } = propsRef.current
-      const dur = e2 - s
+      const { start: s, end: e2, onDragStart, onDragEnd } = propsRef.current
+      // Chain from pending update so consecutive ticks accumulate correctly
+      const curStart = pendingUpdate.current?.start ?? s
+      const curEnd = pendingUpdate.current?.end ?? e2
+      const dur = curEnd - curStart
       const factor = e.deltaY < 0 ? 0.85 : 1 / 0.85
       const newDur = Math.min(100, Math.max(MIN_WINDOW, dur * factor))
       const rect = el.getBoundingClientRect()
       const cursorRatio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-      const center = s + dur * cursorRatio
+      const center = curStart + dur * cursorRatio
       let newStart = center - newDur * cursorRatio
       let newEnd = center + newDur * (1 - cursorRatio)
       if (newStart < 0) { newEnd -= newStart; newStart = 0 }
       if (newEnd > 100) { newStart -= newEnd - 100; newEnd = 100 }
-      cb(Math.max(0, newStart), Math.min(100, newEnd))
+
+      // Activate downsampling on first wheel tick
+      if (!wheelActive.current) {
+        wheelActive.current = true
+        onDragStart?.()
+      }
+      scheduleUpdate(Math.max(0, newStart), Math.min(100, newEnd))
+
+      // Debounce wheel-end: flush pending + restore full resolution
+      if (wheelEndTimer.current) clearTimeout(wheelEndTimer.current)
+      wheelEndTimer.current = setTimeout(() => {
+        wheelEndTimer.current = null
+        wheelActive.current = false
+        if (rafId.current) { cancelAnimationFrame(rafId.current); rafId.current = 0 }
+        if (pendingUpdate.current) {
+          propsRef.current.onChange(pendingUpdate.current.start, pendingUpdate.current.end)
+          pendingUpdate.current = null
+        }
+        onDragEnd?.()
+      }, 150)
     }
     el.addEventListener('wheel', handleWheel, { passive: false })
-    wheelCleanupRef.current = () => el.removeEventListener('wheel', handleWheel)
+    wheelCleanupRef.current = () => {
+      el.removeEventListener('wheel', handleWheel)
+      if (wheelEndTimer.current) { clearTimeout(wheelEndTimer.current); wheelEndTimer.current = null }
+    }
   })
 
   // Clamp handle left-edge positions so they never overflow the track

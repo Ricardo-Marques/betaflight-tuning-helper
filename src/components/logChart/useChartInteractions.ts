@@ -52,6 +52,7 @@ export function useChartInteractions(
   const didDrag = useRef(false)
   const lastZoomCommit = useRef(0)
   const pendingZoom = useRef<{ start: number; end: number } | null>(null)
+  const wheelEndTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // ResizeObserver for container width (converted from useEffect)
   const resizeObserverRef = useRef<ResizeObserver | null>(null)
@@ -84,8 +85,9 @@ export function useChartInteractions(
     if (!el) return
     const handleWheel = (e: WheelEvent): void => {
       e.preventDefault()
-      const zs = uiStore.zoomStart
-      const ze = uiStore.zoomEnd
+      // Chain from pending zoom so consecutive ticks accumulate correctly
+      const zs = pendingZoom.current?.start ?? uiStore.zoomStart
+      const ze = pendingZoom.current?.end ?? uiStore.zoomEnd
       const dur = ze - zs
       const factor = e.deltaY < 0 ? 0.85 : 1 / 0.85
       const newDur = Math.min(100, Math.max(1, dur * factor))
@@ -98,10 +100,34 @@ export function useChartInteractions(
       if (newEnd > 100) { newStart -= newEnd - 100; newEnd = 100 }
       newStart = Math.max(0, newStart)
       newEnd = Math.min(100, newEnd)
-      uiStore.setZoom(newStart, newEnd)
+
+      // Activate downsampling + Y-lerp on first wheel tick
+      if (!isDraggingObs) setters.setIsDraggingObs(true)
+      pendingZoom.current = { start: newStart, end: newEnd }
+
+      // Throttled commit (80ms, same cadence as drag-to-pan)
+      const now = performance.now()
+      if (now - lastZoomCommit.current > 80) {
+        lastZoomCommit.current = now
+        uiStore.setZoom(newStart, newEnd)
+      }
+
+      // Debounce wheel-end: flush pending + restore full resolution
+      if (wheelEndTimer.current) clearTimeout(wheelEndTimer.current)
+      wheelEndTimer.current = setTimeout(() => {
+        wheelEndTimer.current = null
+        if (pendingZoom.current) {
+          uiStore.setZoom(pendingZoom.current.start, pendingZoom.current.end)
+          pendingZoom.current = null
+        }
+        setters.setIsDraggingObs(false)
+      }, 150)
     }
     el.addEventListener('wheel', handleWheel, { passive: false })
-    wheelCleanupRef.current = () => el.removeEventListener('wheel', handleWheel)
+    wheelCleanupRef.current = () => {
+      el.removeEventListener('wheel', handleWheel)
+      if (wheelEndTimer.current) { clearTimeout(wheelEndTimer.current); wheelEndTimer.current = null }
+    }
   })
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
