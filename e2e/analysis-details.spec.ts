@@ -106,12 +106,12 @@ test.describe('Analysis — Details', () => {
     // The rationale text follows the label — just check the label is there
   })
 
-  test('CLI bar shows command count and action buttons', async ({ page }) => {
+  test('CLI bar shows label and action buttons', async ({ page }) => {
     const cli = page.getByTestId('cli-commands-section')
     await expect(cli).toBeVisible()
 
-    // Shows command count
-    await expect(cli).toContainText(/\d+ CLI command/)
+    // Shows header label
+    await expect(cli).toContainText('Implement suggested fixes')
 
     // Has Import settings and Accept tune buttons
     await expect(page.getByTestId('import-settings-button').first()).toBeVisible()

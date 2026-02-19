@@ -1,16 +1,28 @@
 import { test, expect, Page } from '@playwright/test'
 import { uploadAndAnalyze } from './helpers'
 
+// Settings that match recommended parameters NOT available from the BBL header
+// (we clear these fields from metadata before importing so the modal treats them as unknown)
 const BF_SETTINGS = `
-set p_roll = 45
-set i_roll = 80
-set d_roll = 40
-set p_pitch = 47
-set i_pitch = 84
-set d_pitch = 46
-set p_yaw = 45
-set i_yaw = 80
+set simplified_dterm_filter_multiplier = 120
+set rpm_filter_harmonics = 3
 `.trim()
+
+const CLEARED_FIELDS = ['dtermFilterMultiplier', 'rpmFilterHarmonics'] as const
+
+async function clearFilterFields(page: Page) {
+  await page.evaluate((fields) => {
+    const store = (window as Record<string, unknown>).__rootStore as {
+      logStore: { metadata?: { filterSettings?: Record<string, unknown> } }
+    }
+    const fs = store?.logStore?.metadata?.filterSettings
+    if (fs) {
+      for (const f of fields) {
+        delete fs[f]
+      }
+    }
+  }, CLEARED_FIELDS as unknown as string[])
+}
 
 async function pasteSettings(page: Page) {
   await page.getByTestId('import-settings-button').click()
@@ -31,16 +43,18 @@ test.beforeEach(async ({ page }) => {
 
 test.describe('Settings review modal', () => {
   test('import opens review modal for acceptance', async ({ page }) => {
+    await clearFilterFields(page)
     await pasteSettings(page)
 
-    // Review modal should appear
+    // Review modal should appear with the 2 settings that aren't in the BBL
     await page.getByTestId('settings-review-modal').waitFor({ state: 'visible', timeout: 5000 })
-    await expect(page.getByTestId('settings-review-count')).toContainText('8 settings')
+    await expect(page.getByTestId('settings-review-count')).toContainText('2 tuning-relevant settings')
     await expect(page.getByTestId('settings-review-accept')).toBeVisible()
     await expect(page.getByTestId('settings-review-cancel')).toBeVisible()
   })
 
   test('accepting pending settings applies them as baseline', async ({ page }) => {
+    await clearFilterFields(page)
     await pasteSettings(page)
 
     // Accept in review modal
@@ -55,6 +69,7 @@ test.describe('Settings review modal', () => {
   })
 
   test('cancelling review modal keeps settings pending', async ({ page }) => {
+    await clearFilterFields(page)
     await pasteSettings(page)
 
     // Cancel in review modal
@@ -73,11 +88,13 @@ test.describe('Settings review modal', () => {
 
   test('accept tune guard opens review modal when settings are pending', async ({ page }) => {
     // Import and accept settings first
+    await clearFilterFields(page)
     await pasteSettings(page)
     await page.getByTestId('settings-review-modal').waitFor({ state: 'visible', timeout: 5000 })
     await page.getByTestId('settings-review-accept').click()
 
     // Import more settings (creates new pending)
+    await clearFilterFields(page)
     await pasteSettings(page)
     await page.getByTestId('settings-review-modal').waitFor({ state: 'visible', timeout: 5000 })
     await page.getByTestId('settings-review-cancel').click()
@@ -89,11 +106,13 @@ test.describe('Settings review modal', () => {
 
   test('accepting from guard executes the deferred action', async ({ page }) => {
     // Import and accept settings
+    await clearFilterFields(page)
     await pasteSettings(page)
     await page.getByTestId('settings-review-modal').waitFor({ state: 'visible', timeout: 5000 })
     await page.getByTestId('settings-review-accept').click()
 
     // Import more settings (creates pending)
+    await clearFilterFields(page)
     await pasteSettings(page)
     await page.getByTestId('settings-review-modal').waitFor({ state: 'visible', timeout: 5000 })
     await page.getByTestId('settings-review-cancel').click()
@@ -110,6 +129,7 @@ test.describe('Settings review modal', () => {
 
   test('settings from previous session require re-acceptance', async ({ page }) => {
     // Import and accept settings
+    await clearFilterFields(page)
     await pasteSettings(page)
     await page.getByTestId('settings-review-modal').waitFor({ state: 'visible', timeout: 5000 })
     await page.getByTestId('settings-review-accept').click()
@@ -121,11 +141,12 @@ test.describe('Settings review modal', () => {
     // Accept tune should be disabled (pending settings from storage not yet accepted)
     await expect(page.getByTestId('accept-tune-button')).toBeDisabled()
 
-    // Import from last session
+    // Import from last session — clear fields again since metadata was repopulated
+    await clearFilterFields(page)
     await page.getByTestId('import-settings-button').click()
     await page.getByTestId('last-session-option').click()
     await page.getByTestId('settings-review-modal').waitFor({ state: 'visible', timeout: 5000 })
-    await expect(page.getByTestId('settings-review-count')).toContainText('8 settings')
+    await expect(page.getByTestId('settings-review-count')).toContainText('2 tuning-relevant settings')
     await page.getByTestId('settings-review-accept').click()
 
     // Accept tune should now be enabled
