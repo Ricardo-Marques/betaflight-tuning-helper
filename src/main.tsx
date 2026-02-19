@@ -10,6 +10,11 @@ import { GlobalStyles } from './theme'
 // Create global store instance
 const rootStore = new RootStore()
 
+// Expose for dev tools and screenshot automation
+if (import.meta.env.DEV) {
+  (window as unknown as Record<string, unknown>).__rootStore = rootStore
+}
+
 const ThemedApp = observer(() => (
   <ThemeProvider theme={rootStore.themeStore.theme}>
     <GlobalStyles />

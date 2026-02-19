@@ -5,11 +5,11 @@
 <h1 align="center">Betaflight Tuning Helper</h1>
 
 <p align="center">
-  <strong>Drop a Blackbox log, get specific tuning recommendations.</strong><br/>
+  <strong>Drop a Blackbox log, get specific tuning recommendations. Connect your quad via USB to read settings and apply changes directly.</strong><br/>
   <a href="https://ricardo-marques.github.io/betaflight-tuning-helper/">Try it live</a>
 </p>
 
-Client-side web app that analyzes Betaflight Blackbox logs and generates actionable tuning recommendations. No backend — everything runs in your browser.
+Client-side web app that analyzes Betaflight Blackbox logs and generates actionable tuning recommendations. Connect your flight controller via USB to read your current settings and write tuning changes directly — no copy-pasting CLI commands. No backend — everything runs in your browser.
 
 ## Why This Exists
 
@@ -21,6 +21,7 @@ This app bridges that gap. Drop a log file, and it will:
 
 - **Detect specific issues** (propwash, bounceback, noise, tracking errors, motor saturation, etc.)
 - **Recommend parameter changes** with rationale, risk assessment, and confidence scores
+- **Read and write to your FC** — connect via USB to import your current settings and apply tuning changes directly
 - **Speak Betaflight** — all output uses 4.4/4.5 slider terminology, ready to apply in the Configurator
 
 Everything runs 100% client-side. No data leaves your browser, no account required.
@@ -29,11 +30,11 @@ Everything runs 100% client-side. No data leaves your browser, no account requir
 
 ![Pinpoint Tuning Problems](screenshots/02-issue-detection.png)
 
-![Import Your Settings](screenshots/03-import-settings.png)
+![Read Settings from FC](screenshots/03-read-from-fc.png)
 
-![Copy-Paste CLI Fixes](screenshots/04-cli-commands.png)
+![Review & Write to FC](screenshots/04-accept-write.png)
 
-![Accept & Keep Tuning](screenshots/05-accept-tune.png)
+![Apply Changes Directly](screenshots/05-write-confirm.png)
 
 ![Deep Signal Analysis](screenshots/06-signal-analysis.png)
 
@@ -60,6 +61,8 @@ Everything runs 100% client-side. No data leaves your browser, no account requir
 
 **Interactive chart** — Gyro, setpoint, PID terms, and motor outputs with per-axis selection, layer toggles, and zoom. Downsampled to 2000 points for smooth rendering.
 
+**Direct FC connection** — Connect your flight controller via USB to read current settings and write tuning changes directly from the browser. Uses the Web Serial API — no drivers, no Betaflight Configurator needed. The app reads your actual parameter values for precise recommendations, then writes the changes and saves with a single click. (Requires Chrome/Edge; the manual CLI paste workflow is always available as a fallback.)
+
 **Betaflight-native output** — All recommendations use Betaflight 4.4/4.5 slider terminology with specific parameter changes, rationale, risk assessment, and confidence scores.
 
 ## How to Use
@@ -67,7 +70,8 @@ Everything runs 100% client-side. No data leaves your browser, no account requir
 1. Go to the [live app](https://ricardo-marques.github.io/betaflight-tuning-helper/)
 2. Drag and drop a `.bbl`/`.bfl` file from your flight controller (or a `.txt`/`.csv` export from Blackbox Explorer)
 3. Review detected issues and recommendations (analysis runs automatically)
-4. Copy CLI commands and apply changes in Betaflight Configurator
+4. Connect your FC via USB to read your current settings, or paste a CLI dump manually
+5. Accept the tune and write changes directly to your FC — or copy the CLI commands to apply them yourself
 
 ## Known Limitations
 

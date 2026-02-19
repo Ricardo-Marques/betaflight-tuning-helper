@@ -53,29 +53,29 @@ const SHOWCASE_CARDS: ShowcaseCard[] = [
   },
   {
     id: 3,
-    filename: '03-import-settings.png',
-    rawFile: 'raw-03-import.png',
-    title: 'Import Your Settings',
+    filename: '03-read-from-fc.png',
+    rawFile: 'raw-03-read-fc.png',
+    title: 'Read Settings from FC',
     description:
-      'Paste your current Betaflight CLI dump so the app knows your starting point. Recommendations compare against your actual values instead of defaults - no more guessing what changed.',
+      'Connect your flight controller via USB and read current settings directly. The app picks up your actual values so recommendations are precise.',
     accent: '#14b8a6',
   },
   {
     id: 4,
-    filename: '04-cli-commands.png',
-    rawFile: 'raw-04-cli.png',
-    title: 'Copy-Paste CLI Fixes',
+    filename: '04-accept-write.png',
+    rawFile: 'raw-04-accept-write.png',
+    title: 'Review & Write to FC',
     description:
-      'Every detected issue comes with specific Betaflight parameter changes. See current vs. recommended values, understand the rationale, and copy the CLI commands directly into your configurator.',
+      "See exactly what will change - current vs. recommended values for every parameter. In 2 clicks you'll be sending your new tune directly to your flight controller.",
     accent: '#10b981',
   },
   {
     id: 5,
-    filename: '05-accept-tune.png',
-    rawFile: 'raw-05-accept.png',
-    title: 'Accept & Keep Tuning',
+    filename: '05-write-confirm.png',
+    rawFile: 'raw-05-write-confirm.png',
+    title: 'Apply Changes Directly',
     description:
-      'Copy the CLI commands into Betaflight to apply the changes to your quad, then accept the tune here to update your baseline. Next time you analyze a log, the app picks up where you left off - iterative tuning without losing track.',
+      'Preview the exact CLI commands that will be sent, then write and save to your FC in one step. No switching apps, no copy-paste, no mistakes.',
     accent: '#059669',
   },
   {
@@ -106,8 +106,12 @@ async function waitForStable(page: Page, ms = 500): Promise<void> {
 
 async function uploadAndAnalyze(page: Page): Promise<void> {
   await page.locator('#file-upload').setInputFiles(TEST_LOG)
-  await page.getByTestId('parse-success-text').waitFor({ state: 'visible', timeout: 30_000 })
-  await page.getByTestId('flight-segments').waitFor({ state: 'visible', timeout: 30_000 })
+  await page
+    .getByTestId('parse-success-text')
+    .waitFor({ state: 'visible', timeout: 30_000 })
+  await page
+    .getByTestId('flight-segments')
+    .waitFor({ state: 'visible', timeout: 30_000 })
   await waitForStable(page, 1500)
 }
 
@@ -129,7 +133,10 @@ async function enableLightMode(page: Page): Promise<void> {
   }
 }
 
-async function ensureToggle(toggle: ReturnType<Page['getByTestId']>, wanted: boolean): Promise<void> {
+async function ensureToggle(
+  toggle: ReturnType<Page['getByTestId']>,
+  wanted: boolean,
+): Promise<void> {
   const checked = await toggle.isChecked()
   if (wanted && !checked) await toggle.check()
   if (!wanted && checked) await toggle.uncheck()
@@ -208,14 +215,20 @@ async function capture2(page: Page): Promise<void> {
   await enableDarkMode(page)
 
   // Switch to Issues tab
-  await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Issues/ }).click()
+  await page
+    .getByTestId('right-panel')
+    .locator('button')
+    .filter({ hasText: /^Issues/ })
+    .click()
   await waitForStable(page, 500)
 
   const issueCards = page.locator('[data-issue-id]')
   const issueCount = await issueCards.count()
   if (issueCount > 0) {
     // Find a high-severity issue if possible
-    const highSevCard = page.locator('[data-issue-id][data-severity="high"]').first()
+    const highSevCard = page
+      .locator('[data-issue-id][data-severity="high"]')
+      .first()
     const hasHigh = (await highSevCard.count()) > 0
     const targetCard = hasHigh ? highSevCard : issueCards.first()
 
@@ -234,7 +247,11 @@ async function capture2(page: Page): Promise<void> {
     for (let i = 0; i < labelCount; i++) {
       const labelText = await chartLabels.nth(i).textContent()
       const cleanLabel = labelText?.replace(/\s\+\d+$/, '').trim() ?? ''
-      if (cleanLabel === issueLabelText || issueLabelText.includes(cleanLabel) || cleanLabel.includes(issueLabelText)) {
+      if (
+        cleanLabel === issueLabelText ||
+        issueLabelText.includes(cleanLabel) ||
+        cleanLabel.includes(issueLabelText)
+      ) {
         await chartLabels.nth(i).hover()
         await waitForStable(page, 600)
         hovered = true
@@ -251,7 +268,7 @@ async function capture2(page: Page): Promise<void> {
 }
 
 async function capture3(page: Page): Promise<void> {
-  console.log('Taking screenshot 3: Import Settings modal (dark)...')
+  console.log('Taking screenshot 3: Read from FC modal (dark)...')
   await enableDarkMode(page)
 
   // Reset zoom
@@ -259,21 +276,50 @@ async function capture3(page: Page): Promise<void> {
   await waitForStable(page, 500)
 
   // Switch to Fixes tab so the Import settings button is visible
-  await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Fixes/ }).click()
+  await page
+    .getByTestId('right-panel')
+    .locator('button')
+    .filter({ hasText: /^Fixes/ })
+    .click()
   await waitForStable(page, 500)
 
-  // Open Settings Import modal
+  // Open Settings Import modal — shows option grid with "Read from FC" (USB)
   await page.getByTestId('import-settings-button').click()
-  await page.getByTestId('settings-paste-textarea').waitFor({ state: 'visible', timeout: 5000 })
+  await waitForStable(page, 800)
+
+  await page.screenshot({ path: path.join(RAW_DIR, 'raw-03-read-fc.png') })
+
+  // Close the import modal
+  const closeBtn = page.locator('button[title="Close"]')
+  if ((await closeBtn.count()) > 0) {
+    await closeBtn.first().click()
+    await waitForStable(page, 300)
+  }
+
+  // Import settings via paste so CLI commands resolve for capture 4 & 5
+  await importSettingsViaPaste(page)
+}
+
+async function importSettingsViaPaste(page: Page): Promise<void> {
+  // Open import modal and use the paste flow to import settings
+  await page.getByTestId('import-settings-button').click()
   await waitForStable(page, 500)
 
-  await page.screenshot({ path: path.join(RAW_DIR, 'raw-03-import.png') })
+  // Click the "Paste CLI" option card to expand manual paste
+  const pasteCard = page.locator('button').filter({ hasText: 'Paste CLI' })
+  if ((await pasteCard.count()) > 0) {
+    await pasteCard.click()
+    await waitForStable(page, 500)
+  }
 
-  // Import settings so CLI commands resolve for capture 4 & 5
+  await page
+    .getByTestId('settings-paste-textarea')
+    .waitFor({ state: 'visible', timeout: 5000 })
   const pasteArea = page.getByTestId('settings-paste-textarea')
   await pasteArea.fill(BF_DEFAULTS)
   await waitForStable(page, 300)
-  // Click the Import button inside the modal (use the last matching testid since the modal one is rendered after the panel one)
+
+  // Click Import button
   const importBtns = page.getByTestId('import-settings-button')
   await importBtns.last().click({ force: true })
   await waitForStable(page, 1000)
@@ -287,39 +333,71 @@ async function capture3(page: Page): Promise<void> {
 }
 
 async function capture4(page: Page): Promise<void> {
-  console.log('Taking screenshot 4: CLI commands (dark)...')
-
-  // Switch to Fixes tab
-  await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Fixes/ }).click()
-  await waitForStable(page, 500)
-
-  // Expand CLI preview
-  const previewBtn = page.locator('button').filter({ hasText: 'Preview' })
-  if ((await previewBtn.count()) > 0) {
-    await previewBtn.click()
-    await waitForStable(page, 500)
-  }
-
-  await page.screenshot({ path: path.join(RAW_DIR, 'raw-04-cli.png') })
-}
-
-async function capture5(page: Page): Promise<void> {
-  console.log('Taking screenshot 5: Accept Tune modal (dark)...')
+  console.log('Taking screenshot 4: Accept & Write to FC modal (dark)...')
   await enableDarkMode(page)
 
-  // Click Accept tune button to open confirmation modal
+  // Click Accept tune to open the AcceptTuneModal
   await page.getByTestId('accept-tune-button').click()
-  await page.locator('h2:has-text("Accept Tune")').waitFor({ state: 'visible', timeout: 5000 })
+  await page
+    .locator('h2:has-text("Accept Tune")')
+    .waitFor({ state: 'visible', timeout: 5000 })
   await waitForStable(page, 500)
 
-  await page.screenshot({ path: path.join(RAW_DIR, 'raw-05-accept.png') })
+  await page.screenshot({ path: path.join(RAW_DIR, 'raw-04-accept-write.png') })
 
-  // Close the modal — click the X button
+  // Close the modal
   const closeBtn = page.locator('button[title="Close"]')
   if ((await closeBtn.count()) > 0) {
     await closeBtn.first().click()
     await waitForStable(page, 300)
   }
+}
+
+async function capture5(page: Page): Promise<void> {
+  console.log('Taking screenshot 5: Write to FC confirmation (dark)...')
+  await enableDarkMode(page)
+
+  // Open SerialProgressModal in write mode and mock the "connected" state
+  // so it shows the command preview + "Write & Save" button
+  await page.evaluate(() => {
+    const root = (window as unknown as Record<string, unknown>).__rootStore as {
+      uiStore: { openSerialProgress: (mode: string) => void }
+      serialStore: { status: string; progress: number; lastWriteCount: number }
+    }
+    // Set serialStore to connected state BEFORE opening modal
+    // to prevent auto-connect from firing
+    root.serialStore.status = 'connected'
+    root.serialStore.progress = 0
+    root.serialStore.lastWriteCount = 0
+    root.uiStore.openSerialProgress('write')
+  })
+
+  await page
+    .locator('h2:has-text("Write Settings to FC")')
+    .waitFor({ state: 'visible', timeout: 5000 })
+  await waitForStable(page, 500)
+
+  await page.screenshot({
+    path: path.join(RAW_DIR, 'raw-05-write-confirm.png'),
+  })
+
+  // Close the modal
+  const closeBtn = page.locator('button[title="Close"]')
+  if ((await closeBtn.count()) > 0) {
+    await closeBtn.first().click()
+    await waitForStable(page, 300)
+  }
+
+  // Reset serial state
+  await page.evaluate(() => {
+    const root = (window as unknown as Record<string, unknown>).__rootStore as {
+      serialStore: { status: string; progress: number }
+      uiStore: { closeSerialProgress: () => void }
+    }
+    root.uiStore.closeSerialProgress()
+    root.serialStore.status = 'disconnected'
+    root.serialStore.progress = 0
+  })
 }
 
 async function capture6(page: Page): Promise<void> {
@@ -331,7 +409,11 @@ async function capture6(page: Page): Promise<void> {
   await waitForStable(page, 500)
 
   // Summary tab for cleaner right panel
-  await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Summary/ }).click()
+  await page
+    .getByTestId('right-panel')
+    .locator('button')
+    .filter({ hasText: /^Summary/ })
+    .click()
   await waitForStable(page, 300)
 
   // Enable D-term and motors for a richer chart
@@ -371,14 +453,24 @@ async function capture7(page: Page): Promise<void> {
   await waitForStable(page, 500)
 
   // Summary tab
-  await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Summary/ }).click()
+  await page
+    .getByTestId('right-panel')
+    .locator('button')
+    .filter({ hasText: /^Summary/ })
+    .click()
   await waitForStable(page, 500)
 
   await page.screenshot({ path: path.join(RAW_DIR, 'raw-07-light.png') })
 }
 
 const CAPTURE_FNS: Record<number, (page: Page) => Promise<void>> = {
-  1: capture1, 2: capture2, 3: capture3, 4: capture4, 5: capture5, 6: capture6, 7: capture7,
+  1: capture1,
+  2: capture2,
+  3: capture3,
+  4: capture4,
+  5: capture5,
+  6: capture6,
+  7: capture7,
 }
 
 // ── Compositing ─────────────────────────────────────────────────────
@@ -476,9 +568,10 @@ function compositeHtml(rawImagePath: string, card: ShowcaseCard): string {
 }
 
 async function compositeCards(ids: number[]): Promise<void> {
-  const cards = ids.length > 0
-    ? SHOWCASE_CARDS.filter(c => ids.includes(c.id))
-    : SHOWCASE_CARDS
+  const cards =
+    ids.length > 0
+      ? SHOWCASE_CARDS.filter((c) => ids.includes(c.id))
+      : SHOWCASE_CARDS
 
   console.log('\nCreating composite showcase cards...')
   const browser = await chromium.launch({ headless: true })
@@ -519,13 +612,16 @@ async function main(): Promise<void> {
 
   // "composite" mode — just re-render composites from existing raws
   if (args.includes('composite')) {
-    const ids = args.filter(a => a !== 'composite').map(Number).filter(n => n >= 1 && n <= 7)
+    const ids = args
+      .filter((a) => a !== 'composite')
+      .map(Number)
+      .filter((n) => n >= 1 && n <= 7)
     await compositeCards(ids)
     return
   }
 
   // Determine which screenshots to take
-  const requested = args.map(Number).filter(n => n >= 1 && n <= 7)
+  const requested = args.map(Number).filter((n) => n >= 1 && n <= 7)
   const ids = requested.length > 0 ? requested : [1, 2, 3, 4, 5, 6, 7]
 
   console.log(`Capturing screenshot(s): ${ids.join(', ')}`)
@@ -535,6 +631,20 @@ async function main(): Promise<void> {
     viewport: VIEWPORT,
     deviceScaleFactor: 2,
   })
+
+  // Mock Web Serial API so isSerialSupported() returns true and USB options appear
+  await context.addInitScript(() => {
+    if (!('serial' in navigator)) {
+      Object.defineProperty(navigator, 'serial', {
+        value: {
+          requestPort: () =>
+            Promise.reject(new Error('Mock serial — no real device')),
+        },
+        configurable: true,
+      })
+    }
+  })
+
   const page = await context.newPage()
 
   console.log('Navigating to app...')
@@ -557,7 +667,7 @@ async function main(): Promise<void> {
   await compositeCards(ids)
 
   console.log('\nDone! Screenshots saved to screenshots/')
-  for (const card of SHOWCASE_CARDS.filter(c => ids.includes(c.id))) {
+  for (const card of SHOWCASE_CARDS.filter((c) => ids.includes(c.id))) {
     console.log(`  ${card.filename}`)
   }
 }
