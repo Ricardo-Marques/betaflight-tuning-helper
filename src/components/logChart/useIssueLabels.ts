@@ -7,6 +7,11 @@ import type { ChartDataPoint } from './useChartData'
 export const CHART_MARGIN_LEFT = 5 + 50 // margin.left + YAxis width
 export const CHART_MARGIN_RIGHT = 5     // margin.right
 
+export interface LabelOccurrence {
+  issue: DetectedIssue
+  occIdx: number
+}
+
 export interface LabelEntry {
   key: string
   pxLeft: number
@@ -15,6 +20,7 @@ export interface LabelEntry {
   fontSize: number
   fontWeight: string
   issues: DetectedIssue[]
+  issueOccurrences: LabelOccurrence[]
   onAxis: boolean
 }
 
@@ -63,7 +69,7 @@ export function useIssueLabels(
     const plotWidth = containerWidth - CHART_MARGIN_LEFT - CHART_MARGIN_RIGHT
     const sevOrder: Record<string, number> = { high: 0, medium: 1, low: 2 }
 
-    const entries: { key: string; px: number; isSelected: boolean; sev: number; issue: DetectedIssue }[] = []
+    const entries: { key: string; px: number; isSelected: boolean; sev: number; issue: DetectedIssue; occIdx: number }[] = []
     for (const issue of visibleIssues) {
       if (!uiStore.showIssues && issue.id !== analysisStore.selectedIssueId) continue
       const times = issue.occurrences ?? [issue.timeRange]
@@ -73,7 +79,7 @@ export function useIssueLabels(
         if (t < timeStart || t > timeEnd) continue
         const px = CHART_MARGIN_LEFT + ((t - timeStart) / timeSpan) * plotWidth
         const isThisOcc = isIssueSelected && analysisStore.selectedOccurrenceIdx === idx
-        entries.push({ key: `${issue.id}-${idx}`, px, isSelected: isThisOcc, sev: sevOrder[issue.severity] ?? 2, issue })
+        entries.push({ key: `${issue.id}-${idx}`, px, isSelected: isThisOcc, sev: sevOrder[issue.severity] ?? 2, issue, occIdx: idx })
       }
     }
 
@@ -82,11 +88,11 @@ export function useIssueLabels(
     // Greedy selection with stacking
     const result: LabelEntry[] = []
     let lastPx = -Infinity
-    let current: { entry: typeof entries[0]; issues: DetectedIssue[]; anySelected: boolean } | null = null
+    let current: { entry: typeof entries[0]; issues: DetectedIssue[]; occurrences: LabelOccurrence[]; anySelected: boolean } | null = null
 
     const flush = (): void => {
       if (!current) return
-      const { entry, issues, anySelected } = current
+      const { entry, issues, occurrences, anySelected } = current
       const stackCount = issues.length - 1
       result.push({
         key: entry.key,
@@ -96,6 +102,7 @@ export function useIssueLabels(
         fontSize: anySelected ? 11 : 9,
         fontWeight: anySelected ? 'bold' : 'normal',
         issues,
+        issueOccurrences: occurrences,
         onAxis: entry.issue.axis === uiStore.selectedAxis,
       })
     }
@@ -103,11 +110,17 @@ export function useIssueLabels(
     for (const e of entries) {
       if (e.px - lastPx >= MIN_GAP) {
         flush()
-        current = { entry: e, issues: [e.issue], anySelected: e.isSelected }
+        current = { entry: e, issues: [e.issue], occurrences: [{ issue: e.issue, occIdx: e.occIdx }], anySelected: e.isSelected }
         lastPx = e.px
       } else if (current) {
         if (!current.issues.includes(e.issue)) current.issues.push(e.issue)
+        current.occurrences.push({ issue: e.issue, occIdx: e.occIdx })
         if (e.isSelected) current.anySelected = true
+        // Promote higher-priority entry to be the visible label
+        const cur = current.entry
+        if (e.isSelected && !cur.isSelected || (!cur.isSelected && e.sev < cur.sev)) {
+          current.entry = e
+        }
       }
     }
     flush()
