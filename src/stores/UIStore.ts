@@ -32,6 +32,8 @@ export class UIStore {
   activeRightTab: RightPanelTab = 'summary'
   changelogOpen: boolean = false
   settingsImportOpen: boolean = false
+  settingsReviewOpen: boolean = false
+  deferredCliAction: 'preview' | 'copy' | 'acceptTune' | null = null
 
   axisHighlight: Axis | null = null
   axisHighlightKey: number = 0
@@ -149,6 +151,19 @@ export class UIStore {
 
   closeSettingsImport = (): void => {
     this.settingsImportOpen = false
+  }
+
+  openSettingsReview = (deferredAction?: 'preview' | 'copy' | 'acceptTune'): void => {
+    this.deferredCliAction = deferredAction ?? null
+    this.settingsReviewOpen = true
+  }
+
+  closeSettingsReview = (): void => {
+    this.settingsReviewOpen = false
+  }
+
+  clearDeferredAction = (): void => {
+    this.deferredCliAction = null
   }
 
   animateZoom = (targetStart: number, targetEnd: number, duration: number = 300): void => {

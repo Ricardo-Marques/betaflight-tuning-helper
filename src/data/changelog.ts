@@ -9,6 +9,7 @@ import type { ChangelogEntry } from '../domain/types/Changelog'
  */
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   // 2026-02-18
+  { hash: 'c11439c', date: '2026-02-18', message: 'Imported settings now require explicit review before affecting CLI output', category: 'improvement' },
   { hash: 'af653cb', date: '2026-02-18', message: 'Hide parameter changes that already match your current value', category: 'improvement' },
   { hash: 'c8c7dc8', date: '2026-02-18', message: 'Import your Betaflight settings and accept tune to iterate between flights', category: 'feature' },
   { hash: '42ae970', date: '2026-02-18', message: 'Safety warning on the home page reminding to review changes before flying', category: 'improvement' },

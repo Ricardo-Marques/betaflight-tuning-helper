@@ -75,7 +75,7 @@ const SHOWCASE_CARDS: ShowcaseCard[] = [
     rawFile: 'raw-05-accept.png',
     title: 'Accept & Keep Tuning',
     description:
-      'Happy with the changes? Accept the tune to update your baseline settings. Upload your next log and the app picks up where you left off - iterative tuning without losing track.',
+      'Copy the CLI commands into Betaflight to apply the changes to your quad, then accept the tune here to update your baseline. Next time you analyze a log, the app picks up where you left off - iterative tuning without losing track.',
     accent: '#059669',
   },
   {
@@ -276,12 +276,12 @@ async function capture3(page: Page): Promise<void> {
   // Click the Import button inside the modal (use the last matching testid since the modal one is rendered after the panel one)
   const importBtns = page.getByTestId('import-settings-button')
   await importBtns.last().click({ force: true })
-  await waitForStable(page, 500)
+  await waitForStable(page, 1000)
 
-  // Close the modal
-  const closeBtn = page.locator('button[title="Close"]')
-  if ((await closeBtn.count()) > 0) {
-    await closeBtn.first().click({ force: true })
+  // Accept pending settings in the review modal
+  const acceptBtn = page.getByTestId('settings-review-accept')
+  if ((await acceptBtn.count()) > 0) {
+    await acceptBtn.click()
     await waitForStable(page, 500)
   }
 }
@@ -305,6 +305,7 @@ async function capture4(page: Page): Promise<void> {
 
 async function capture5(page: Page): Promise<void> {
   console.log('Taking screenshot 5: Accept Tune modal (dark)...')
+  await enableDarkMode(page)
 
   // Click Accept tune button to open confirmation modal
   await page.getByTestId('accept-tune-button').click()

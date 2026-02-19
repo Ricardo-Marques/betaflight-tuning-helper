@@ -353,11 +353,6 @@ const CliDot = styled.span`
   color: ${p => p.theme.colors.text.muted};
 `
 
-const CliStatusText = styled.span`
-  font-size: 0.6875rem;
-  color: ${p => p.theme.colors.text.secondary};
-`
-
 const CliSuccessText = styled.button`
   font-size: 0.75rem;
   font-weight: 600;
@@ -874,7 +869,15 @@ export const RecommendationsPanel = observer(() => {
     })
   }
 
-  const handleCopy = async () => {
+  const guardPendingSettings = (action: 'preview' | 'copy' | 'acceptTune'): boolean => {
+    if (settingsStore.hasPendingSettings) {
+      uiStore.openSettingsReview(action)
+      return true
+    }
+    return false
+  }
+
+  const doCopy = async (): Promise<void> => {
     try {
       await navigator.clipboard.writeText(cliCommands)
       setCopied(true)
@@ -884,7 +887,7 @@ export const RecommendationsPanel = observer(() => {
     }
   }
 
-  const handleAcceptTune = () => {
+  const doAcceptTune = (): void => {
     if (!analysisStore.isComplete) return
     const { recommendations } = analysisStore.result!
     const resolved = resolveAllChanges(recommendations, pidProfile, filterSettings, settingsStore.baselineValues)
@@ -892,6 +895,22 @@ export const RecommendationsPanel = observer(() => {
     setTuneAccepted(true)
     setTimeout(() => setTuneAccepted(false), 2000)
   }
+
+  // Execute deferred action after review modal accept
+  useAutorun(() => {
+    if (uiStore.settingsReviewOpen) return
+    const action = uiStore.deferredCliAction
+    if (!action) return
+    uiStore.clearDeferredAction()
+    if (settingsStore.hasPendingSettings) return // cancelled, don't execute
+
+    if (action === 'preview') setCliExpanded(true)
+    else if (action === 'copy') void doCopy()
+    else if (action === 'acceptTune') {
+      if (shouldShowAcceptTuneConfirm()) setShowAcceptModal(true)
+      else doAcceptTune()
+    }
+  })
 
   if (!analysisStore.isComplete) {
     return (
@@ -931,13 +950,13 @@ export const RecommendationsPanel = observer(() => {
                 {commandCount} CLI command{commandCount !== 1 ? 's' : ''}
               </CliLabel>
               <CliBarRow>
-                <CliPreviewToggle onClick={() => setCliExpanded(!cliExpanded)}>
+                <CliPreviewToggle onClick={() => guardPendingSettings('preview') || setCliExpanded(!cliExpanded)}>
                   {cliExpanded ? 'Hide' : 'Preview'}
                 </CliPreviewToggle>
                 <CopyButton
                   data-testid="copy-cli-button"
                   copied={copied}
-                  onClick={handleCopy}
+                  onClick={() => guardPendingSettings('copy') || void doCopy()}
                 >
                   {copied ? 'Copied!' : 'Copy'}
                 </CopyButton>
@@ -950,13 +969,7 @@ export const RecommendationsPanel = observer(() => {
               >
                 {settingsStore.hasImportedSettings ? 'Update settings' : 'Import settings'}
               </CliTextButton>
-              {unresolvedCount > 0 && (
-                <>
-                  <CliDot>{'\u00b7'}</CliDot>
-                  <CliStatusText>{unresolvedCount} need values</CliStatusText>
-                </>
-              )}
-              {commandCount > 0 && unresolvedCount === 0 && (
+              {commandCount > 0 && (
                 <>
                   <CliDot>{'\u00b7'}</CliDot>
                   {tuneAccepted ? (
@@ -965,7 +978,7 @@ export const RecommendationsPanel = observer(() => {
                     <AcceptTuneWrapper>
                       <CliTextButton
                         color="green"
-                        onClick={() => shouldShowAcceptTuneConfirm() ? setShowAcceptModal(true) : handleAcceptTune()}
+                        onClick={() => guardPendingSettings('acceptTune') || (shouldShowAcceptTuneConfirm() ? setShowAcceptModal(true) : doAcceptTune())}
                         data-testid="accept-tune-button"
                       >
                         Accept tune
@@ -1101,7 +1114,7 @@ export const RecommendationsPanel = observer(() => {
 
       {showAcceptModal && (
         <AcceptTuneModal
-          onAccept={handleAcceptTune}
+          onAccept={doAcceptTune}
           onClose={() => setShowAcceptModal(false)}
         />
       )}

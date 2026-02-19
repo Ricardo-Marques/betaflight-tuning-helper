@@ -236,9 +236,14 @@ export const SettingsImportModal = observer(() => {
     if (!pasteText.trim()) return
     settingsStore.importFromCliOutput(pasteText)
     setImportStatus('done')
+    // Close import modal and open review modal after a brief delay
+    setTimeout(() => {
+      uiStore.closeSettingsImport()
+      uiStore.openSettingsReview()
+    }, 600)
   }
 
-  const lastResult = settingsStore.lastParseResult
+  const lastResult = settingsStore.pendingParseResult
 
   return (
     <Backdrop onClick={handleBackdropClick} onKeyDown={handleKeyDown}>
@@ -311,7 +316,7 @@ export const SettingsImportModal = observer(() => {
             {lastResult && importStatus === 'done' && (
               <>
                 <StatusLine>
-                  Imported {lastResult.parsedCount} setting{lastResult.parsedCount !== 1 ? 's' : ''} ({settingsStore.importedCount} total)
+                  Imported {lastResult.parsedCount} setting{lastResult.parsedCount !== 1 ? 's' : ''} — opening review...
                 </StatusLine>
                 {lastResult.warnings.map((w, i) => (
                   <StatusLine key={i} isError>{w}</StatusLine>
