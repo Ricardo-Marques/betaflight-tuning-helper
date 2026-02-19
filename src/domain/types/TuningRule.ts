@@ -1,5 +1,5 @@
 import { AnalysisWindow, DetectedIssue, Recommendation } from './Analysis'
-import { LogFrame } from './LogFrame'
+import { LogFrame, LogMetadata } from './LogFrame'
 import { QuadProfile } from './QuadProfile'
 
 /**
@@ -49,7 +49,7 @@ export interface RuleContext {
   frames: LogFrame[]
 
   /** Metadata about the log */
-  metadata: any
+  metadata: LogMetadata
 
   /** Analysis window being evaluated */
   window: AnalysisWindow

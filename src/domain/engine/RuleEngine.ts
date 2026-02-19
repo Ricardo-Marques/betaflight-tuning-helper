@@ -1,5 +1,5 @@
 import { TuningRule } from '../types/TuningRule'
-import { AnalysisWindow, DetectedIssue, Recommendation, AnalysisResult, ParameterChange } from '../types/Analysis'
+import { AnalysisWindow, DetectedIssue, Recommendation, AnalysisResult, ParameterChange, FlightPhase } from '../types/Analysis'
 import { LogFrame, LogMetadata } from '../types/LogFrame'
 import { QuadProfile } from '../types/QuadProfile'
 import { DEFAULT_PROFILE } from '../profiles/quadProfiles'
@@ -621,7 +621,7 @@ export class RuleEngine {
   private generateSummary(
     issues: DetectedIssue[],
     recommendations: Recommendation[]
-  ): any {
+  ): AnalysisResult['summary'] {
     const highCount = issues.filter(i => i.severity === 'high').length
     const mediumCount = issues.filter(i => i.severity === 'medium').length
     const lowCount = issues.filter(i => i.severity === 'low').length
@@ -655,8 +655,8 @@ export class RuleEngine {
   private generateFlightSegments(
     frames: LogFrame[],
     issues: DetectedIssue[]
-  ): any[] {
-    const segments: any[] = []
+  ): AnalysisResult['segments'] {
+    const segments: AnalysisResult['segments'] = []
     const segmentSize = 1000 // ~125ms at 8kHz
 
     for (let i = 0; i < frames.length; i += segmentSize) {
@@ -672,7 +672,7 @@ export class RuleEngine {
       // Simple phase detection
       const avgThrottle =
         segmentFrames.reduce((sum, f) => sum + f.throttle, 0) / segmentFrames.length
-      let phase: string
+      let phase: FlightPhase
       if (avgThrottle < 1050) phase = 'idle'
       else if (avgThrottle > 1700) phase = 'punch'
       else if (avgThrottle < 1300) phase = 'hover'
