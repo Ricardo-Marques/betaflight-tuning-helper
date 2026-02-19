@@ -23,9 +23,10 @@ export interface SerialConnection {
   onDisconnect: (() => void) | null
 }
 
-/** Feature detection for Web Serial API */
+/** Feature detection for Web Serial API (not supported on mobile) */
 export function isSerialSupported(): boolean {
-  return typeof navigator !== 'undefined' && 'serial' in navigator
+  if (typeof navigator === 'undefined' || !('serial' in navigator)) return false
+  return !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
 }
 
 const DEFAULT_BAUD_RATE = 115200
