@@ -18,10 +18,12 @@ import {
 } from './LogChart.styles'
 import { RangeSlider } from './RangeSlider'
 import { useChartData } from './logChart/useChartData'
+import { useSpectrumData } from './logChart/useSpectrumData'
 import { useIssueLabels, shortLabel } from './logChart/useIssueLabels'
 import { useIssuePopover } from './logChart/useIssuePopover'
 import type { HoveredIssues } from './logChart/useIssuePopover'
 import { useChartInteractions } from './logChart/useChartInteractions'
+import { SpectrumChart } from './SpectrumChart'
 
 export const LogChart = observer(() => {
   const logStore = useLogStore()
@@ -59,7 +61,8 @@ export const LogChart = observer(() => {
       ? theme.colors.severity.medium
       : theme.colors.severity.low
 
-  const { zoomDuration, visibleFrames, chartData, yDomain, motorDomain } = useChartData(isDraggingObs)
+  const { zoomDuration, visibleFrames, chartData, yDomain, motorDomain, pidDomain } = useChartData(isDraggingObs)
+  const spectrumResult = useSpectrumData()
   const { visibleIssues, visibleLabels } = useIssueLabels(visibleFrames, chartData, containerWidth, severityColor)
 
   const popoverRefs = { popoverRef, hoveredIssuesRef, popoverSourceRef, forcedPopoverTimer, hoverClearTimer, glowTimer, chartContainerRef }
@@ -83,6 +86,7 @@ export const LogChart = observer(() => {
   const totalDuration = logStore.duration
   const windowSec = (zoomDuration / 100) * totalDuration
   const zoomLevel = 100 / zoomDuration
+  const minZoomWindow = totalDuration > 0 ? (0.2 / totalDuration) * 100 : 1
 
   if (!logStore.isLoaded) {
     return (
@@ -107,15 +111,34 @@ export const LogChart = observer(() => {
             {axis.charAt(0).toUpperCase() + axis.slice(1)}
           </AxisButton>
         ))}
-        <ToggleBar compact={uiStore.isMobileLayout}>
+        <ToggleChip
+          data-testid="toggle-spectrum"
+          role="checkbox"
+          aria-checked={uiStore.chartMode === 'spectrum'}
+          isActive={uiStore.chartMode === 'spectrum'}
+          chipColor={theme.colors.chart.gyro}
+          onClick={uiStore.toggleChartMode}
+        >
+          Noise spectrum view
+        </ToggleChip>
+        {uiStore.chartMode === 'time' && <ToggleBar compact={uiStore.isMobileLayout}>
           <ToggleChip data-testid="toggle-gyro" role="checkbox" aria-checked={uiStore.showGyro} isActive={uiStore.showGyro} chipColor={theme.colors.chart.gyro} onClick={uiStore.toggleGyro}>
             <ToggleChipDot dotColor={theme.colors.chart.gyro} />Gyro
           </ToggleChip>
           <ToggleChip data-testid="toggle-setpoint" role="checkbox" aria-checked={uiStore.showSetpoint} isActive={uiStore.showSetpoint} chipColor={theme.colors.chart.setpoint} onClick={uiStore.toggleSetpoint}>
             <ToggleChipDot dotColor={theme.colors.chart.setpoint} />Setpoint
           </ToggleChip>
+          <ToggleChip data-testid="toggle-pidp" role="checkbox" aria-checked={uiStore.showPidP} isActive={uiStore.showPidP} chipColor={theme.colors.chart.pidP} onClick={uiStore.togglePidP}>
+            <ToggleChipDot dotColor={theme.colors.chart.pidP} />P-term
+          </ToggleChip>
+          <ToggleChip data-testid="toggle-pidi" role="checkbox" aria-checked={uiStore.showPidI} isActive={uiStore.showPidI} chipColor={theme.colors.chart.pidI} onClick={uiStore.togglePidI}>
+            <ToggleChipDot dotColor={theme.colors.chart.pidI} />I-term
+          </ToggleChip>
           <ToggleChip data-testid="toggle-dterm" role="checkbox" aria-checked={uiStore.showPidD} isActive={uiStore.showPidD} chipColor={theme.colors.chart.pidD} onClick={uiStore.togglePidD}>
             <ToggleChipDot dotColor={theme.colors.chart.pidD} />D-term
+          </ToggleChip>
+          <ToggleChip data-testid="toggle-pidsum" role="checkbox" aria-checked={uiStore.showPidSum} isActive={uiStore.showPidSum} chipColor={theme.colors.chart.pidSum} onClick={uiStore.togglePidSum}>
+            <ToggleChipDot dotColor={theme.colors.chart.pidSum} />PID Sum
           </ToggleChip>
           <ToggleChip data-testid="toggle-motors" role="checkbox" aria-checked={uiStore.showMotors} isActive={uiStore.showMotors} chipColor={theme.colors.chart.motor1} onClick={uiStore.toggleMotors}>
             <ToggleChipDot dotColor={theme.colors.chart.motor1} />Motors
@@ -126,10 +149,10 @@ export const LogChart = observer(() => {
           <ToggleChip data-testid="toggle-issues" role="checkbox" aria-checked={uiStore.showIssues} isActive={uiStore.showIssues} onClick={uiStore.toggleIssues}>
             Issues
           </ToggleChip>
-        </ToggleBar>
+        </ToggleBar>}
       </AxisBar>
 
-      {analysisStore.isComplete && (
+      {analysisStore.isComplete && uiStore.chartMode === 'time' && (
         <IssueSummaryStrip data-testid="issues-in-view">
           {!uiStore.showIssues ? (
             <>
@@ -196,6 +219,9 @@ export const LogChart = observer(() => {
         </IssueSummaryStrip>
       )}
 
+      {uiStore.chartMode === 'spectrum' ? (
+        <SpectrumChart spectrumResult={spectrumResult} />
+      ) : (
       <ChartContainer data-testid="chart-container" ref={chartContainerCallbackRef}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
@@ -218,10 +244,11 @@ export const LogChart = observer(() => {
             <YAxis yAxisId="primary" width={65} domain={yDomain} allowDataOverflow
               label={{ value: 'deg/s', angle: -90, position: 'insideLeft' }} stroke={theme.colors.chart.axis}
               tickFormatter={(value: number) => Math.round(value).toString()} />
+            <YAxis yAxisId="pid" hide domain={pidDomain} allowDataOverflow />
             <YAxis yAxisId="motor" hide domain={motorDomain} allowDataOverflow />
             <Tooltip
               active={isDraggingObs ? false : undefined}
-              labelFormatter={(value: number) => value >= 60 ? `${Math.floor(value / 60)}m:${String(Math.floor(value % 60)).padStart(2, '0')}s` : `${value.toFixed(1)}s`}
+              labelFormatter={(value: number) => value >= 60 ? `${Math.floor(value / 60)}m:${(value % 60).toFixed(3).padStart(6, '0')}s` : `${value.toFixed(3)}s`}
               contentStyle={{
                 backgroundColor: theme.colors.chart.tooltipBg,
                 border: `1px solid ${theme.colors.chart.tooltipBorder}`,
@@ -230,8 +257,8 @@ export const LogChart = observer(() => {
               }}
             />
 
-            {/* Issue reference lines */}
-            {(() => {
+            {/* Issue reference lines — hidden during drag for performance */}
+            {!isDraggingObs && (() => {
               const sevRank: Record<string, number> = { high: 0, medium: 1, low: 2 }
               const allLines: { x: number; issue: typeof visibleIssues[0]; idx: number; isSelected: boolean; sev: number }[] = []
               for (const issue of visibleIssues) {
@@ -295,9 +322,21 @@ export const LogChart = observer(() => {
               <Line type="monotone" dataKey="setpoint" yAxisId="primary" stroke={theme.colors.chart.setpoint}
                 strokeWidth={2} dot={false} name="Setpoint" isAnimationActive={false} strokeDasharray="5 5" />
             )}
+            {uiStore.showPidP && (
+              <Line type="monotone" dataKey="pidP" yAxisId="pid" stroke={theme.colors.chart.pidP}
+                strokeWidth={1.5} dot={false} name="P-term" isAnimationActive={false} />
+            )}
+            {uiStore.showPidI && (
+              <Line type="monotone" dataKey="pidI" yAxisId="pid" stroke={theme.colors.chart.pidI}
+                strokeWidth={1.5} dot={false} name="I-term" isAnimationActive={false} />
+            )}
             {uiStore.showPidD && (
-              <Line type="monotone" dataKey="pidD" yAxisId="primary" stroke={theme.colors.chart.pidD}
+              <Line type="monotone" dataKey="pidD" yAxisId="pid" stroke={theme.colors.chart.pidD}
                 strokeWidth={1.5} dot={false} name="D-term" isAnimationActive={false} />
+            )}
+            {uiStore.showPidSum && (
+              <Line type="monotone" dataKey="pidSum" yAxisId="pid" stroke={theme.colors.chart.pidSum}
+                strokeWidth={1.5} dot={false} name="PID Sum" isAnimationActive={false} />
             )}
             {uiStore.showMotors && (
               <>
@@ -325,6 +364,14 @@ export const LogChart = observer(() => {
                 key={label.key}
                 data-testid="chart-label"
                 style={{ left: `${label.pxLeft}px`, color: label.color, fontSize: `${label.fontSize}px`, fontWeight: label.fontWeight, opacity: label.onAxis ? undefined : 0.3 }}
+                onClick={() => {
+                  const occs = label.issueOccurrences
+                  const currentIdx = occs.findIndex(o => o.issue.id === analysisStore.selectedIssueId)
+                  const pick = currentIdx < 0 ? occs[0] : occs[(currentIdx + 1) % occs.length]
+                  analysisStore.selectIssue(pick.issue.id, pick.occIdx)
+                  uiStore.setActiveRightTab('issues')
+                  if (!uiStore.rightPanelOpen) uiStore.toggleRightPanel()
+                }}
                 onMouseEnter={(e) => {
                   const sevRank: Record<string, number> = { high: 0, medium: 1, low: 2 }
                   const sorted = [...label.issues].sort((a, b) => (sevRank[a.severity] ?? 2) - (sevRank[b.severity] ?? 2))
@@ -347,16 +394,26 @@ export const LogChart = observer(() => {
           </AxisSwitchToast>
         )}
       </ChartContainer>
+      )}
 
-      <ChartLegend>
+      {uiStore.chartMode === 'time' && <ChartLegend>
         {uiStore.showGyro && (
           <LegendItem><LegendSwatch style={{ backgroundColor: theme.colors.chart.gyro }} />Gyro</LegendItem>
         )}
         {uiStore.showSetpoint && (
           <LegendItem><LegendSwatch style={{ backgroundColor: theme.colors.chart.setpoint }} />Setpoint</LegendItem>
         )}
+        {uiStore.showPidP && (
+          <LegendItem><LegendSwatch style={{ backgroundColor: theme.colors.chart.pidP }} />P-term</LegendItem>
+        )}
+        {uiStore.showPidI && (
+          <LegendItem><LegendSwatch style={{ backgroundColor: theme.colors.chart.pidI }} />I-term</LegendItem>
+        )}
         {uiStore.showPidD && (
           <LegendItem><LegendSwatch style={{ backgroundColor: theme.colors.chart.pidD }} />D-term</LegendItem>
+        )}
+        {uiStore.showPidSum && (
+          <LegendItem><LegendSwatch style={{ backgroundColor: theme.colors.chart.pidSum }} />PID Sum</LegendItem>
         )}
         {uiStore.showMotors && (
           <>
@@ -369,17 +426,36 @@ export const LogChart = observer(() => {
         {uiStore.showThrottle && (
           <LegendItem><LegendSwatch style={{ backgroundColor: theme.colors.chart.throttle }} />Throttle</LegendItem>
         )}
-      </ChartLegend>
+      </ChartLegend>}
 
       <ZoomControls>
         <ZoomHeader>
-          <ZoomInfoLabel>{zoomLevel.toFixed(1)}x ({windowSec >= 60 ? `${Math.floor(windowSec / 60)}m:${String(Math.floor(windowSec % 60)).padStart(2, '0')}s` : `${windowSec.toFixed(1)}s`} window)</ZoomInfoLabel>
-          <ZoomResetBtn data-testid="zoom-reset-button" onClick={() => uiStore.setZoom(0, 100)}>Reset</ZoomResetBtn>
+          {uiStore.chartMode === 'spectrum' ? (() => {
+            const dm = spectrumResult.displayMax
+            const freqStart = Math.round((uiStore.spectrumZoomStart / 100) * dm)
+            const freqEnd = Math.round((uiStore.spectrumZoomEnd / 100) * dm)
+            return <ZoomInfoLabel>{freqStart} – {freqEnd} Hz</ZoomInfoLabel>
+          })() : (
+            <ZoomInfoLabel>{zoomLevel.toFixed(1)}x ({windowSec >= 60 ? `${Math.floor(windowSec / 60)}m:${String(Math.floor(windowSec % 60)).padStart(2, '0')}s` : `${windowSec.toFixed(1)}s`} window)</ZoomInfoLabel>
+          )}
+          <ZoomResetBtn data-testid="zoom-reset-button" onClick={() => {
+            if (uiStore.chartMode === 'spectrum') uiStore.setSpectrumZoom(0, 100)
+            else uiStore.setZoom(0, 100)
+          }}>Reset</ZoomResetBtn>
         </ZoomHeader>
-        <RangeSlider
-          start={uiStore.zoomStart} end={uiStore.zoomEnd} onChange={handleRangeChange}
-          onDragStart={() => setIsDraggingObs(true)} onDragEnd={() => setIsDraggingObs(false)}
-        />
+        {uiStore.chartMode === 'spectrum' ? (
+          <RangeSlider
+            start={uiStore.spectrumZoomStart} end={uiStore.spectrumZoomEnd}
+            onChange={(start, end) => uiStore.setSpectrumZoom(start, end)}
+            minWindow={1}
+          />
+        ) : (
+          <RangeSlider
+            start={uiStore.zoomStart} end={uiStore.zoomEnd} onChange={handleRangeChange}
+            onDragStart={() => setIsDraggingObs(true)} onDragEnd={() => setIsDraggingObs(false)}
+            minWindow={minZoomWindow}
+          />
+        )}
       </ZoomControls>
     </ChartWrapper>
   )

@@ -1,6 +1,7 @@
 import { makeAutoObservable, runInAction } from 'mobx'
 import { Axis } from '../domain/types/Analysis'
 
+export type ChartMode = 'time' | 'spectrum'
 export type RightPanelTab = 'summary' | 'issues' | 'fixes'
 export type MobileTab = 'upload' | 'chart' | 'tune'
 
@@ -31,6 +32,9 @@ export class UIStore {
   showMotors: boolean = true
   showThrottle: boolean = false
   showIssues: boolean = true
+  chartMode: ChartMode = 'time'
+  spectrumZoomStart: number = 0
+  spectrumZoomEnd: number = 100
 
   leftPanelOpen: boolean = true
   rightPanelOpen: boolean = true
@@ -96,7 +100,16 @@ export class UIStore {
     this.zoomEnd = Math.max(0, Math.min(100, end))
 
     if (this.zoomStart >= this.zoomEnd) {
-      this.zoomEnd = this.zoomStart + 1
+      this.zoomEnd = this.zoomStart + 0.01
+    }
+  }
+
+  setSpectrumZoom = (start: number, end: number): void => {
+    this.spectrumZoomStart = Math.max(0, Math.min(100, start))
+    this.spectrumZoomEnd = Math.max(0, Math.min(100, end))
+
+    if (this.spectrumZoomStart >= this.spectrumZoomEnd) {
+      this.spectrumZoomEnd = this.spectrumZoomStart + 0.01
     }
   }
 
@@ -134,6 +147,10 @@ export class UIStore {
 
   toggleIssues = (): void => {
     this.showIssues = !this.showIssues
+  }
+
+  toggleChartMode = (): void => {
+    this.chartMode = this.chartMode === 'time' ? 'spectrum' : 'time'
   }
 
   toggleLeftPanel = (): void => {
@@ -284,6 +301,9 @@ export class UIStore {
     this.showMotors = true
     this.showThrottle = false
     this.showIssues = true
+    this.chartMode = 'time'
+    this.spectrumZoomStart = 0
+    this.spectrumZoomEnd = 100
     this.leftPanelWidth = DEFAULT_PANEL_WIDTH
     this.rightPanelWidth = DEFAULT_PANEL_WIDTH
     this.activeRightTab = 'summary'
