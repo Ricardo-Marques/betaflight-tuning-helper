@@ -3,6 +3,7 @@ import styled from '@emotion/styled'
 import { useUIStore, useSettingsStore, useAnalysisStore, useLogStore } from '../stores/RootStore'
 import { getCliName, getPidValue, getGlobalValue } from '../domain/utils/CliExport'
 import { ParameterChange } from '../domain/types/Analysis'
+import { Tooltip } from './Tooltip'
 
 /* ---- Styled Components ---- */
 
@@ -207,7 +208,7 @@ export const SettingsReviewModal = observer(() => {
       <ModalContainer>
         <ModalHeader>
           <ModalTitle>Review Imported Settings</ModalTitle>
-          <CloseButton onClick={handleClose} title="Close">&times;</CloseButton>
+          <Tooltip text="Close"><CloseButton onClick={handleClose} aria-label="Close">&times;</CloseButton></Tooltip>
         </ModalHeader>
         <ModalBody>
           <CountText data-testid="settings-review-count">

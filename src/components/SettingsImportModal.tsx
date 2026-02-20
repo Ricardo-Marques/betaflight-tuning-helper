@@ -3,6 +3,7 @@ import styled from '@emotion/styled'
 import { useUIStore, useSettingsStore, useAnalysisStore, useLogStore } from '../stores/RootStore'
 import { useObservableState, useComputed, useAutorun } from '../lib/mobx-reactivity'
 import { generateGetScript } from '../domain/utils/GetScriptGenerator'
+import { Tooltip } from './Tooltip'
 import { isSerialSupported } from '../serial/SerialPort'
 
 /* ---- Styled Components ---- */
@@ -344,7 +345,7 @@ export const SettingsImportModal = observer(() => {
       <ModalContainer>
         <ModalHeader>
           <ModalTitle>Import Current Settings</ModalTitle>
-          <CloseButton onClick={uiStore.closeSettingsImport} title="Close">&times;</CloseButton>
+          <Tooltip text="Close"><CloseButton onClick={uiStore.closeSettingsImport} aria-label="Close">&times;</CloseButton></Tooltip>
         </ModalHeader>
         <ModalBody>
           {hasOptionGrid && (

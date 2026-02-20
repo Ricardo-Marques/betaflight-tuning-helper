@@ -13,6 +13,7 @@ import { SettingsImportModal } from './components/SettingsImportModal'
 import { SettingsReviewModal } from './components/SettingsReviewModal'
 import { SerialProgressModal } from './components/SerialProgressModal'
 import { FlashDownloadModal } from './components/FlashDownloadModal'
+import { Tooltip } from './components/Tooltip'
 import { BottomTabBar } from './components/BottomTabBar'
 import { Toast } from './components/Toast'
 import { useUIStore, useLogStore, useAnalysisStore } from './stores/RootStore'
@@ -472,16 +473,18 @@ export const App = observer(() => {
             </LeftPanelWrapper>
           )}
 
-          <ResizeHandle
-            ref={leftHandleRef}
-            data-testid="resize-left-panel"
-            data-collapsed={!uiStore.leftPanelOpen}
-            onMouseDown={e => uiStore.leftPanelOpen ? startResize('left', e) : undefined}
-            onClick={() => !uiStore.leftPanelOpen && uiStore.toggleLeftPanel()}
-            title={uiStore.leftPanelOpen ? 'Drag to resize left panel' : 'Open left panel'}
-          >
-            {!uiStore.leftPanelOpen && <HandleChevron>{'\u203A'}</HandleChevron>}
-          </ResizeHandle>
+          <Tooltip text={uiStore.leftPanelOpen ? 'Drag to resize' : 'Open panel'}>
+            <ResizeHandle
+              ref={leftHandleRef}
+              data-testid="resize-left-panel"
+              data-collapsed={!uiStore.leftPanelOpen}
+              onMouseDown={e => uiStore.leftPanelOpen ? startResize('left', e) : undefined}
+              onClick={() => !uiStore.leftPanelOpen && uiStore.toggleLeftPanel()}
+              aria-label={uiStore.leftPanelOpen ? 'Drag to resize left panel' : 'Open left panel'}
+            >
+              {!uiStore.leftPanelOpen && <HandleChevron>{'\u203A'}</HandleChevron>}
+            </ResizeHandle>
+          </Tooltip>
 
           <ChartArea>
             <ChartAreaInner ref={chartInnerRef}>
@@ -489,16 +492,18 @@ export const App = observer(() => {
             </ChartAreaInner>
           </ChartArea>
 
-          <ResizeHandle
-            ref={rightHandleRef}
-            data-testid="resize-right-panel"
-            data-collapsed={!uiStore.rightPanelOpen}
-            onMouseDown={e => uiStore.rightPanelOpen ? startResize('right', e) : undefined}
-            onClick={() => !uiStore.rightPanelOpen && uiStore.toggleRightPanel()}
-            title={uiStore.rightPanelOpen ? 'Drag to resize right panel' : 'Open right panel'}
-          >
-            {!uiStore.rightPanelOpen && <HandleChevron>{'\u2039'}</HandleChevron>}
-          </ResizeHandle>
+          <Tooltip text={uiStore.rightPanelOpen ? 'Drag to resize' : 'Open panel'}>
+            <ResizeHandle
+              ref={rightHandleRef}
+              data-testid="resize-right-panel"
+              data-collapsed={!uiStore.rightPanelOpen}
+              onMouseDown={e => uiStore.rightPanelOpen ? startResize('right', e) : undefined}
+              onClick={() => !uiStore.rightPanelOpen && uiStore.toggleRightPanel()}
+              aria-label={uiStore.rightPanelOpen ? 'Drag to resize right panel' : 'Open right panel'}
+            >
+              {!uiStore.rightPanelOpen && <HandleChevron>{'\u2039'}</HandleChevron>}
+            </ResizeHandle>
+          </Tooltip>
 
           {uiStore.rightPanelOpen && (
             <RightPanelWrapper

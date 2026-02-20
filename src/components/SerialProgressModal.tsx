@@ -3,6 +3,7 @@ import styled from '@emotion/styled'
 import { useSerialStore, useUIStore, useSettingsStore, useAnalysisStore, useLogStore } from '../stores/RootStore'
 import { useComputed, useAutorun } from '../lib/mobx-reactivity'
 import { generateGetScript } from '../domain/utils/GetScriptGenerator'
+import { Tooltip } from './Tooltip'
 import { generateCliCommands } from '../domain/utils/CliExport'
 
 /* ---- Styled Components ---- */
@@ -320,7 +321,7 @@ export const SerialProgressModal = observer(() => {
         <ModalHeader>
           <ModalTitle>{title}</ModalTitle>
           {!isOperating && !isConnecting && (
-            <CloseButton onClick={handleClose} title="Close">&times;</CloseButton>
+            <Tooltip text="Close"><CloseButton onClick={handleClose} aria-label="Close">&times;</CloseButton></Tooltip>
           )}
         </ModalHeader>
 

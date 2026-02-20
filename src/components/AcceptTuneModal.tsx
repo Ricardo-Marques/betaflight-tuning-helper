@@ -2,6 +2,7 @@ import { observer } from 'mobx-react-lite'
 import styled from '@emotion/styled'
 import { useObservableState } from '../lib/mobx-reactivity'
 import { isSerialSupported } from '../serial/SerialPort'
+import { Tooltip } from './Tooltip'
 
 export interface TuneChangeDetail {
   displayName: string
@@ -301,7 +302,7 @@ export const AcceptTuneModal = observer(({
       <ModalContainer data-testid="accept-tune-modal">
         <ModalHeader>
           <ModalTitle>Accept Tune</ModalTitle>
-          <CloseButton onClick={onClose} title="Close">&times;</CloseButton>
+          <Tooltip text="Close"><CloseButton onClick={onClose} aria-label="Close">&times;</CloseButton></Tooltip>
         </ModalHeader>
         <ModalBody>
           {/* Changes table */}

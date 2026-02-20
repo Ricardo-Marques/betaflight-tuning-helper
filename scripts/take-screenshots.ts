@@ -134,19 +134,23 @@ async function uploadAndAnalyze(page: Page): Promise<void> {
 }
 
 async function enableDarkMode(page: Page): Promise<void> {
-  const btn = page.locator('button[aria-label="Toggle theme"]')
-  const tooltip = await btn.locator('.theme-tooltip').textContent()
-  if (tooltip?.trim() === 'Switch to dark mode') {
-    await btn.click()
+  const isDark = await page.evaluate(() => {
+    const root = (window as unknown as Record<string, { themeStore: { isDarkMode: boolean } }>).__rootStore
+    return root.themeStore.isDarkMode
+  })
+  if (!isDark) {
+    await page.locator('button[aria-label="Toggle theme"]').click()
     await waitForStable(page, 500)
   }
 }
 
 async function enableLightMode(page: Page): Promise<void> {
-  const btn = page.locator('button[aria-label="Toggle theme"]')
-  const tooltip = await btn.locator('.theme-tooltip').textContent()
-  if (tooltip?.trim() === 'Switch to light mode') {
-    await btn.click()
+  const isDark = await page.evaluate(() => {
+    const root = (window as unknown as Record<string, { themeStore: { isDarkMode: boolean } }>).__rootStore
+    return root.themeStore.isDarkMode
+  })
+  if (isDark) {
+    await page.locator('button[aria-label="Toggle theme"]').click()
     await waitForStable(page, 500)
   }
 }

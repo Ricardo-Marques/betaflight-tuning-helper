@@ -2,6 +2,7 @@ import { observer } from 'mobx-react-lite'
 import styled from '@emotion/styled'
 import { useFlashDownloadStore, useUIStore, useLogStore } from '../stores/RootStore'
 import { useAutorun } from '../lib/mobx-reactivity'
+import { Tooltip } from './Tooltip'
 
 /* ---- Styled Components ---- */
 
@@ -310,7 +311,7 @@ export const FlashDownloadModal = observer(() => {
       <ModalContainer>
         <ModalHeader>
           <ModalTitle>{title}</ModalTitle>
-          <CloseButton onClick={handleClose} title="Close">&times;</CloseButton>
+          <Tooltip text="Close"><CloseButton onClick={handleClose} aria-label="Close">&times;</CloseButton></Tooltip>
         </ModalHeader>
 
         <ModalBody>

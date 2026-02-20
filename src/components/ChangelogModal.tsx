@@ -3,6 +3,7 @@ import styled from '@emotion/styled'
 import { useUIStore } from '../stores/RootStore'
 import { useComputed } from '../lib/mobx-reactivity'
 import { markBuildAsSeen } from '../lib/changelog/lastSeenBuild'
+import { Tooltip } from './Tooltip'
 import changelogData from 'virtual:changelog'
 import type { ChangelogCategory, ChangelogEntry } from '../domain/types/Changelog'
 
@@ -204,7 +205,7 @@ export const ChangelogModal = observer(() => {
       <ModalContainer>
         <ModalHeader>
           <ModalTitle>What&apos;s New</ModalTitle>
-          <CloseButton onClick={uiStore.closeChangelog} title="Close">&times;</CloseButton>
+          <Tooltip text="Close"><CloseButton onClick={uiStore.closeChangelog} aria-label="Close">&times;</CloseButton></Tooltip>
         </ModalHeader>
         <ModalBody>
           {grouped.length === 0 ? (

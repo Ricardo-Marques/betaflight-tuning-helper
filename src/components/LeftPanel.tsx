@@ -3,6 +3,7 @@ import styled from '@emotion/styled'
 import { useLogStore, useAnalysisStore, useUIStore } from '../stores/RootStore'
 import { FileUpload } from './FileUpload'
 import { ProfileSelector } from './ProfileSelector'
+import { Tooltip } from './Tooltip'
 
 const PanelContainer = styled.div`
   height: 100%;
@@ -185,12 +186,14 @@ export const LeftPanel = observer(() => {
     <PanelContainer>
       <PanelHeader>
         <PanelTitle>Log Setup</PanelTitle>
-        <CollapseButton
-          onClick={uiStore.toggleLeftPanel}
-          title="Collapse panel"
-        >
-          {'\u2039'}
-        </CollapseButton>
+        <Tooltip text="Collapse panel">
+          <CollapseButton
+            onClick={uiStore.toggleLeftPanel}
+            aria-label="Collapse panel"
+          >
+            {'\u2039'}
+          </CollapseButton>
+        </Tooltip>
       </PanelHeader>
       <SectionBorder>
         <FileUpload />

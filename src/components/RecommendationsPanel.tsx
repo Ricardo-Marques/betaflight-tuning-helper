@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { observer } from 'mobx-react-lite'
 import styled from '@emotion/styled'
+import { Tooltip } from './Tooltip'
 import { useAnalysisStore, useLogStore, useUIStore, useSettingsStore } from '../stores/RootStore'
 import { Recommendation, DetectedIssue, ParameterChange } from '../domain/types/Analysis'
 import { PidProfile, FilterSettings } from '../domain/types/LogFrame'
@@ -416,37 +417,12 @@ const CliSuccessText = styled.span`
 `
 
 const AcceptTuneWrapper = styled.span`
-  position: relative;
   display: flex;
   flex: 1;
-
-  &:hover > [data-tooltip] {
-    display: block;
-  }
 
   > button {
     width: 100%;
   }
-`
-
-const AcceptTuneTooltip = styled.div`
-  display: none;
-  position: absolute;
-  right: 0;
-  top: calc(100% + 6px);
-  width: 200px;
-  padding: 0.5rem;
-  border-radius: 0.375rem;
-  font-size: 0.6875rem;
-  font-weight: 400;
-  line-height: 1.4;
-  color: ${p => p.theme.colors.text.primary};
-  background-color: ${p => p.theme.colors.chart.tooltipBg};
-  border: 1px solid ${p => p.theme.colors.chart.tooltipBorder};
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  z-index: 10;
-  pointer-events: none;
-  white-space: normal;
 `
 
 const IssueList = styled.div`
@@ -1065,21 +1041,22 @@ export const RecommendationsPanel = observer(() => {
                 {tuneAccepted ? (
                   <CliSuccessText>Accepted!</CliSuccessText>
                 ) : (
-                  <AcceptTuneWrapper>
-                    <CliActionButton
-                      variant="accept"
-                      disabled={!settingsStore.hasImportedSettings}
-                      onClick={() => guardPendingSettings() || setShowAcceptModal(true)}
-                      data-testid="accept-tune-button"
-                    >
-                      Accept tune
-                    </CliActionButton>
-                    <AcceptTuneTooltip data-tooltip>
-                      {settingsStore.hasImportedSettings
-                        ? 'Apply recommended values as your new baseline'
-                        : 'Import your current settings first so recommendations can be calculated accurately'}
-                    </AcceptTuneTooltip>
-                  </AcceptTuneWrapper>
+                  <Tooltip
+                    text={settingsStore.hasImportedSettings
+                      ? 'Apply recommended values as your new baseline'
+                      : 'Import your current settings first so recommendations can be calculated accurately'}
+                  >
+                    <AcceptTuneWrapper>
+                      <CliActionButton
+                        variant="accept"
+                        disabled={!settingsStore.hasImportedSettings}
+                        onClick={() => guardPendingSettings() || setShowAcceptModal(true)}
+                        data-testid="accept-tune-button"
+                      >
+                        Accept tune
+                      </CliActionButton>
+                    </AcceptTuneWrapper>
+                  </Tooltip>
                 )}
               </CliBarActions>
               {hardwareRecCount > 0 && (
