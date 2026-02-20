@@ -116,15 +116,26 @@ export function deduplicateRecommendations(recommendations: Recommendation[]): R
 
   // Phase 3: Reconstruct recommendations
   const result: Recommendation[] = []
-  const titleSeen = new Set<string>()
+  const titleSeen = new Map<string, number>()
 
   for (let i = 0; i < recommendations.length; i++) {
     const rec = recommendations[i]
 
-    // Title-only recs (no changes) - dedup by title
+    // Title-only recs (no changes) - dedup by title, merging issue IDs
     if (rec.changes.length === 0) {
-      if (titleSeen.has(rec.title)) continue
-      titleSeen.add(rec.title)
+      const existingIdx = titleSeen.get(rec.title)
+      if (existingIdx !== undefined) {
+        const surviving = result[existingIdx]
+        const related = new Set(surviving.relatedIssueIds ?? [])
+        related.add(rec.issueId)
+        if (rec.relatedIssueIds) {
+          for (const id of rec.relatedIssueIds) related.add(id)
+        }
+        related.delete(surviving.issueId)
+        surviving.relatedIssueIds = Array.from(related)
+        continue
+      }
+      titleSeen.set(rec.title, result.length)
       result.push(rec)
       continue
     }
