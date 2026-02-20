@@ -23,7 +23,7 @@ This app bridges that gap. Plug in via USB, and it will:
 - **Detect specific issues** (propwash, bounceback, noise, tracking errors, motor saturation, etc.)
 - **Recommend parameter changes** with rationale, risk assessment, and confidence scores
 - **Read and write settings to your FC** — import your current values and apply tuning changes directly
-- **Speak Betaflight** — all output uses 4.4/4.5 slider terminology, ready to apply in the Configurator
+- **Speak Betaflight** — all output uses Betaflight's simplified tuning parameters, ready to write directly to your FC via USB
 
 Everything runs 100% client-side. No data leaves your browser, no account required.
 
@@ -51,24 +51,37 @@ Everything runs 100% client-side. No data leaves your browser, no account requir
 
 **Manual upload** — Prefer to work with files? Drop a `.bbl`/`.bfl` file, or a `.txt`/`.csv` export from Blackbox Explorer. Binary BBL parsing uses a native TypeScript parser (version-agnostic, no WASM dependency). Parsed in a Web Worker so the UI stays responsive. Handles 10MB+ logs.
 
-**8 detection rules** — The rule engine analyzes overlapping time windows across roll, pitch, and yaw:
+**18 detection rules** — The rule engine analyzes overlapping time windows across roll, pitch, and yaw:
 
-| Rule                      | Detects                                       | Key recommendations           |
-| ------------------------- | --------------------------------------------- | ----------------------------- |
-| Bounceback                | Overshoot after stick release                 | Adjust D / D_min              |
-| Propwash                  | Oscillations during throttle drops            | Increase D_min, dynamic idle  |
-| Wobble                    | Mid-throttle oscillations without stick input | Increase P / FF or filtering  |
-| Tracking Quality          | Setpoint-to-gyro tracking error               | Adjust P, I, or FF            |
-| Motor Saturation          | Motors clipping at 100%                       | Reduce master multiplier or P |
-| D-term Noise              | Excessive D-term activity                     | Increase D-term filtering     |
-| Gyro Noise                | High gyro noise floor                         | Increase gyro filtering       |
-| High-Throttle Oscillation | Oscillations at high throttle (TPA)           | Adjust TPA rate/breakpoint    |
+| Rule | Detects | Key recommendations |
+| --- | --- | --- |
+| **Tuning** | | |
+| Bounceback | Overshoot after stick release | Adjust D_min, FF transition, P/D balance |
+| Propwash | Oscillations during throttle drops | Increase D_min, dynamic idle, RPM filter |
+| Wobble | Mid-throttle oscillations without stick input | Frequency-dependent: P/D balance, filtering, or I-term relax |
+| Tracking Quality | Setpoint-to-gyro tracking error | Adjust P, I, D, or master multiplier per error type |
+| Motor Saturation | Motors clipping at 100% | Reduce master multiplier, increase TPA |
+| D-term Noise | Excessive D-term activity | Increase D-term filtering, reduce D gain |
+| Gyro Noise | High gyro noise floor | RPM filter, gyro filtering, dynamic notch |
+| High-Throttle Oscillation | Oscillations at high throttle | Adjust TPA rate/breakpoint |
+| Feedforward Noise | RC link noise leaking through FF | Increase FF jitter/smooth factor |
+| **Hardware** | | |
+| Frame Resonance | Fixed-frequency structural vibration | Target dynamic notch, inspect frame |
+| Bearing Noise | RPM-tracking spectral peaks | Inspect bearings, shafts, prop balance |
+| Filter Mismatch | Filter cutoff vs. actual noise mismatch | Raise or lower filter cutoffs |
+| Electrical Noise | ESC/wiring interference at idle | Check grounding, shielding, ESC noise |
+| CG Offset | Diagonal motor pair imbalance | Reposition battery / redistribute weight |
+| Motor Health | Single motor working significantly harder | Inspect motor, prop, bearings |
+| ESC Desync | Sudden single-motor spikes | Check ESC timing, motor/ESC compatibility |
+| Voltage Sag | Battery degradation across flight | Replace or upgrade battery |
+| **Meta-analysis** | | |
+| Temporal Pattern | Issues worsening or appearing suddenly | Thermal management or hardware inspection |
 
-**Smart deduplication** — Issues are collapsed per type+axis (one entry regardless of how many windows detected it). Recommendations are deduplicated by parameter+axis so you never see two items targeting the same slider.
+**Smart deduplication** — Issues are collapsed per type+axis (one entry regardless of how many windows detected it). Recommendations are deduplicated by parameter+axis so you never see two items for the same setting.
 
-**Interactive chart** — Gyro, setpoint, PID terms, and motor outputs with per-axis selection, layer toggles, and zoom. Downsampled to 2000 points for smooth rendering.
+**Interactive chart** — Gyro, setpoint, PID terms, and motor outputs with per-axis selection, layer toggles, and zoom. Adaptively downsampled for smooth rendering.
 
-**Betaflight-native output** — All recommendations use Betaflight 4.4/4.5 slider terminology with specific parameter changes, rationale, risk assessment, and confidence scores.
+**Betaflight-native output** — All recommendations use Betaflight's simplified tuning parameters with specific changes, rationale, risk assessment, and confidence scores.
 
 ## How to Use
 

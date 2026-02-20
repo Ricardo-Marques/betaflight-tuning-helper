@@ -215,7 +215,7 @@ export type RecommendationType =
   | 'hardwareCheck'
 
 /**
- * Specific parameter change in Betaflight slider language
+ * Specific parameter change using Betaflight simplified tuning parameters
  */
 export interface ParameterChange {
   parameter: BetaflightParameter
@@ -226,7 +226,7 @@ export interface ParameterChange {
 }
 
 export type BetaflightParameter =
-  // PID sliders (0-200, default 100)
+  // PID gain multipliers (0-200, default 100)
   | 'pidMasterMultiplier'
   | 'pidPGain'
   | 'pidIGain'
@@ -234,7 +234,7 @@ export type BetaflightParameter =
   | 'pidDMinGain'
   | 'pidFeedforward'
 
-  // Filter sliders
+  // Filter multipliers
   | 'gyroFilterMultiplier' // (0-200, default 100)
   | 'dtermFilterMultiplier' // (0-200, default 100)
 

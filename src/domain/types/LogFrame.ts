@@ -104,7 +104,7 @@ export interface LogMetadata {
 }
 
 export interface PidProfile {
-  // PID values (actual values, not slider positions)
+  // PID values (actual values, not simplified tuning multipliers)
   rollP?: number
   rollI?: number
   rollD?: number

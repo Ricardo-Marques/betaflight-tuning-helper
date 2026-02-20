@@ -32,7 +32,7 @@ src/
   domain/
     blackbox/                     # Native TypeScript BBL/BFL binary parser
     engine/RuleEngine.ts          # Orchestrates analysis: windowing, dedup, recommendations
-    rules/                        # 8 self-contained detection rules
+    rules/                        # 18 detection rules (tuning + hardware + meta-analysis)
     types/                        # LogFrame, Analysis, TuningRule interfaces
     utils/                        # FFT, signal analysis algorithms
   stores/                         # MobX stores (LogStore, AnalysisStore, UIStore)
