@@ -167,6 +167,9 @@ export const TrackingQualityRule: TuningRule = {
         continue
       }
 
+      // Only process issues detected by this rule (they have tracking-specific metrics)
+      if (issue.metrics.normalizedError === undefined) continue
+
       const existing = issuesByAxis.get(issue.axis) || []
       existing.push(issue)
       issuesByAxis.set(issue.axis, existing)

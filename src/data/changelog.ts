@@ -9,6 +9,7 @@ import type { ChangelogEntry } from '../domain/types/Changelog'
  */
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   // 2026-02-20
+  { hash: '06a8493', date: '2026-02-20', message: 'Filter recommendations no longer misleadingly say "on roll" or "on pitch" — filters are global', category: 'fix' },
   { hash: 'cc60bca', date: '2026-02-20', message: 'Limit issue occurrences to the 5 most confident, reducing chart clutter on busy logs', category: 'improvement' },
 
   // 2026-02-19

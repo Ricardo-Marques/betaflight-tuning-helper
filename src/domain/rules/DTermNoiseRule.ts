@@ -91,29 +91,33 @@ export const DTermNoiseRule: TuningRule = {
     for (const issue of issues) {
       if (issue.type !== 'dtermNoise') continue
 
-      recommendations.push({
-        id: generateId(),
-        issueId: issue.id,
-        type: 'adjustFiltering',
-        priority: 8,
-        confidence: issue.confidence,
-        title: 'Increase D-term filtering',
-        description: 'D-term is amplifying high-frequency noise - lower the D-term filter cutoff',
-        rationale:
-          'The D-term differentiates the gyro signal, amplifying high-frequency noise. Lowering the D-term filter multiplier lowers the cutoff frequency, blocking more noise before it reaches the motors.',
-        risks: [
-          'Adds phase delay to the D-term response',
-          'May reduce damping effectiveness at higher frequencies',
-        ],
-        changes: [
-          {
-            parameter: 'dtermFilterMultiplier',
-            recommendedChange: '-10',
-            explanation: 'Lower D-term filter multiplier to block more high-frequency noise',
-          },
-        ],
-        expectedImprovement: 'Quieter motors, reduced D-term noise without losing control',
-      })
+      // Increase D-term filtering (gated on severity — lowpass is the bluntest tool)
+      if (issue.severity !== 'low') {
+        const lowpassChange = issue.severity === 'high' ? '-10' : '-5'
+        recommendations.push({
+          id: generateId(),
+          issueId: issue.id,
+          type: 'adjustFiltering',
+          priority: 6,
+          confidence: issue.confidence,
+          title: 'Increase D-term filtering',
+          description: 'D-term is amplifying high-frequency noise - lower the D-term filter cutoff',
+          rationale:
+            'The D-term differentiates the gyro signal, amplifying high-frequency noise. Lowering the D-term filter multiplier lowers the cutoff frequency, blocking more noise before it reaches the motors.',
+          risks: [
+            'Adds phase delay to the D-term response',
+            'May reduce damping effectiveness at higher frequencies',
+          ],
+          changes: [
+            {
+              parameter: 'dtermFilterMultiplier',
+              recommendedChange: lowpassChange,
+              explanation: 'Lower D-term filter multiplier to block more high-frequency noise',
+            },
+          ],
+          expectedImprovement: 'Quieter motors, reduced D-term noise without losing control',
+        })
+      }
 
       recommendations.push({
         id: generateId(),
@@ -140,15 +144,15 @@ export const DTermNoiseRule: TuningRule = {
         expectedImprovement: 'Reduced motor noise and heat from D-term',
       })
 
-      // RPM filter-aware recommendation
+      // RPM filter recommendation (highest priority — least latency)
       if (rpmHarmonics !== undefined && rpmHarmonics >= 3) {
-        // RPM already enabled at 3 harmonics — skip "verify" rec
+        // RPM already enabled at 3 harmonics — skip
       } else if (rpmHarmonics === 0 || rpmHarmonics === undefined) {
         recommendations.push({
           id: generateId(),
           issueId: issue.id,
           type: 'adjustRPMFilter',
-          priority: 6,
+          priority: 8,
           confidence: issue.confidence * 0.8,
           title: 'Enable RPM filter',
           description: 'RPM filter is not enabled — it removes motor noise at source',
@@ -172,7 +176,7 @@ export const DTermNoiseRule: TuningRule = {
           id: generateId(),
           issueId: issue.id,
           type: 'adjustRPMFilter',
-          priority: 6,
+          priority: 8,
           confidence: issue.confidence * 0.8,
           title: 'Increase RPM filter harmonics',
           description: `RPM filter has ${rpmHarmonics} harmonic(s) — increase to 3 for better coverage`,

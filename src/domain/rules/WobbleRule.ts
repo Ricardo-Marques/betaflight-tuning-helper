@@ -1,6 +1,6 @@
 import { TuningRule } from '../types/TuningRule'
 import { AnalysisWindow, DetectedIssue, Recommendation } from '../types/Analysis'
-import { LogFrame } from '../types/LogFrame'
+import { LogFrame, LogMetadata } from '../types/LogFrame'
 import { QuadProfile } from '../types/QuadProfile'
 import { detectMidThrottleWobble, deriveSampleRate, extractAxisData } from '../utils/SignalAnalysis'
 import { calculateStdDev, calculateRMS } from '../utils/FrequencyAnalysis'
@@ -101,7 +101,7 @@ export const WobbleRule: TuningRule = {
     return issues
   },
 
-  recommend: (issues: DetectedIssue[], _frames: LogFrame[]): Recommendation[] => {
+  recommend: (issues: DetectedIssue[], _frames: LogFrame[], _profile?: QuadProfile, metadata?: LogMetadata): Recommendation[] => {
     const recommendations: Recommendation[] = []
 
     for (const issue of issues) {
@@ -112,6 +112,9 @@ export const WobbleRule: TuningRule = {
       ) {
         continue
       }
+
+      // Only process issues detected by this rule (they have wobble-specific metrics)
+      if (issue.metrics.dominantBand === undefined) continue
 
       const amplitude = issue.metrics.amplitude || 0
       const band = issue.metrics.dominantBand
@@ -180,17 +183,74 @@ export const WobbleRule: TuningRule = {
         }
       } else if (band === 'high') {
         // High-frequency noise (> 80 Hz) - filtering or D-term issue
-        recommendations.push(
-          {
+        const rpmHarmonics = metadata?.filterSettings?.rpmFilterHarmonics
+
+        // RPM filter recommendation (highest priority — least latency)
+        if (rpmHarmonics !== undefined && rpmHarmonics >= 3) {
+          // RPM already enabled at 3 harmonics — skip
+        } else if (rpmHarmonics === 0 || rpmHarmonics === undefined) {
+          recommendations.push({
+            id: generateId(),
+            issueId: issue.id,
+            type: 'adjustRPMFilter',
+            priority: 8,
+            confidence: issue.confidence * 0.8,
+            title: 'Enable RPM filter',
+            description: 'RPM filter is not enabled — it removes motor noise at source',
+            rationale:
+              'The RPM filter uses motor telemetry to precisely notch out motor noise harmonics. Enabling it with 3 harmonics covers the fundamental and first two overtones.',
+            risks: [
+              'Requires bidirectional DShot and ESC telemetry',
+              'Too many harmonics can add latency',
+            ],
+            changes: [
+              {
+                parameter: 'rpmFilterHarmonics',
+                recommendedChange: '3',
+                explanation: 'Enable RPM filter with 3 harmonics for motor noise removal',
+              },
+            ],
+            expectedImprovement: 'Precise motor noise removal, allowing lower general filtering',
+          })
+        } else {
+          recommendations.push({
+            id: generateId(),
+            issueId: issue.id,
+            type: 'adjustRPMFilter',
+            priority: 8,
+            confidence: issue.confidence * 0.8,
+            title: 'Increase RPM filter harmonics',
+            description: `RPM filter has ${rpmHarmonics} harmonic(s) — increase to 3 for better coverage`,
+            rationale:
+              'The RPM filter uses motor telemetry to precisely notch out motor noise harmonics. With 3 harmonics enabled, it covers the fundamental and first two overtones.',
+            risks: [
+              'More harmonics add slight computation overhead',
+              'Marginal latency increase',
+            ],
+            changes: [
+              {
+                parameter: 'rpmFilterHarmonics',
+                recommendedChange: '3',
+                explanation: 'Set RPM filter to 3 harmonics for comprehensive motor noise removal',
+              },
+            ],
+            expectedImprovement: 'Better motor noise removal at higher harmonics',
+          })
+        }
+
+        // Gyro lowpass only (gated on severity — D-term side handled by DTermNoiseRule)
+        if (issue.severity !== 'low') {
+          const lowpassChange = issue.severity === 'high' ? '-10' : '-5'
+          recommendations.push({
             id: generateId(),
             issueId: issue.id,
             type: 'adjustFiltering',
-            priority: 9,
-            confidence: 0.90,
-            title: 'Increase filtering',
-            description: 'High-frequency noise indicates insufficient filtering',
+            priority: 7,
+            confidence: issue.confidence,
+            title: 'Increase gyro filtering',
+            description: 'High-frequency noise indicates insufficient gyro filtering',
             rationale:
-              'Gyro or D-term noise above 80 Hz serves no control purpose and wastes motor/battery. More filtering removes it.',
+              'Gyro noise above 80 Hz serves no control purpose and wastes motor/battery. Lowering the gyro filter multiplier blocks more noise before it reaches PIDs.',
             risks: [
               'Excessive filtering adds delay, reducing responsiveness',
               'May cause "mushy" stick feel if overdone',
@@ -198,42 +258,38 @@ export const WobbleRule: TuningRule = {
             changes: [
               {
                 parameter: 'gyroFilterMultiplier',
-                recommendedChange: '-10',
+                recommendedChange: lowpassChange,
                 explanation: 'Lower gyro filter multiplier to reduce high-frequency noise input',
-              },
-              {
-                parameter: 'dtermFilterMultiplier',
-                recommendedChange: '-10',
-                explanation: 'Lower D-term filter multiplier to prevent noise amplification',
               },
             ],
             expectedImprovement: 'Smoother motors, reduced electrical noise, cooler ESCs',
-          },
-          {
-            id: generateId(),
-            issueId: issue.id,
-            type: 'decreasePID',
-            priority: 7,
-            confidence: 0.75,
-            title: `Consider reducing D on ${issue.axis}`,
-            description: 'D-term amplifies high-frequency noise',
-            rationale:
-              'If filtering is already high, D-term may be amplifying remaining noise. Slight reduction can help.',
-            risks: [
-              'May reduce damping effectiveness',
-              'Could worsen propwash or bounceback',
-            ],
-            changes: [
-              {
-                parameter: 'pidDGain',
-                recommendedChange: '-0.1',
-                axis: issue.axis,
-                explanation: 'Small D reduction to limit noise amplification',
-              },
-            ],
-            expectedImprovement: 'Quieter motors without sacrificing much damping',
-          }
-        )
+          })
+        }
+
+        recommendations.push({
+          id: generateId(),
+          issueId: issue.id,
+          type: 'decreasePID',
+          priority: 7,
+          confidence: issue.confidence * 0.8,
+          title: `Consider reducing D on ${issue.axis}`,
+          description: 'D-term amplifies high-frequency noise',
+          rationale:
+            'If filtering is already high, D-term may be amplifying remaining noise. Slight reduction can help.',
+          risks: [
+            'May reduce damping effectiveness',
+            'Could worsen propwash or bounceback',
+          ],
+          changes: [
+            {
+              parameter: 'pidDGain',
+              recommendedChange: '-0.1',
+              axis: issue.axis,
+              explanation: 'Small D reduction to limit noise amplification',
+            },
+          ],
+          expectedImprovement: 'Quieter motors without sacrificing much damping',
+        })
       } else {
         // Mid-frequency wobble (20-80 Hz) - likely P oscillation
         // 20-50Hz oscillation without stick input is the classic P-too-high signature.

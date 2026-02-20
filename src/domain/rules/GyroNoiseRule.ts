@@ -58,7 +58,7 @@ export const GyroNoiseRule: TuningRule = {
     } else if (gyroRMS > 6 * scale) {
       severity = 'low'
     } else {
-      severity = 'low'
+      return []
     }
 
     const confidence = Math.min(0.95, 0.6 + gyroRMS * 0.02 + highBandRatio * 0.2)
@@ -80,8 +80,9 @@ export const GyroNoiseRule: TuningRule = {
     return issues
   },
 
-  recommend: (issues: DetectedIssue[], _frames: LogFrame[], profile?: QuadProfile, _metadata?: LogMetadata): Recommendation[] => {
+  recommend: (issues: DetectedIssue[], _frames: LogFrame[], profile?: QuadProfile, metadata?: LogMetadata): Recommendation[] => {
     const recommendations: Recommendation[] = []
+    const rpmHarmonics = metadata?.filterSettings?.rpmFilterHarmonics
 
     for (const issue of issues) {
       if (issue.type !== 'gyroNoise') continue
@@ -109,30 +110,86 @@ export const GyroNoiseRule: TuningRule = {
         })
       }
 
-      // Increase gyro filtering
-      recommendations.push({
-        id: generateId(),
-        issueId: issue.id,
-        type: 'adjustFiltering',
-        priority: 8,
-        confidence: issue.confidence,
-        title: 'Increase gyro filtering',
-        description: 'Excessive gyro noise floor - lower the gyro filter cutoff for stronger filtering',
-        rationale:
-          'Gyro noise passes through to PID calculations, causing motor noise and heat. Lowering the filter multiplier lowers the cutoff frequency, blocking more noise before it affects PIDs.',
-        risks: [
-          'Adds phase delay, reducing responsiveness',
-          'May cause "mushy" feel if overdone',
-        ],
-        changes: [
-          {
-            parameter: 'gyroFilterMultiplier',
-            recommendedChange: '-10',
-            explanation: 'Lower gyro filter multiplier to block more high-frequency noise',
-          },
-        ],
-        expectedImprovement: 'Cleaner gyro signal, quieter motors, reduced heat',
-      })
+      // RPM filter recommendation (highest priority — least latency)
+      if (rpmHarmonics !== undefined && rpmHarmonics >= 3) {
+        // RPM already enabled at 3 harmonics — skip
+      } else if (rpmHarmonics === 0 || rpmHarmonics === undefined) {
+        recommendations.push({
+          id: generateId(),
+          issueId: issue.id,
+          type: 'adjustRPMFilter',
+          priority: 8,
+          confidence: issue.confidence * 0.8,
+          title: 'Enable RPM filter',
+          description: 'RPM filter is not enabled — it removes motor noise at source',
+          rationale:
+            'The RPM filter uses motor telemetry to precisely notch out motor noise harmonics. Enabling it with 3 harmonics covers the fundamental and first two overtones.',
+          risks: [
+            'Requires bidirectional DShot and ESC telemetry',
+            'Too many harmonics can add latency',
+          ],
+          changes: [
+            {
+              parameter: 'rpmFilterHarmonics',
+              recommendedChange: '3',
+              explanation: 'Enable RPM filter with 3 harmonics for motor noise removal',
+            },
+          ],
+          expectedImprovement: 'Precise motor noise removal, allowing lower general filtering',
+        })
+      } else {
+        recommendations.push({
+          id: generateId(),
+          issueId: issue.id,
+          type: 'adjustRPMFilter',
+          priority: 8,
+          confidence: issue.confidence * 0.8,
+          title: 'Increase RPM filter harmonics',
+          description: `RPM filter has ${rpmHarmonics} harmonic(s) — increase to 3 for better coverage`,
+          rationale:
+            'The RPM filter uses motor telemetry to precisely notch out motor noise harmonics. With 3 harmonics enabled, it covers the fundamental and first two overtones.',
+          risks: [
+            'More harmonics add slight computation overhead',
+            'Marginal latency increase',
+          ],
+          changes: [
+            {
+              parameter: 'rpmFilterHarmonics',
+              recommendedChange: '3',
+              explanation: 'Set RPM filter to 3 harmonics for comprehensive motor noise removal',
+            },
+          ],
+          expectedImprovement: 'Better motor noise removal at higher harmonics',
+        })
+      }
+
+      // Increase gyro filtering (gated on severity — lowpass is the bluntest tool)
+      if (issue.severity !== 'low') {
+        const lowpassChange = issue.severity === 'high' ? '-10' : '-5'
+        recommendations.push({
+          id: generateId(),
+          issueId: issue.id,
+          type: 'adjustFiltering',
+          priority: 6,
+          confidence: issue.confidence,
+          title: 'Increase gyro filtering',
+          description: 'Excessive gyro noise floor - lower the gyro filter cutoff for stronger filtering',
+          rationale:
+            'Gyro noise passes through to PID calculations, causing motor noise and heat. Lowering the filter multiplier lowers the cutoff frequency, blocking more noise before it affects PIDs.',
+          risks: [
+            'Adds phase delay, reducing responsiveness',
+            'May cause "mushy" feel if overdone',
+          ],
+          changes: [
+            {
+              parameter: 'gyroFilterMultiplier',
+              recommendedChange: lowpassChange,
+              explanation: 'Lower gyro filter multiplier to block more high-frequency noise',
+            },
+          ],
+          expectedImprovement: 'Cleaner gyro signal, quieter motors, reduced heat',
+        })
+      }
 
       // Adjust dynamic notch
       recommendations.push({
