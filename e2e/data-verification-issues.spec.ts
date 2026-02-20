@@ -20,7 +20,10 @@ test.describe('Data Verification — Issues', () => {
     const issues = await extractIssues(page)
     expect(issues.length).toBeGreaterThan(0)
     for (const issue of issues) {
-      expect(['roll', 'pitch', 'yaw']).toContain(issue.axis)
+      // Axis text is either a simple name or a cross-axis description mentioning axes
+      const isSimpleAxis = ['roll', 'pitch', 'yaw'].includes(issue.axis)
+      const isCrossAxisDesc = /roll|pitch|yaw|all three axes/.test(issue.axis)
+      expect(isSimpleAxis || isCrossAxisDesc).toBe(true)
     }
   })
 
@@ -37,7 +40,7 @@ test.describe('Data Verification — Issues', () => {
     for (const issue of issues) {
       if (issue.frequency !== undefined) {
         expect(issue.frequency).toBeGreaterThan(0)
-        expect(issue.frequency).toBeLessThan(500) // Nyquist limit for 1kHz sampling
+        expect(issue.frequency).toBeLessThan(1000) // Nyquist limit for gyro sampling (up to 8kHz)
       }
       if (issue.amplitude !== undefined) {
         expect(issue.amplitude).toBeGreaterThan(0)
@@ -52,9 +55,12 @@ test.describe('Data Verification — Issues', () => {
 
   test('both roll and pitch axes have detected issues', async ({ page }) => {
     const issues = await extractIssues(page)
-    const axes = new Set(issues.map(i => i.axis))
-    expect(axes.has('roll')).toBe(true)
-    expect(axes.has('pitch')).toBe(true)
+    // Axis text can be a simple name or a cross-axis description mentioning axes
+    const axisTexts = issues.map(i => i.axis)
+    const hasRoll = axisTexts.some(a => a === 'roll' || /roll/.test(a))
+    const hasPitch = axisTexts.some(a => a === 'pitch' || /pitch/.test(a))
+    expect(hasRoll).toBe(true)
+    expect(hasPitch).toBe(true)
   })
 
   test('multi-occurrence issue count matches navigator', async ({ page }) => {
@@ -63,13 +69,15 @@ test.describe('Data Verification — Issues', () => {
     const cards = page.locator('[data-issue-id]')
     const count = await cards.count()
 
+    const MAX_DISPLAYED = 5 // matches MAX_DISPLAYED_OCCURRENCES in IssueDeduplication.ts
+
     for (let i = 0; i < count; i++) {
       const card = cards.nth(i)
       const desc = await card.locator('h4').first().textContent()
       const match = desc?.match(/\(×(\d+)\)/)
       if (!match) continue
 
-      const expectedCount = parseInt(match[1])
+      const totalCount = parseInt(match[1])
 
       // This card should have an occurrence navigator showing "1/N"
       const counter = card.locator('text=/\\d+\\/\\d+/')
@@ -78,7 +86,9 @@ test.describe('Data Verification — Issues', () => {
       const counterText = await counter.textContent()
       const navMatch = counterText!.match(/^\d+\/(\d+)$/)
       expect(navMatch).not.toBeNull()
-      expect(parseInt(navMatch![1])).toBe(expectedCount)
+      // Navigator shows min(totalCount, MAX_DISPLAYED) navigable occurrences
+      const expectedNav = Math.min(totalCount, MAX_DISPLAYED)
+      expect(parseInt(navMatch![1])).toBe(expectedNav)
     }
   })
 

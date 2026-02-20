@@ -18,6 +18,7 @@ export const VALID_CLI_PARAMS = new Set([
   'dyn_notch_count', 'dyn_notch_q',
   'dyn_notch_min_hz', 'dyn_notch_max_hz',
   'rpm_filter_harmonics', 'rpm_filter_min_hz',
+  'feedforward_transition', 'feedforward_jitter_factor', 'feedforward_smooth_factor',
   'dshot_idle_value',
   'tpa_rate', 'tpa_breakpoint',
   'iterm_relax_cutoff',
@@ -38,6 +39,8 @@ export const VALID_CHART_LABELS = new Set([
   'Gyro noise',
   // DTermNoiseRule
   'D-term noise',
+  // FeedforwardNoiseRule
+  'FF noise',
   // MotorSaturationRule
   'Motor saturation', 'CG offset',
   // HighThrottleOscillationRule
@@ -58,6 +61,9 @@ export const VALID_CHART_LABELS = new Set([
   'ESC desync',
   // VoltageSagRule
   'Voltage sag',
+  // FilterNoiseComparisonRule
+  'Gyro over-filtering', 'Gyro under-filtering',
+  'D-term over-filtering', 'D-term under-filtering',
 ])
 
 /** Extract the text of a <p> containing a given label from an issue card */
