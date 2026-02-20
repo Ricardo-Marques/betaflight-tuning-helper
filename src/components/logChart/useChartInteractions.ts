@@ -394,7 +394,9 @@ export function useChartInteractions(
         let html = `<div style="font-weight:500;margin-bottom:2px;color:${theme.colors.text.primary}">${timeFmt}</div>`
         for (const entry of payload) {
           if (entry.value == null) continue
-          const val = typeof entry.value === 'number' ? entry.value.toFixed(1) : String(entry.value)
+          const val = typeof entry.value === 'number'
+            ? (Number.isInteger(entry.value) ? String(entry.value) : entry.value.toFixed(1))
+            : String(entry.value)
           html += `<div style="display:flex;align-items:center;gap:6px;color:${entry.color}"><span style="display:inline-block;width:10px;height:3px;background:${entry.color};border-radius:1px;flex-shrink:0"></span>${entry.name} : ${val}</div>`
         }
         dtEl.innerHTML = html
