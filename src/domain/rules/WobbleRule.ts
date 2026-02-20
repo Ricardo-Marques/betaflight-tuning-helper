@@ -50,7 +50,7 @@ export const WobbleRule: TuningRule = {
     } else if (metrics.amplitude > 15 * scale * yawMultiplier) {
       severity = 'low'
     } else {
-      severity = 'low'
+      return []
     }
 
     // Determine issue type based on frequency band

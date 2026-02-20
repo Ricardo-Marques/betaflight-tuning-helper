@@ -38,7 +38,7 @@ export const MotorSaturationRule: TuningRule = {
       } else if (metrics.saturationPercentage > 8 * scale) {
         severity = 'low'
       } else {
-        severity = 'low'
+        return []
       }
 
       const confidence = Math.min(0.95, 0.7 + metrics.saturationPercentage * 0.005)

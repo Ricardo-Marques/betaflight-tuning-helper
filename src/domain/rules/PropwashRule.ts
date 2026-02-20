@@ -50,7 +50,7 @@ export const PropwashRule: TuningRule = {
     } else if (metrics.amplitude > 18 * scale) {
       severity = 'low'
     } else {
-      severity = 'low'
+      return []
     }
 
     // Higher confidence for typical propwash frequency range (10-30 Hz)

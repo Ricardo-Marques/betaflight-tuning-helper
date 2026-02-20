@@ -44,7 +44,7 @@ export const BouncebackRule: TuningRule = {
     } else if (metrics.overshoot > 15 * scale || metrics.settlingTime > 75 * scale) {
       severity = 'low'
     } else {
-      severity = 'low'
+      return []
     }
 
     // Calculate confidence based on signal quality

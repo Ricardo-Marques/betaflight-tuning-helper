@@ -56,9 +56,9 @@ export const DTermNoiseRule: TuningRule = {
     // Classify severity based on D-term high-frequency energy ratio
     // This is independent of D gain setting, unlike the old dToGyroRatio
     let severity: 'low' | 'medium' | 'high'
-    if (dtermHighRatio > 0.7 / scale && dtermRMS > 5) {
+    if (dtermHighRatio > 0.7 * scale && dtermRMS > 5) {
       severity = 'high'
-    } else if (dtermHighRatio > 0.55 / scale || (dtermHighRatio > 0.4 / scale && dtermHighRatio > gyroHighRatio * 1.5)) {
+    } else if (dtermHighRatio > 0.55 * scale || (dtermHighRatio > 0.4 * scale && dtermHighRatio > gyroHighRatio * 1.5)) {
       severity = 'medium'
     } else {
       severity = 'low'
