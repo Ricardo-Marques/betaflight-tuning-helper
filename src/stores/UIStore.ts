@@ -43,6 +43,8 @@ export class UIStore {
   rightPanelWidth: number = DEFAULT_PANEL_WIDTH
   activeRightTab: RightPanelTab = 'summary'
   changelogOpen: boolean = false
+  glossaryOpen: boolean = false
+  glossaryTargetTerm: string | null = null
   settingsImportOpen: boolean = false
   settingsReviewOpen: boolean = false
   serialProgressOpen: boolean = false
@@ -200,6 +202,16 @@ export class UIStore {
     this.changelogOpen = false
   }
 
+  openGlossary = (termId?: string): void => {
+    this.glossaryTargetTerm = termId ?? null
+    this.glossaryOpen = true
+  }
+
+  closeGlossary = (): void => {
+    this.glossaryOpen = false
+    this.glossaryTargetTerm = null
+  }
+
   openSettingsImport = (): void => {
     this.settingsImportOpen = true
   }
@@ -315,5 +327,7 @@ export class UIStore {
     this.activeRightTab = 'summary'
     this.mobileActiveTab = 'upload'
     this.axisHighlight = null
+    this.glossaryOpen = false
+    this.glossaryTargetTerm = null
   }
 }

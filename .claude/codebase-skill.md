@@ -47,6 +47,7 @@ npx tsx scripts/take-screenshots.ts composite  # Re-composite from existing raws
 | Add/change quad profile thresholds    | `src/domain/profiles/quadProfiles.ts`               |
 | Add/change issue descriptions on chart| `src/domain/utils/issueChartDescriptions.ts`        |
 | Update changelog                      | `src/data/changelog.ts`                             |
+| Add/change glossary terms             | `src/data/glossary.ts`                              |
 | Change build/deploy                   | `vite.config.ts`, `.github/workflows/deploy.yml`    |
 | Change virtual:changelog module       | `vite-plugins/changelogPlugin.ts`                   |
 | Add/change E2E tests                  | `e2e/` (specs + helpers)                            |

@@ -9,6 +9,7 @@ import { FileUpload } from './components/FileUpload'
 import { ThemeToggle } from './components/ThemeToggle'
 import { GitHubLink } from './components/GitHubLink'
 import { ChangelogModal } from './components/ChangelogModal'
+import { GlossaryModal } from './components/GlossaryModal'
 import { SettingsImportModal } from './components/SettingsImportModal'
 import { SettingsReviewModal } from './components/SettingsReviewModal'
 import { SerialProgressModal } from './components/SerialProgressModal'
@@ -62,6 +63,33 @@ const HeaderActions = styled.div`
   display: flex;
   align-items: center;
   gap: 0.25rem;
+`
+
+const GlossaryButton = styled.button`
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${p => p.theme.colors.text.inverse};
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+  }
+
+  svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  @media (pointer: coarse) {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
 `
 
 const MainContent = styled.div`
@@ -439,6 +467,15 @@ export const App = observer(() => {
         </TitleRow>
         <HeaderActions>
           <GitHubLink />
+          <Tooltip text="Glossary">
+            <GlossaryButton onClick={() => uiStore.openGlossary()} aria-label="Glossary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                <path d="M8 7h8M8 11h6" />
+              </svg>
+            </GlossaryButton>
+          </Tooltip>
           <ThemeToggle />
         </HeaderActions>
       </Header>
@@ -532,6 +569,7 @@ export const App = observer(() => {
           </WhatsNewButton>
         </Footer>
       )}
+      <GlossaryModal />
       <ChangelogModal />
       <SettingsImportModal />
       <SettingsReviewModal />
