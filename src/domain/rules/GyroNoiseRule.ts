@@ -164,9 +164,10 @@ export const GyroNoiseRule: TuningRule = {
         recommendations.push({
           id: generateId(),
           issueId: issue.id,
-          type: 'adjustFiltering',
+          type: 'hardwareCheck',
           priority: 5,
           confidence: issue.confidence * 0.7,
+          category: 'hardware',
           title: 'Check for hardware vibration issues',
           description: 'Very high gyro noise may indicate mechanical vibration problems',
           rationale:
