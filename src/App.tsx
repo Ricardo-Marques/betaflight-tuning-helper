@@ -7,6 +7,7 @@ import { LogChart } from './components/LogChart'
 import { RecommendationsPanel } from './components/RecommendationsPanel'
 import { FileUpload } from './components/FileUpload'
 import { ThemeToggle } from './components/ThemeToggle'
+import { GitHubLink } from './components/GitHubLink'
 import { ChangelogModal } from './components/ChangelogModal'
 import { SettingsImportModal } from './components/SettingsImportModal'
 import { SettingsReviewModal } from './components/SettingsReviewModal'
@@ -54,6 +55,12 @@ const HeaderTitle = styled.h1`
 const HeaderSubtitle = styled.span`
   font-size: 0.75rem;
   color: ${p => p.theme.colors.text.headerSubtle};
+`
+
+const HeaderActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 `
 
 const MainContent = styled.div`
@@ -429,7 +436,10 @@ export const App = observer(() => {
           <HeaderTitle>Betaflight Tuning Helper</HeaderTitle>
           {!isMobile && <HeaderSubtitle>Analyze blackbox logs and get actionable tuning recommendations</HeaderSubtitle>}
         </TitleRow>
-        <ThemeToggle />
+        <HeaderActions>
+          <GitHubLink />
+          <ThemeToggle />
+        </HeaderActions>
       </Header>
 
       {!isLoaded ? (
