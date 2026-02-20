@@ -9,6 +9,7 @@ import type { ChangelogEntry } from '../domain/types/Changelog'
  */
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   // 2026-02-20
+  { hash: '161f16c', date: '2026-02-20', message: 'Smarter recommendations when feedforward data is available — detects FF-driven overshoot, noisy FF from RC link, and chooses between P and FF fixes based on actual contribution', category: 'improvement' },
   { hash: '1795fc2', date: '2026-02-20', message: 'Chart feedforward (FF) output from Betaflight 4.1+ logs as a toggleable data series', category: 'feature' },
   { hash: '06a8493', date: '2026-02-20', message: 'Filter recommendations no longer misleadingly say "on roll" or "on pitch" — filters are global', category: 'fix' },
   { hash: 'cc60bca', date: '2026-02-20', message: 'Limit issue occurrences to the 5 most confident, reducing chart clutter on busy logs', category: 'improvement' },
