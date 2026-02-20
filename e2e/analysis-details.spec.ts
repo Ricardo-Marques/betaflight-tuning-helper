@@ -54,11 +54,24 @@ test.describe('Analysis — Details', () => {
     const section = page.getByTestId('recommendations-section')
     await expect(section).toBeVisible()
 
-    const firstRec = section.locator('[data-rec-id]').first()
-    await expect(firstRec).toBeVisible()
-    await expect(firstRec.getByText(/Priority:/)).toBeVisible()
-    await expect(firstRec.getByText('Recommended Changes:')).toBeVisible()
-    await expect(firstRec.getByText('Why this helps')).toBeVisible()
+    // Find a rec with changes (hardware recs may have empty changes)
+    const allRecs = section.locator('[data-rec-id]')
+    const count = await allRecs.count()
+    expect(count).toBeGreaterThan(0)
+
+    let foundRecWithChanges = false
+    for (let i = 0; i < count; i++) {
+      const rec = allRecs.nth(i)
+      const hasChanges = await rec.getByText('Recommended Changes:').count()
+      if (hasChanges > 0) {
+        await expect(rec.getByText(/Priority:/)).toBeVisible()
+        await expect(rec.getByText('Recommended Changes:')).toBeVisible()
+        await expect(rec.getByText('Why this helps')).toBeVisible()
+        foundRecWithChanges = true
+        break
+      }
+    }
+    expect(foundRecWithChanges).toBe(true)
   })
 
   test('clicking off-axis issue switches axis and fades off-axis pills', async ({ page }) => {
@@ -116,5 +129,64 @@ test.describe('Analysis — Details', () => {
     // Has Import settings and Accept tune buttons
     await expect(page.getByTestId('import-settings-button').first()).toBeVisible()
     await expect(page.getByTestId('accept-tune-button')).toBeVisible()
+  })
+
+  test('hardware issues section is collapsed by default in Fixes tab', async ({ page }) => {
+    await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Fixes/ }).click()
+    const section = page.getByTestId('recommendations-section')
+
+    // Hardware toggle should be visible if there are hardware recs
+    const hardwareToggle = section.getByText(/Hardware issues \(\d+\)/)
+    const hasHardware = await hardwareToggle.count()
+    if (hasHardware === 0) {
+      test.skip()
+      return
+    }
+
+    await expect(hardwareToggle).toBeVisible()
+
+    // The explanatory note should NOT be visible (section collapsed)
+    const note = section.getByText("These issues can't be fixed with software settings")
+    await expect(note).not.toBeVisible()
+  })
+
+  test('expanding hardware section reveals hardware recommendations', async ({ page }) => {
+    await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Fixes/ }).click()
+    const section = page.getByTestId('recommendations-section')
+
+    const hardwareToggle = section.getByText(/Hardware issues \(\d+\)/)
+    const hasHardware = await hardwareToggle.count()
+    if (hasHardware === 0) {
+      test.skip()
+      return
+    }
+
+    // Click to expand
+    await hardwareToggle.click()
+    await page.waitForTimeout(200)
+
+    // Explanatory note should now be visible
+    const note = section.getByText("These issues can't be fixed with software settings")
+    await expect(note).toBeVisible()
+
+    // Hardware recommendation cards should be visible
+    const hwRecs = section.locator('[data-rec-id]')
+    expect(await hwRecs.count()).toBeGreaterThan(0)
+  })
+
+  test('Fixes tab separates hardware and software recommendations', async ({ page }) => {
+    await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Fixes/ }).click()
+    const section = page.getByTestId('recommendations-section')
+
+    const hardwareToggle = section.getByText(/Hardware issues \(\d+\)/)
+    const hasHardware = await hardwareToggle.count()
+    if (hasHardware === 0) {
+      test.skip()
+      return
+    }
+
+    // "Software tuning" header should be visible when hardware recs exist
+    const softwareHeader = section.getByText('Software tuning')
+    await expect(softwareHeader).toBeVisible()
   })
 })

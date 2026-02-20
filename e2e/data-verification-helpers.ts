@@ -39,11 +39,25 @@ export const VALID_CHART_LABELS = new Set([
   // DTermNoiseRule
   'D-term noise',
   // MotorSaturationRule
-  'Motor saturation',
+  'Motor saturation', 'CG offset',
   // HighThrottleOscillationRule
   'High-throttle oscillation',
   // TrackingQualityRule
-  'Phase lag', 'Poor tracking',
+  'Phase lag', 'Poor tracking', 'Over-filtering',
+  // ElectricalNoiseRule
+  'Electrical noise at idle',
+  // CgOffsetRule (dedicated)
+  // 'CG offset' — already added above via MotorSaturationRule
+  // MotorHealthRule
+  'Motor imbalance',
+  // BearingNoiseRule
+  'Bearing noise',
+  // FrameResonanceRule
+  'Frame resonance',
+  // EscDesyncRule
+  'ESC desync',
+  // VoltageSagRule
+  'Voltage sag',
 ])
 
 /** Extract the text of a <p> containing a given label from an issue card */
