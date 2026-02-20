@@ -36,15 +36,17 @@ export class AnalysisStore {
   selectionBump: number = 0
   quadProfile: QuadProfile = DEFAULT_PROFILE
   analysisLevel: AnalysisLevel = 'average'
-  isReanalyzing: boolean = false
   private logStore: LogStore
   private ruleEngine: RuleEngine
+  private analysisGeneration: number = 0
 
   constructor(logStore: LogStore) {
     this.logStore = logStore
     this.ruleEngine = new RuleEngine()
 
-    makeAutoObservable<this, 'logStore' | 'ruleEngine'>(this, { logStore: false, ruleEngine: false })
+    makeAutoObservable<this, 'logStore' | 'ruleEngine' | 'analysisGeneration'>(this, {
+      logStore: false, ruleEngine: false, analysisGeneration: false,
+    })
   }
 
   get isComplete(): boolean {
@@ -95,41 +97,23 @@ export class AnalysisStore {
     }
   }
 
+  private buildScaledProfile(): QuadProfile {
+    const m = ANALYSIS_LEVEL_MULTIPLIER[this.analysisLevel]
+    const scaledThresholds: ThresholdScaling = {
+      gyroNoise: this.quadProfile.thresholds.gyroNoise * m,
+      dtermNoise: this.quadProfile.thresholds.dtermNoise * m,
+      propwashAmplitude: this.quadProfile.thresholds.propwashAmplitude * m,
+      bouncebackOvershoot: this.quadProfile.thresholds.bouncebackOvershoot * m,
+      wobbleAmplitude: this.quadProfile.thresholds.wobbleAmplitude * m,
+      motorSaturation: this.quadProfile.thresholds.motorSaturation * m,
+      trackingError: this.quadProfile.thresholds.trackingError * m,
+      highThrottleOscillation: this.quadProfile.thresholds.highThrottleOscillation * m,
+    }
+    return { ...this.quadProfile, thresholds: scaledThresholds }
+  }
+
   private reanalyze = (): void => {
-    this.isReanalyzing = true
-
-    setTimeout(() => {
-      const m = ANALYSIS_LEVEL_MULTIPLIER[this.analysisLevel]
-      const scaledThresholds: ThresholdScaling = {
-        gyroNoise: this.quadProfile.thresholds.gyroNoise * m,
-        dtermNoise: this.quadProfile.thresholds.dtermNoise * m,
-        propwashAmplitude: this.quadProfile.thresholds.propwashAmplitude * m,
-        bouncebackOvershoot: this.quadProfile.thresholds.bouncebackOvershoot * m,
-        wobbleAmplitude: this.quadProfile.thresholds.wobbleAmplitude * m,
-        motorSaturation: this.quadProfile.thresholds.motorSaturation * m,
-        trackingError: this.quadProfile.thresholds.trackingError * m,
-        highThrottleOscillation: this.quadProfile.thresholds.highThrottleOscillation * m,
-      }
-      const scaledProfile: QuadProfile = {
-        ...this.quadProfile,
-        thresholds: scaledThresholds,
-      }
-
-      const result = this.ruleEngine.analyzeLog(
-        this.logStore.frames,
-        this.logStore.metadata!,
-        scaledProfile
-      )
-
-      runInAction(() => {
-        this.result = result
-        this.isReanalyzing = false
-        this.selectedIssueId = null
-        this.selectedOccurrenceIdx = null
-        this.selectedRecommendationId = null
-        this.selectedSegmentId = null
-      })
-    }, 0)
+    void this.analyze()
   }
 
   analyze = async (): Promise<void> => {
@@ -137,58 +121,43 @@ export class AnalysisStore {
       throw new Error('No log loaded')
     }
 
+    const generation = ++this.analysisGeneration
+
     runInAction(() => {
       this.analysisStatus = 'analyzing'
       this.analysisProgress = 0
       this.analysisMessage = 'Starting analysis...'
       this.result = null
+      this.selectedIssueId = null
+      this.selectedOccurrenceIdx = null
+      this.selectedRecommendationId = null
+      this.selectedSegmentId = null
     })
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 100))
+      // Wait for the browser to paint the chart before analysis work begins
+      await new Promise<void>(resolve =>
+        requestAnimationFrame(() => setTimeout(resolve, 0))
+      )
 
-      runInAction(() => {
-        this.analysisProgress = 25
-        this.analysisMessage = 'Segmenting flight data...'
-      })
+      if (generation !== this.analysisGeneration) return
 
-      await new Promise(resolve => setTimeout(resolve, 100))
+      const scaledProfile = this.buildScaledProfile()
 
-      runInAction(() => {
-        this.analysisProgress = 50
-        this.analysisMessage = 'Detecting issues...'
-      })
-
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      runInAction(() => {
-        this.analysisProgress = 75
-        this.analysisMessage = 'Generating recommendations...'
-      })
-
-      const m = ANALYSIS_LEVEL_MULTIPLIER[this.analysisLevel]
-      const scaledThresholds: ThresholdScaling = {
-        gyroNoise: this.quadProfile.thresholds.gyroNoise * m,
-        dtermNoise: this.quadProfile.thresholds.dtermNoise * m,
-        propwashAmplitude: this.quadProfile.thresholds.propwashAmplitude * m,
-        bouncebackOvershoot: this.quadProfile.thresholds.bouncebackOvershoot * m,
-        wobbleAmplitude: this.quadProfile.thresholds.wobbleAmplitude * m,
-        motorSaturation: this.quadProfile.thresholds.motorSaturation * m,
-        trackingError: this.quadProfile.thresholds.trackingError * m,
-        highThrottleOscillation: this.quadProfile.thresholds.highThrottleOscillation * m,
-      }
-      const scaledProfile: QuadProfile = {
-        ...this.quadProfile,
-        thresholds: scaledThresholds,
-      }
-
-      const result = this.ruleEngine.analyzeLog(
+      const result = await this.ruleEngine.analyzeLogAsync(
         this.logStore.frames,
         this.logStore.metadata!,
+        (progress, message) => {
+          if (generation !== this.analysisGeneration) return
+          runInAction(() => {
+            this.analysisProgress = progress
+            this.analysisMessage = message
+          })
+        },
         scaledProfile
       )
 
-      await new Promise(resolve => setTimeout(resolve, 100))
+      if (generation !== this.analysisGeneration) return
 
       runInAction(() => {
         this.result = result
@@ -197,6 +166,7 @@ export class AnalysisStore {
         this.analysisMessage = `Analysis complete! Found ${result.issues.length} issues.`
       })
     } catch (error) {
+      if (generation !== this.analysisGeneration) return
       runInAction(() => {
         this.analysisStatus = 'error'
         this.analysisMessage =
