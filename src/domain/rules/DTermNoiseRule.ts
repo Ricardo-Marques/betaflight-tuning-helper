@@ -97,7 +97,7 @@ export const DTermNoiseRule: TuningRule = {
         type: 'adjustFiltering',
         priority: 8,
         confidence: issue.confidence,
-        title: `Increase D-term filtering on ${issue.axis}`,
+        title: 'Increase D-term filtering',
         description: 'D-term is amplifying high-frequency noise - lower the D-term filter cutoff',
         rationale:
           'The D-term differentiates the gyro signal, amplifying high-frequency noise. Lowering the D-term filter multiplier lowers the cutoff frequency, blocking more noise before it reaches the motors.',

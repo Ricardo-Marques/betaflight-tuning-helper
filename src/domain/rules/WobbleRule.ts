@@ -187,7 +187,7 @@ export const WobbleRule: TuningRule = {
             type: 'adjustFiltering',
             priority: 9,
             confidence: 0.90,
-            title: `Increase filtering on ${issue.axis}`,
+            title: 'Increase filtering',
             description: 'High-frequency noise indicates insufficient filtering',
             rationale:
               'Gyro or D-term noise above 80 Hz serves no control purpose and wastes motor/battery. More filtering removes it.',

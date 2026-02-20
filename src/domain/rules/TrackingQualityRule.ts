@@ -192,7 +192,7 @@ export const TrackingQualityRule: TuningRule = {
           type: 'adjustFiltering',
           priority: 8,
           confidence: worstIssue.confidence,
-          title: `Raise filter cutoffs on ${axis}`,
+          title: 'Raise filter cutoffs',
           description: 'Filters are too aggressive — causing tracking delay without meaningful noise reduction',
           rationale:
             'The gyro noise floor is already clean, but the tracking error is high due to excessive filter delay. Raising the filter multipliers reduces phase lag without adding significant noise.',

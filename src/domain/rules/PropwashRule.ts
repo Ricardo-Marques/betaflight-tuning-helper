@@ -174,7 +174,7 @@ export const PropwashRule: TuningRule = {
             type: 'adjustFiltering',
             priority: 7,
             confidence: 0.75,
-            title: `Enable RPM filter on ${issue.axis}`,
+            title: 'Enable RPM filter',
             description: 'RPM filter is not enabled — it removes motor noise that interacts with propwash',
             rationale:
               'RPM filter removes motor noise that can interact with propwash. Enabling it with 3 harmonics improves D-term effectiveness.',
@@ -195,7 +195,7 @@ export const PropwashRule: TuningRule = {
             type: 'adjustFiltering',
             priority: 7,
             confidence: 0.75,
-            title: `Increase RPM filter harmonics on ${issue.axis}`,
+            title: 'Increase RPM filter harmonics',
             description: `RPM filter has ${rpmHarmonics} harmonic(s) — increase to 3 for better propwash handling`,
             rationale:
               'RPM filter removes motor noise that can interact with propwash. More harmonics provide better coverage of motor noise overtones.',

@@ -116,7 +116,7 @@ export const GyroNoiseRule: TuningRule = {
         type: 'adjustFiltering',
         priority: 8,
         confidence: issue.confidence,
-        title: `Increase gyro filtering on ${issue.axis}`,
+        title: 'Increase gyro filtering',
         description: 'Excessive gyro noise floor - lower the gyro filter cutoff for stronger filtering',
         rationale:
           'Gyro noise passes through to PID calculations, causing motor noise and heat. Lowering the filter multiplier lowers the cutoff frequency, blocking more noise before it affects PIDs.',
