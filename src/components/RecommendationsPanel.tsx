@@ -271,6 +271,72 @@ const FixesSection = styled.div`
   padding: 1rem;
 `
 
+const FixesCategoryHeader = styled.h3`
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+  color: ${p => p.theme.colors.text.primary};
+`
+
+const HardwareToggleHeader = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: ${p => p.theme.colors.text.primary};
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0 0 0.5rem;
+  cursor: pointer;
+
+  &:hover {
+    color: ${p => p.theme.colors.text.link};
+  }
+`
+
+const ToggleChevron = styled.span<{ isOpen: boolean }>`
+  display: inline-block;
+  font-size: 0.7rem;
+  transition: transform 0.15s ease;
+  transform: rotate(${p => (p.isOpen ? '90deg' : '0deg')});
+`
+
+const FixesCategoryNote = styled.p`
+  font-size: 0.8rem;
+  color: ${p => p.theme.colors.text.muted};
+  margin: 0 0 0.75rem;
+  line-height: 1.4;
+`
+
+const FixesCategoryDivider = styled.div`
+  border-top: 1px solid ${p => p.theme.colors.border.subtle};
+  margin: 1rem 0;
+`
+
+const CliHardwareNote = styled.p`
+  font-size: 0.75rem;
+  color: ${p => p.theme.colors.text.secondary};
+  text-align: center;
+  line-height: 1.4;
+`
+
+const CliHardwareLink = styled.button`
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: ${p => p.theme.colors.text.link};
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+
+  &:hover {
+    color: ${p => p.theme.colors.text.linkHover};
+  }
+`
+
 /* ---- CLI Bar action buttons ---- */
 
 const CliBarActions = styled.div`
@@ -777,6 +843,7 @@ export const RecommendationsPanel = observer(() => {
   const settingsStore = useSettingsStore()
   const [tuneAccepted, setTuneAccepted] = useObservableState(false)
   const [showAcceptModal, setShowAcceptModal] = useObservableState(false)
+  const [hardwareExpanded, setHardwareExpanded] = useObservableState(false)
 
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -846,6 +913,11 @@ export const RecommendationsPanel = observer(() => {
   })
 
   const navigateToRec = (recId: string) => {
+    // Expand hardware section if navigating to a hardware rec
+    const rec = analysisStore.recommendations.find(r => r.id === recId)
+    if (rec && (rec.category === 'hardware' || rec.type === 'hardwareCheck')) {
+      setHardwareExpanded(true)
+    }
     uiStore.setActiveRightTab('fixes')
     // Wait for tab switch to render, then scroll
     requestAnimationFrame(() => {
@@ -914,6 +986,9 @@ export const RecommendationsPanel = observer(() => {
   })
   const recCount = actionableRecs.length
   const actionableRecIds = useComputed(() => new Set(actionableRecs.map(r => r.id)))
+  const hardwareRecCount = useComputed(() =>
+    actionableRecs.filter(r => r.category === 'hardware' || r.type === 'hardwareCheck').length
+  )
 
   const severityOrder = ['high', 'medium', 'low'] as const
   const severityLabels: Record<string, string> = {
@@ -933,34 +1008,45 @@ export const RecommendationsPanel = observer(() => {
             </CliLabel>
           </CliBarRow>
           {commandCount > 0 && (
-            <CliBarActions>
-              <CliActionButton
-                variant="import"
-                onClick={uiStore.openSettingsImport}
-                data-testid="import-settings-button"
-              >
-                {settingsStore.hasImportedSettings ? 'Update settings' : 'Import settings'}
-              </CliActionButton>
-              {tuneAccepted ? (
-                <CliSuccessText>Accepted!</CliSuccessText>
-              ) : (
-                <AcceptTuneWrapper>
-                  <CliActionButton
-                    variant="accept"
-                    disabled={!settingsStore.hasImportedSettings}
-                    onClick={() => guardPendingSettings() || setShowAcceptModal(true)}
-                    data-testid="accept-tune-button"
-                  >
-                    Accept tune
-                  </CliActionButton>
-                  <AcceptTuneTooltip data-tooltip>
-                    {settingsStore.hasImportedSettings
-                      ? 'Apply recommended values as your new baseline'
-                      : 'Import your current settings first so recommendations can be calculated accurately'}
-                  </AcceptTuneTooltip>
-                </AcceptTuneWrapper>
+            <>
+              <CliBarActions>
+                <CliActionButton
+                  variant="import"
+                  onClick={uiStore.openSettingsImport}
+                  data-testid="import-settings-button"
+                >
+                  {settingsStore.hasImportedSettings ? 'Update settings' : 'Import settings'}
+                </CliActionButton>
+                {tuneAccepted ? (
+                  <CliSuccessText>Accepted!</CliSuccessText>
+                ) : (
+                  <AcceptTuneWrapper>
+                    <CliActionButton
+                      variant="accept"
+                      disabled={!settingsStore.hasImportedSettings}
+                      onClick={() => guardPendingSettings() || setShowAcceptModal(true)}
+                      data-testid="accept-tune-button"
+                    >
+                      Accept tune
+                    </CliActionButton>
+                    <AcceptTuneTooltip data-tooltip>
+                      {settingsStore.hasImportedSettings
+                        ? 'Apply recommended values as your new baseline'
+                        : 'Import your current settings first so recommendations can be calculated accurately'}
+                    </AcceptTuneTooltip>
+                  </AcceptTuneWrapper>
+                )}
+              </CliBarActions>
+              {hardwareRecCount > 0 && (
+                <CliHardwareNote>
+                  We also found {hardwareRecCount} hardware {hardwareRecCount === 1 ? 'issue' : 'issues'} that
+                  can't be fixed with CLI commands.{' '}
+                  <CliHardwareLink onClick={() => { setHardwareExpanded(true); uiStore.setActiveRightTab('fixes') }}>
+                    View in Fixes
+                  </CliHardwareLink>
+                </CliHardwareNote>
               )}
-            </CliBarActions>
+            </>
           )}
         </CliBarInner>
       </CliBar>
@@ -1033,7 +1119,7 @@ export const RecommendationsPanel = observer(() => {
                   <SeverityGroupTitle severity={sev}>
                     {severityLabels[sev]}
                   </SeverityGroupTitle>
-                  <IssueList key={analysisStore.selectedIssueId ?? ''} className={analysisStore.selectedIssueId ? 'dim-siblings' : undefined}>
+                  <IssueList key={`${analysisStore.selectedIssueId ?? ''}-${analysisStore.selectionBump}`} className={analysisStore.selectedIssueId ? 'dim-siblings' : undefined}>
                     {issues.map(issue => (
                       <IssueCard key={issue.id} issue={issue} onNavigateToRec={navigateToRec} actionableRecIds={actionableRecIds} />
                     ))}
@@ -1054,17 +1140,62 @@ export const RecommendationsPanel = observer(() => {
           <>
             {recCount > 0 && (
               <FixesSection data-testid="recommendations-section">
-                <RecList key={analysisStore.selectedRecommendationId ?? ''} className={analysisStore.selectedRecommendationId ? 'dim-siblings' : undefined}>
-                  {actionableRecs.map(rec => (
-                    <RecommendationCard
-                      key={rec.id}
-                      recommendation={rec}
-                      pidProfile={pidProfile}
-                      filterSettings={filterSettings}
-                      importedValues={settingsStore.baselineValues}
-                    />
-                  ))}
-                </RecList>
+                {(() => {
+                  const hardwareRecs = actionableRecs.filter(r => r.category === 'hardware' || r.type === 'hardwareCheck')
+                  const softwareRecs = actionableRecs.filter(r => r.category !== 'hardware' && r.type !== 'hardwareCheck')
+                  const dimClass = analysisStore.selectedRecommendationId ? 'dim-siblings' : undefined
+                  return (
+                    <>
+                      {hardwareRecs.length > 0 && (
+                        <>
+                          <HardwareToggleHeader onClick={() => setHardwareExpanded(!hardwareExpanded)}>
+                            <ToggleChevron isOpen={hardwareExpanded}>&#9654;</ToggleChevron>
+                            Hardware issues ({hardwareRecs.length})
+                          </HardwareToggleHeader>
+                          {hardwareExpanded && (
+                            <>
+                              <FixesCategoryNote>
+                                These issues can't be fixed with software settings — they require physical inspection or hardware changes.
+                              </FixesCategoryNote>
+                              <RecList key={`hw-${analysisStore.selectedRecommendationId ?? ''}`} className={dimClass}>
+                                {hardwareRecs.map(rec => (
+                                  <RecommendationCard
+                                    key={rec.id}
+                                    recommendation={rec}
+                                    pidProfile={pidProfile}
+                                    filterSettings={filterSettings}
+                                    importedValues={settingsStore.baselineValues}
+                                  />
+                                ))}
+                              </RecList>
+                            </>
+                          )}
+                        </>
+                      )}
+                      {hardwareRecs.length > 0 && softwareRecs.length > 0 && (
+                        <FixesCategoryDivider />
+                      )}
+                      {softwareRecs.length > 0 && (
+                        <>
+                          {hardwareRecs.length > 0 && (
+                            <FixesCategoryHeader>Software tuning</FixesCategoryHeader>
+                          )}
+                          <RecList key={`sw-${analysisStore.selectedRecommendationId ?? ''}`} className={dimClass}>
+                            {softwareRecs.map(rec => (
+                              <RecommendationCard
+                                key={rec.id}
+                                recommendation={rec}
+                                pidProfile={pidProfile}
+                                filterSettings={filterSettings}
+                                importedValues={settingsStore.baselineValues}
+                              />
+                            ))}
+                          </RecList>
+                        </>
+                      )}
+                    </>
+                  )
+                })()}
               </FixesSection>
             )}
             {recCount === 0 && (
@@ -1316,6 +1447,7 @@ const RecommendationCard = observer(
   }) => {
     const analysisStore = useAnalysisStore()
     const uiStore = useUIStore()
+    const logStore = useLogStore()
     const isHighlighted = analysisStore.selectedRecommendationId === recommendation.id
 
     // Collect all linked issue IDs (primary + related)
@@ -1333,6 +1465,35 @@ const RecommendationCard = observer(
     const navigateToIssue = (issueId: string) => {
       analysisStore.selectIssue(issueId, 0)
       uiStore.setActiveRightTab('issues')
+
+      // Zoom chart to the first occurrence so the issue is visible
+      const issue = analysisStore.issues.find(i => i.id === issueId)
+      if (!issue) return
+      const frames = logStore.frames
+      if (frames.length === 0) return
+      const occurrences = issue.occurrences ?? [issue.timeRange]
+      const tr = occurrences[0]
+      const occTime = issue.peakTimes?.[0] ?? issue.metrics.peakTime ?? (tr[0] + tr[1]) / 2
+
+      const startFrame = Math.floor((uiStore.zoomStart / 100) * frames.length)
+      const endFrame = Math.min(frames.length - 1, Math.ceil((uiStore.zoomEnd / 100) * frames.length))
+      const viewStart = frames[startFrame]?.time ?? 0
+      const viewEnd = frames[endFrame]?.time ?? Infinity
+      if (occTime >= viewStart && occTime <= viewEnd) return
+
+      let lo = 0, hi = frames.length - 1
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1
+        if (frames[mid].time < occTime) lo = mid + 1
+        else hi = mid
+      }
+      const centerPct = (lo / frames.length) * 100
+      const halfDur = (uiStore.zoomEnd - uiStore.zoomStart) / 2
+      let newStart = centerPct - halfDur
+      let newEnd = centerPct + halfDur
+      if (newStart < 0) { newEnd -= newStart; newStart = 0 }
+      if (newEnd > 100) { newStart -= newEnd - 100; newEnd = 100 }
+      uiStore.animateZoom(Math.max(0, newStart), Math.min(100, newEnd))
     }
 
     return (
