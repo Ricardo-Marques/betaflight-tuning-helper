@@ -9,6 +9,7 @@ import type { ChangelogEntry } from '../domain/types/Changelog'
  */
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   // 2026-02-20
+  { hash: '30faeb5', date: '2026-02-20', message: 'Glossary button in the header explains technical terms like PID, RMS, propwash, and more', category: 'feature' },
   { hash: '2b24b7f', date: '2026-02-20', message: 'Gyro noise issues now describe which frequency band the noise is in (low/mid/high) instead of just showing a high-freq percentage', category: 'improvement' },
   { hash: '161f16c', date: '2026-02-20', message: 'Smarter recommendations when feedforward data is available — detects FF-driven overshoot, noisy FF from RC link, and chooses between P and FF fixes based on actual contribution', category: 'improvement' },
   { hash: '1795fc2', date: '2026-02-20', message: 'Chart feedforward (FF) output from Betaflight 4.1+ logs as a toggleable data series', category: 'feature' },
