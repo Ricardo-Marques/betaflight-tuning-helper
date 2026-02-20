@@ -43,6 +43,7 @@ export const GyroNoiseRule: TuningRule = {
     const spectrum = analyzeFrequency(gyroSignal, sampleRate)
     const totalEnergy = spectrum.bandEnergy.low + spectrum.bandEnergy.mid + spectrum.bandEnergy.high
     const highBandRatio = totalEnergy > 0 ? spectrum.bandEnergy.high / totalEnergy : 0
+    const midBandRatio = totalEnergy > 0 ? spectrum.bandEnergy.mid / totalEnergy : 0
 
     // Detected if: gyroRMS > threshold AND (high-band ratio > 0.3 OR gyroRMS > threshold) - scaled by profile
     // 5 deg/s RMS baseline - healthy quads on soft-mounted FCs show 3-5 deg/s during hover
@@ -70,10 +71,16 @@ export const GyroNoiseRule: TuningRule = {
       severity,
       axis: window.axis,
       timeRange: [window.startTime, window.endTime],
-      description: `Gyro noise: ${gyroRMS.toFixed(1)}°/s RMS, ${(highBandRatio * 100).toFixed(0)}% high-freq energy`,
+      description: `Gyro noise: ${gyroRMS.toFixed(1)}°/s RMS, ${
+        highBandRatio > 0.3
+          ? `${(highBandRatio * 100).toFixed(0)}% high-freq energy`
+          : midBandRatio > 0.5
+            ? 'mostly mid-freq (resonance/propwash)'
+            : 'mostly low-freq (frame flex)'
+      }`,
       metrics: {
         noiseFloor: gyroRMS,
-        dominantBand: highBandRatio > 0.5 ? 'high' : gyroRMS > 8 ? 'mid' : 'low',
+        dominantBand: highBandRatio > 0.5 ? 'high' : midBandRatio > 0.5 ? 'mid' : 'low',
       },
       confidence,
     })
