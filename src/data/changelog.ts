@@ -9,6 +9,8 @@ import type { ChangelogEntry } from '../domain/types/Changelog'
  */
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   // 2026-02-19
+  { hash: 'efee68a', date: '2026-02-19', message: 'Safety warning now clearly states the tool is experimental — always cross-reference suggestions', category: 'improvement' },
+  { hash: '4cce095', date: '2026-02-19', message: 'Spectrum view no longer freezes when toggling on large logs', category: 'fix' },
   { hash: '587ca37', date: '2026-02-19', message: 'Zoom slider shows true zoom depth with an inner accent bar', category: 'improvement' },
   { hash: '7102fa3', date: '2026-02-19', message: 'Selected issue line now stands out clearly on busy charts', category: 'improvement' },
   { hash: '5068134', date: '2026-02-19', message: 'Chart waveform no longer shifts when zooming in and out', category: 'fix' },
