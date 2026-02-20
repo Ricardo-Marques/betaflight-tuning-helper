@@ -128,6 +128,7 @@ export class AnalysisStore {
 
     const cached = this.resultCache.get(this.cacheKey)
     if (cached) {
+      ++this.analysisGeneration
       this.result = cached
       this.analysisStatus = 'complete'
       this.analysisProgress = 100
