@@ -3,7 +3,7 @@ import styled from '@emotion/styled'
 import { useRef } from 'react'
 import { useAutorun } from '../lib/mobx-reactivity'
 
-const MIN_WINDOW = 1 // 1% minimum zoom window (matches chart scroll)
+const DEFAULT_MIN_WINDOW = 1 // 1% fallback minimum zoom window
 const HANDLE_W_PX = 12 // must match RangeSliderHandle width
 
 const RangeSliderWrapper = styled.div`
@@ -30,6 +30,8 @@ const RangeSliderTrack = styled.div`
   background-color: ${p => p.theme.colors.button.secondary};
 `
 
+const MIN_FILL_PX = 40 // minimum grabbable width at deep zoom
+
 const RangeSliderFill = styled.div`
   position: absolute;
   top: 50%;
@@ -42,6 +44,17 @@ const RangeSliderFill = styled.div`
   &:active {
     cursor: grabbing;
   }
+`
+
+const RangeSliderAccent = styled.div`
+  position: absolute;
+  top: 50%;
+  height: 10px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+  z-index: 1;
+  min-width: 2px;
 `
 
 const RangeSliderHandle = styled.div`
@@ -75,15 +88,17 @@ interface RangeSliderProps {
   onChange: (start: number, end: number) => void
   onDragStart?: () => void
   onDragEnd?: () => void
+  minWindow?: number
 }
 
-export const RangeSlider = observer(({ start, end, onChange, onDragStart, onDragEnd }: RangeSliderProps) => {
+export const RangeSlider = observer(({ start, end, onChange, onDragStart, onDragEnd, minWindow }: RangeSliderProps) => {
+  const MIN_WINDOW = minWindow ?? DEFAULT_MIN_WINDOW
   const wrapperRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
   const dragType = useRef<'start' | 'end' | 'fill' | null>(null)
   const dragOrigin = useRef<{ x: number; startVal: number; endVal: number }>({ x: 0, startVal: 0, endVal: 0 })
-  const propsRef = useRef({ start, end, onChange, onDragStart, onDragEnd })
-  propsRef.current = { start, end, onChange, onDragStart, onDragEnd }
+  const propsRef = useRef({ start, end, onChange, onDragStart, onDragEnd, MIN_WINDOW })
+  propsRef.current = { start, end, onChange, onDragStart, onDragEnd, MIN_WINDOW }
 
   // rAF throttle: store pending values, commit once per frame
   const rafId = useRef<number>(0)
@@ -168,13 +183,13 @@ export const RangeSlider = observer(({ start, end, onChange, onDragStart, onDrag
     if (!el) return
     const handleWheel = (e: WheelEvent): void => {
       e.preventDefault()
-      const { start: s, end: e2, onDragStart, onDragEnd } = propsRef.current
+      const { start: s, end: e2, onDragStart, onDragEnd, MIN_WINDOW: minW } = propsRef.current
       // Chain from pending update so consecutive ticks accumulate correctly
       const curStart = pendingUpdate.current?.start ?? s
       const curEnd = pendingUpdate.current?.end ?? e2
       const dur = curEnd - curStart
       const factor = e.deltaY < 0 ? 0.85 : 1 / 0.85
-      const newDur = Math.min(100, Math.max(MIN_WINDOW, dur * factor))
+      const newDur = Math.min(100, Math.max(minW, dur * factor))
       const rect = el.getBoundingClientRect()
       const cursorRatio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
       const center = curStart + dur * cursorRatio
@@ -210,13 +225,20 @@ export const RangeSlider = observer(({ start, end, onChange, onDragStart, onDrag
     }
   })
 
-  // Clamp handle left-edge positions so they never overflow the track
-  const leftHandleLeft = `max(0px, calc(${start}% - ${HANDLE_W_PX}px))`
-  const rightHandleLeft = `min(calc(100% - ${HANDLE_W_PX}px), ${end}%)`
+  // Enforce minimum visual spread so the grab region stays usable at deep zoom.
+  // When natural spread is smaller than MIN_FILL_PX, expand symmetrically from center.
+  const center = (start + end) / 2
+  const halfMin = `${MIN_FILL_PX / 2 + HANDLE_W_PX}px`
+
+  const leftHandleLeft = `clamp(0px, min(calc(${start}% - ${HANDLE_W_PX}px), calc(${center}% - ${halfMin})), calc(100% - ${MIN_FILL_PX + 2 * HANDLE_W_PX}px))`
+  const rightHandleLeft = `clamp(${MIN_FILL_PX + HANDLE_W_PX}px, max(${end}%, calc(${center}% + ${MIN_FILL_PX / 2}px)), calc(100% - ${HANDLE_W_PX}px))`
 
   // Fill spans from left handle's left edge to right handle's right edge
   const fillLeft = leftHandleLeft
-  const fillRight = `max(0px, calc(${100 - end}% - ${HANDLE_W_PX}px))`
+  const fillWidth = `max(${MIN_FILL_PX + 2 * HANDLE_W_PX}px, calc(${end - start}% + ${2 * HANDLE_W_PX}px))`
+
+  const accentLeft = `max(0px, ${start}%)`
+  const accentWidth = `max(2px, ${end - start}%)`
 
   return (
     <RangeSliderWrapper ref={wrapperRef} onMouseDown={e => startDrag('fill', e)}>
@@ -224,10 +246,17 @@ export const RangeSlider = observer(({ start, end, onChange, onDragStart, onDrag
       <RangeSliderFill
         style={{
           left: fillLeft,
-          right: fillRight,
+          width: fillWidth,
           transform: 'translateY(-50%)',
         }}
         onMouseDown={e => startDrag('fill', e)}
+      />
+      <RangeSliderAccent
+        style={{
+          left: accentLeft,
+          width: accentWidth,
+          transform: 'translateY(-50%)',
+        }}
       />
       <RangeSliderHandle
         style={{ left: leftHandleLeft, transform: 'translateY(-50%)' }}
