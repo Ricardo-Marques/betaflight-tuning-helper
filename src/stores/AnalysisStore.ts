@@ -39,13 +39,14 @@ export class AnalysisStore {
   private logStore: LogStore
   private ruleEngine: RuleEngine
   private analysisGeneration: number = 0
+  private resultCache: Map<string, AnalysisResult> = new Map()
 
   constructor(logStore: LogStore) {
     this.logStore = logStore
     this.ruleEngine = new RuleEngine()
 
-    makeAutoObservable<this, 'logStore' | 'ruleEngine' | 'analysisGeneration'>(this, {
-      logStore: false, ruleEngine: false, analysisGeneration: false,
+    makeAutoObservable<this, 'logStore' | 'ruleEngine' | 'analysisGeneration' | 'resultCache'>(this, {
+      logStore: false, ruleEngine: false, analysisGeneration: false, resultCache: false,
     })
   }
 
@@ -112,6 +113,10 @@ export class AnalysisStore {
     return { ...this.quadProfile, thresholds: scaledThresholds }
   }
 
+  private get cacheKey(): string {
+    return `${this.quadProfile.id}:${this.analysisLevel}`
+  }
+
   private reanalyze = (): void => {
     void this.analyze()
   }
@@ -119,6 +124,19 @@ export class AnalysisStore {
   analyze = async (): Promise<void> => {
     if (!this.logStore.isLoaded) {
       throw new Error('No log loaded')
+    }
+
+    const cached = this.resultCache.get(this.cacheKey)
+    if (cached) {
+      this.result = cached
+      this.analysisStatus = 'complete'
+      this.analysisProgress = 100
+      this.analysisMessage = `Analysis complete! Found ${cached.issues.length} issues.`
+      this.selectedIssueId = null
+      this.selectedOccurrenceIdx = null
+      this.selectedRecommendationId = null
+      this.selectedSegmentId = null
+      return
     }
 
     const generation = ++this.analysisGeneration
@@ -159,6 +177,8 @@ export class AnalysisStore {
 
       if (generation !== this.analysisGeneration) return
 
+      this.resultCache.set(this.cacheKey, result)
+
       runInAction(() => {
         this.result = result
         this.analysisStatus = 'complete'
@@ -176,6 +196,7 @@ export class AnalysisStore {
   }
 
   reset = (): void => {
+    this.resultCache.clear()
     this.analysisStatus = 'idle'
     this.analysisProgress = 0
     this.analysisMessage = ''
