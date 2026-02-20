@@ -4,6 +4,7 @@ import { LogFrame } from '../types/LogFrame'
 import { QuadProfile } from '../types/QuadProfile'
 import { calculateRMS, calculateError, calculateStdDev, estimatePhaseLag } from '../utils/FrequencyAnalysis'
 import { extractAxisData, deriveSampleRate } from '../utils/SignalAnalysis'
+import { generateId } from '../utils/generateId'
 
 /**
  * Detects poor tracking quality during active flight maneuvers
@@ -14,7 +15,7 @@ export const TrackingQualityRule: TuningRule = {
   name: 'Tracking Quality Analysis',
   description: 'Measures how accurately gyro follows setpoint during active flight',
   baseConfidence: 0.75,
-  issueTypes: ['underdamped', 'overdamped', 'lowFrequencyOscillation'],
+  issueTypes: ['underdamped', 'overdamped', 'lowFrequencyOscillation', 'overFiltering'],
   applicableAxes: ['roll', 'pitch', 'yaw'],
 
   condition: (window: AnalysisWindow, _frames: LogFrame[]): boolean => {
@@ -65,15 +66,18 @@ export const TrackingQualityRule: TuningRule = {
       return []
     }
 
-    // Determine severity based on normalized error (scaled by profile)
+    // Yaw has higher moment of inertia — raise thresholds to avoid false positives
+    const yawMultiplier = window.axis === 'yaw' ? 1.5 : 1.0
+
+    // Determine severity based on normalized error (scaled by profile and yaw multiplier)
     // 20% threshold - even well-tuned quads show 10-20% error during fast moves
     // due to inherent PID phase lag (feedforward reduces but doesn't eliminate)
     let severity: 'low' | 'medium' | 'high'
-    if (normalizedError > 60 * scale) {
+    if (normalizedError > 60 * scale * yawMultiplier) {
       severity = 'high' // Quad barely responding
-    } else if (normalizedError > 40 * scale) {
+    } else if (normalizedError > 40 * scale * yawMultiplier) {
       severity = 'medium' // Significantly delayed
-    } else if (normalizedError > 20 * scale) {
+    } else if (normalizedError > 20 * scale * yawMultiplier) {
       severity = 'low' // Noticeable sluggishness
     } else {
       // Acceptable tracking quality - within normal PID phase lag range
@@ -102,10 +106,15 @@ export const TrackingQualityRule: TuningRule = {
     //   amplitudeRatio < 90%  → overdamped (too little P or too much D)
     //   amplitudeRatio > 105% → underdamped (too much P or not enough D)
     //   Otherwise → phase lag / timing issue
-    let issueType: 'underdamped' | 'overdamped' | 'lowFrequencyOscillation'
+    let issueType: 'underdamped' | 'overdamped' | 'lowFrequencyOscillation' | 'overFiltering'
     let issueDescription: string
 
-    if (lag.lagMs > 2 && correctedRatio >= 80 && correctedRatio <= 120) {
+    // Over-filtering detection: high phase lag with clean gyro signal
+    if (lag.lagMs > 3 && gyroRMS < 5) {
+      // High lag + low noise floor = aggressive filters causing delay, not a PID problem
+      issueType = 'overFiltering'
+      issueDescription = `Over-filtering: ${lag.lagMs.toFixed(1)}ms phase lag with clean ${gyroRMS.toFixed(1)}°/s noise floor — filters are too aggressive`
+    } else if (lag.lagMs > 2 && correctedRatio >= 80 && correctedRatio <= 120) {
       // Significant phase lag with reasonable amplitude - timing problem, not gain
       issueType = 'lowFrequencyOscillation'
       issueDescription = `Phase lag: gyro delayed by ${lag.lagMs.toFixed(1)}ms (${normalizedError.toFixed(0)}% tracking error)`
@@ -124,7 +133,7 @@ export const TrackingQualityRule: TuningRule = {
     const confidence = Math.min(0.95, 0.6 + signalToNoise * 0.05)
 
     issues.push({
-      id: uuidv4(),
+      id: generateId(),
       type: issueType,
       severity,
       axis: window.axis,
@@ -152,7 +161,8 @@ export const TrackingQualityRule: TuningRule = {
       if (
         issue.type !== 'underdamped' &&
         issue.type !== 'overdamped' &&
-        issue.type !== 'lowFrequencyOscillation'
+        issue.type !== 'lowFrequencyOscillation' &&
+        issue.type !== 'overFiltering'
       ) {
         continue
       }
@@ -174,12 +184,42 @@ export const TrackingQualityRule: TuningRule = {
       const amplitudeRatio = worstIssue.metrics.amplitudeRatio || 0
 
       // Recommendation logic based on issue type
-      if (worstIssue.type === 'overdamped') {
+      if (worstIssue.type === 'overFiltering') {
+        // Over-filtering: high phase lag with clean gyro — raise filter multipliers
+        recommendations.push({
+          id: generateId(),
+          issueId: worstIssue.id,
+          type: 'adjustFiltering',
+          priority: 8,
+          confidence: worstIssue.confidence,
+          title: `Raise filter cutoffs on ${axis}`,
+          description: 'Filters are too aggressive — causing tracking delay without meaningful noise reduction',
+          rationale:
+            'The gyro noise floor is already clean, but the tracking error is high due to excessive filter delay. Raising the filter multipliers reduces phase lag without adding significant noise.',
+          risks: [
+            'May slightly increase motor noise if noise floor was borderline',
+            'Monitor motor temperatures after adjustment',
+          ],
+          changes: [
+            {
+              parameter: 'gyroFilterMultiplier',
+              recommendedChange: '+10',
+              explanation: `Raise gyro filter multiplier to reduce ${worstIssue.metrics.phaseLagMs?.toFixed(1) ?? ''}ms phase lag`,
+            },
+            {
+              parameter: 'dtermFilterMultiplier',
+              recommendedChange: '+10',
+              explanation: 'Raise D-term filter multiplier to reduce filtering delay',
+            },
+          ],
+          expectedImprovement: 'Reduced phase lag, more responsive tracking with maintained noise levels',
+        })
+      } else if (worstIssue.type === 'overdamped') {
         // Low amplitude ratio + high error = insufficient P gain or excessive D
         const pIncrease = normalizedError > 50 ? '+0.5' : normalizedError > 35 ? '+0.4' : '+0.3'
 
         recommendations.push({
-          id: uuidv4(),
+          id: generateId(),
           issueId: worstIssue.id,
           type: 'increasePID',
           priority: 8,
@@ -208,7 +248,7 @@ export const TrackingQualityRule: TuningRule = {
         const dIncrease = normalizedError > 50 ? '+0.3' : normalizedError > 35 ? '+0.2' : '+0.15'
 
         recommendations.push({
-          id: uuidv4(),
+          id: generateId(),
           issueId: worstIssue.id,
           type: 'increasePID',
           priority: 7,
@@ -237,7 +277,7 @@ export const TrackingQualityRule: TuningRule = {
         const ffIncrease = normalizedError > 35 ? '+8%' : normalizedError > 25 ? '+6%' : '+4%'
 
         recommendations.push({
-          id: uuidv4(),
+          id: generateId(),
           issueId: worstIssue.id,
           type: 'adjustFeedforward',
           priority: 6,
@@ -283,7 +323,7 @@ export const TrackingQualityRule: TuningRule = {
       const worstGlobalIssue = allHighIssues[0]
 
       recommendations.push({
-        id: uuidv4(),
+        id: generateId(),
         issueId: worstGlobalIssue.id,
         type: 'adjustMasterMultiplier',
         priority: 8,
@@ -312,11 +352,3 @@ export const TrackingQualityRule: TuningRule = {
   },
 }
 
-// Re-export uuidv4 for consistency with other rules
-function uuidv4(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-    const r = (Math.random() * 16) | 0
-    const v = c === 'x' ? r : (r & 0x3) | 0x8
-    return v.toString(16)
-  })
-}

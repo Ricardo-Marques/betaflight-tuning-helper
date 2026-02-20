@@ -2,7 +2,9 @@ import { TuningRule } from '../types/TuningRule'
 import { AnalysisWindow, DetectedIssue, Recommendation } from '../types/Analysis'
 import { LogFrame } from '../types/LogFrame'
 import { QuadProfile } from '../types/QuadProfile'
-import { detectMidThrottleWobble, deriveSampleRate } from '../utils/SignalAnalysis'
+import { detectMidThrottleWobble, deriveSampleRate, extractAxisData } from '../utils/SignalAnalysis'
+import { calculateStdDev, calculateRMS } from '../utils/FrequencyAnalysis'
+import { generateId } from '../utils/generateId'
 
 /**
  * Detects mid-throttle wobble without stick input
@@ -36,13 +38,16 @@ export const WobbleRule: TuningRule = {
       return []
     }
 
-    // Classify severity based on amplitude (scaled by profile)
+    // Yaw has higher moment of inertia — raise thresholds to avoid false positives
+    const yawMultiplier = window.axis === 'yaw' ? 1.5 : 1.0
+
+    // Classify severity based on amplitude (scaled by profile and yaw multiplier)
     let severity: 'low' | 'medium' | 'high'
-    if (metrics.amplitude > 35 * scale) {
+    if (metrics.amplitude > 35 * scale * yawMultiplier) {
       severity = 'high'
-    } else if (metrics.amplitude > 25 * scale) {
+    } else if (metrics.amplitude > 25 * scale * yawMultiplier) {
       severity = 'medium'
-    } else if (metrics.amplitude > 15 * scale) {
+    } else if (metrics.amplitude > 15 * scale * yawMultiplier) {
       severity = 'low'
     } else {
       severity = 'low'
@@ -58,6 +63,25 @@ export const WobbleRule: TuningRule = {
       issueType = 'midThrottleWobble'
     }
 
+    // I-term windup detection: compare pidI RMS to pidP RMS for low-freq wobble
+    // pidI is parsed in every frame but unused by other rules
+    let itermWindup = false
+    if (metrics.frequencyBand === 'low') {
+      const pidI = extractAxisData(windowFrames, 'pidI', window.axis)
+      const pidP = extractAxisData(windowFrames, 'pidP', window.axis)
+      const pidIRms = calculateRMS(pidI)
+      const pidPRms = calculateRMS(pidP)
+      if (pidPRms > 0 && pidIRms / pidPRms > 0.5) {
+        itermWindup = true
+      }
+    }
+
+    // Adaptive confidence based on signal-to-noise ratio
+    const gyro = extractAxisData(windowFrames, 'gyroADC', window.axis)
+    const gyroStdDev = calculateStdDev(gyro)
+    const signalToNoise = gyroStdDev > 0 ? metrics.amplitude / gyroStdDev : 1
+    const confidence = Math.min(0.95, 0.6 + signalToNoise * 0.1)
+
     issues.push({
       id: generateId(),
       type: issueType,
@@ -69,8 +93,9 @@ export const WobbleRule: TuningRule = {
         frequency: metrics.frequency,
         amplitude: metrics.amplitude,
         dominantBand: metrics.frequencyBand,
+        itermWindup,
       },
-      confidence: 0.85,
+      confidence: itermWindup ? Math.min(0.95, confidence + 0.05) : confidence,
     })
 
     return issues
@@ -92,19 +117,23 @@ export const WobbleRule: TuningRule = {
       const band = issue.metrics.dominantBand
 
       if (band === 'low') {
-        // Low-frequency wobble (< 20 Hz) - typically I-term hunting or structural
-        // Sub-20Hz oscillation without stick input is usually I-term building up,
-        // overshooting, and correcting in a slow cycle. Increasing P would be wrong.
+        // Low-frequency wobble (< 30 Hz) - typically I-term hunting or structural
+        const hasItermWindup = issue.metrics.itermWindup === true
+        const iConfidence = hasItermWindup ? 0.90 : 0.80
+        const pConfidence = hasItermWindup ? 0.65 : 0.75
+
         recommendations.push({
           id: generateId(),
           issueId: issue.id,
           type: 'adjustFiltering',
-          priority: 8,
-          confidence: 0.80,
+          priority: hasItermWindup ? 9 : 8,
+          confidence: iConfidence,
           title: `Lower I-term relax cutoff on ${issue.axis}`,
-          description: 'Low-frequency oscillation during hover is typically caused by I-term windup',
+          description: hasItermWindup
+            ? 'I-term windup confirmed: pidI/pidP ratio is high — I-term is the primary driver'
+            : 'Low-frequency oscillation during hover is typically caused by I-term windup',
           rationale:
-            'Sub-20Hz oscillation without stick input usually indicates the I-term is slowly building, overshooting, and reversing. Lowering iterm_relax_cutoff prevents the I-term from winding up during small disturbances.',
+            'Sub-30Hz oscillation without stick input usually indicates the I-term is slowly building, overshooting, and reversing. Lowering iterm_relax_cutoff prevents the I-term from winding up during small disturbances.',
           risks: [
             'May slightly reduce tracking precision on very slow stick inputs',
             'If the issue is structural (frame flex), this may not help',
@@ -126,10 +155,12 @@ export const WobbleRule: TuningRule = {
             id: generateId(),
             issueId: issue.id,
             type: 'decreasePID',
-            priority: 7,
-            confidence: 0.75,
+            priority: hasItermWindup ? 8 : 7,
+            confidence: hasItermWindup ? 0.85 : pConfidence,
             title: `Reduce I gain on ${issue.axis}`,
-            description: 'Persistent low-frequency wobble may need lower I gain',
+            description: hasItermWindup
+              ? 'I-term windup confirmed — reducing I gain directly limits the oscillation'
+              : 'Persistent low-frequency wobble may need lower I gain',
             rationale:
               'If I-term relax adjustment is not sufficient, reducing I gain directly limits the corrective force that causes the slow oscillation cycle.',
             risks: [
@@ -290,10 +321,3 @@ export const WobbleRule: TuningRule = {
   },
 }
 
-function generateId(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-    const r = (Math.random() * 16) | 0
-    const v = c === 'x' ? r : (r & 0x3) | 0x8
-    return v.toString(16)
-  })
-}

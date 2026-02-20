@@ -1,8 +1,9 @@
 import { TuningRule } from '../types/TuningRule'
 import { AnalysisWindow, DetectedIssue, Recommendation } from '../types/Analysis'
-import { LogFrame } from '../types/LogFrame'
+import { LogFrame, LogMetadata } from '../types/LogFrame'
 import { QuadProfile } from '../types/QuadProfile'
 import { detectPropwash, deriveSampleRate } from '../utils/SignalAnalysis'
+import { generateId } from '../utils/generateId'
 
 /**
  * Detects propwash oscillations during throttle drops
@@ -16,10 +17,9 @@ export const PropwashRule: TuningRule = {
   applicableAxes: ['roll', 'pitch'],
 
   condition: (window: AnalysisWindow, _frames: LogFrame[]): boolean => {
-    // Look for windows with throttle drops and low stick input
+    // Propwash commonly occurs during turns/dives with stick input — don't exclude those
     return (
       window.metadata.avgThrottle < 1500 &&
-      !window.metadata.hasStickInput &&
       window.frameIndices.length > 50
     )
   },
@@ -75,7 +75,7 @@ export const PropwashRule: TuningRule = {
     return issues
   },
 
-  recommend: (issues: DetectedIssue[], _frames: LogFrame[], profile?: QuadProfile): Recommendation[] => {
+  recommend: (issues: DetectedIssue[], _frames: LogFrame[], profile?: QuadProfile, metadata?: LogMetadata): Recommendation[] => {
     const recommendations: Recommendation[] = []
 
     for (const issue of issues) {
@@ -165,27 +165,52 @@ export const PropwashRule: TuningRule = {
           }
         )
       } else if (frequency > 30 && dtermActivity > 100) {
-        // High-frequency propwash with D-term struggling
-        recommendations.push({
-          id: generateId(),
-          issueId: issue.id,
-          type: 'adjustFiltering',
-          priority: 7,
-          confidence: 0.75,
-          title: `Verify RPM filter on ${issue.axis}`,
-          description: 'High-frequency propwash suggests RPM filter may need adjustment',
-          rationale:
-            'RPM filter removes motor noise that can interact with propwash. Ensuring proper operation improves D-term effectiveness.',
-          risks: ['Requires ESC telemetry to be working', 'May need firmware update'],
-          changes: [
-            {
-              parameter: 'rpmFilterHarmonics',
-              recommendedChange: '3',
-              explanation: 'Ensure 3 harmonics for comprehensive motor noise filtering',
-            },
-          ],
-          expectedImprovement: 'Cleaner D-term response allowing more effective damping',
-        })
+        // High-frequency propwash with D-term struggling — RPM filter-aware
+        const rpmHarmonics = metadata?.filterSettings?.rpmFilterHarmonics
+        if (rpmHarmonics === undefined || rpmHarmonics === 0) {
+          recommendations.push({
+            id: generateId(),
+            issueId: issue.id,
+            type: 'adjustFiltering',
+            priority: 7,
+            confidence: 0.75,
+            title: `Enable RPM filter on ${issue.axis}`,
+            description: 'RPM filter is not enabled — it removes motor noise that interacts with propwash',
+            rationale:
+              'RPM filter removes motor noise that can interact with propwash. Enabling it with 3 harmonics improves D-term effectiveness.',
+            risks: ['Requires ESC telemetry to be working', 'May need firmware update'],
+            changes: [
+              {
+                parameter: 'rpmFilterHarmonics',
+                recommendedChange: '3',
+                explanation: 'Enable RPM filter with 3 harmonics for motor noise filtering',
+              },
+            ],
+            expectedImprovement: 'Cleaner D-term response allowing more effective damping',
+          })
+        } else if (rpmHarmonics < 3) {
+          recommendations.push({
+            id: generateId(),
+            issueId: issue.id,
+            type: 'adjustFiltering',
+            priority: 7,
+            confidence: 0.75,
+            title: `Increase RPM filter harmonics on ${issue.axis}`,
+            description: `RPM filter has ${rpmHarmonics} harmonic(s) — increase to 3 for better propwash handling`,
+            rationale:
+              'RPM filter removes motor noise that can interact with propwash. More harmonics provide better coverage of motor noise overtones.',
+            risks: ['Marginal latency increase', 'May need firmware update'],
+            changes: [
+              {
+                parameter: 'rpmFilterHarmonics',
+                recommendedChange: '3',
+                explanation: 'Set RPM filter to 3 harmonics for comprehensive filtering',
+              },
+            ],
+            expectedImprovement: 'Cleaner D-term response allowing more effective damping',
+          })
+        }
+        // If RPM already at 3 harmonics, skip — propwash issue is elsewhere
       } else {
         // Moderate propwash - standard D_min increase
         recommendations.push({
@@ -244,11 +269,4 @@ export const PropwashRule: TuningRule = {
   },
 }
 
-function generateId(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-    const r = (Math.random() * 16) | 0
-    const v = c === 'x' ? r : (r & 0x3) | 0x8
-    return v.toString(16)
-  })
-}
 

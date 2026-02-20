@@ -4,6 +4,7 @@ import { LogFrame } from '../types/LogFrame'
 import { QuadProfile } from '../types/QuadProfile'
 import { detectBounceback, extractAxisData, deriveSampleRate } from '../utils/SignalAnalysis'
 import { calculateStdDev } from '../utils/FrequencyAnalysis'
+import { generateId } from '../utils/generateId'
 
 /**
  * Detects bounceback after rapid stick movements and recommends D/P adjustments
@@ -52,7 +53,7 @@ export const BouncebackRule: TuningRule = {
     const confidence = Math.min(0.95, 0.6 + signalToNoise * 0.1)
 
     issues.push({
-      id: uuidv4(),
+      id: generateId(),
       type: 'bounceback',
       severity,
       axis: window.axis,
@@ -82,7 +83,7 @@ export const BouncebackRule: TuningRule = {
       if (overshoot > 50 && settlingTime < 100) {
         // Large overshoot with fast settling - P is too high, overshooting target
         recommendations.push({
-          id: uuidv4(),
+          id: generateId(),
           issueId: issue.id,
           type: 'decreasePID',
           priority: 8,
@@ -109,7 +110,7 @@ export const BouncebackRule: TuningRule = {
         // Moderate overshoot with fast settling - likely feedforward-driven
         // On Betaflight 4.3+, feedforward is a primary cause of overshoot on stick release
         recommendations.push({
-          id: uuidv4(),
+          id: generateId(),
           issueId: issue.id,
           type: 'adjustFeedforward',
           priority: 8,
@@ -135,7 +136,7 @@ export const BouncebackRule: TuningRule = {
       } else if (settlingTime > 150) {
         // Slow settling - underdamped, need more D or increase D_min
         recommendations.push({
-          id: uuidv4(),
+          id: generateId(),
           issueId: issue.id,
           type: 'increasePID',
           priority: 7,
@@ -158,7 +159,7 @@ export const BouncebackRule: TuningRule = {
       } else {
         // Moderate bounceback - adjust P/D balance
         recommendations.push({
-          id: uuidv4(),
+          id: generateId(),
           issueId: issue.id,
           type: 'increasePID',
           priority: 6,
@@ -185,11 +186,3 @@ export const BouncebackRule: TuningRule = {
   },
 }
 
-// Re-export for use in other modules
-function uuidv4(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-    const r = (Math.random() * 16) | 0
-    const v = c === 'x' ? r : (r & 0x3) | 0x8
-    return v.toString(16)
-  })
-}

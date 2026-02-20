@@ -1,17 +1,10 @@
 import { TuningRule } from '../types/TuningRule'
 import { AnalysisWindow, DetectedIssue, Recommendation } from '../types/Analysis'
-import { LogFrame } from '../types/LogFrame'
+import { LogFrame, LogMetadata } from '../types/LogFrame'
 import { QuadProfile } from '../types/QuadProfile'
 import { extractAxisData, deriveSampleRate } from '../utils/SignalAnalysis'
 import { calculateRMS, analyzeFrequency } from '../utils/FrequencyAnalysis'
-
-function uuidv4(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-    const r = (Math.random() * 16) | 0
-    const v = c === 'x' ? r : (r & 0x3) | 0x8
-    return v.toString(16)
-  })
-}
+import { generateId } from '../utils/generateId'
 
 /**
  * Detects D-term amplifying high-frequency noise and recommends filtering/D adjustments
@@ -74,7 +67,7 @@ export const DTermNoiseRule: TuningRule = {
     const confidence = Math.min(0.95, 0.65 + dtermHighRatio * 0.3 + (dtermHighRatio > gyroHighRatio ? 0.1 : 0))
 
     issues.push({
-      id: uuidv4(),
+      id: generateId(),
       type: 'dtermNoise',
       severity,
       axis: window.axis,
@@ -91,15 +84,15 @@ export const DTermNoiseRule: TuningRule = {
     return issues
   },
 
-  recommend: (issues: DetectedIssue[], _frames: LogFrame[]): Recommendation[] => {
+  recommend: (issues: DetectedIssue[], _frames: LogFrame[], _profile?: QuadProfile, metadata?: LogMetadata): Recommendation[] => {
     const recommendations: Recommendation[] = []
+    const rpmHarmonics = metadata?.filterSettings?.rpmFilterHarmonics
 
     for (const issue of issues) {
       if (issue.type !== 'dtermNoise') continue
 
-      // Increase D-term filtering
       recommendations.push({
-        id: uuidv4(),
+        id: generateId(),
         issueId: issue.id,
         type: 'adjustFiltering',
         priority: 8,
@@ -122,9 +115,8 @@ export const DTermNoiseRule: TuningRule = {
         expectedImprovement: 'Quieter motors, reduced D-term noise without losing control',
       })
 
-      // Reduce D gain
       recommendations.push({
-        id: uuidv4(),
+        id: generateId(),
         issueId: issue.id,
         type: 'decreasePID',
         priority: 7,
@@ -148,30 +140,58 @@ export const DTermNoiseRule: TuningRule = {
         expectedImprovement: 'Reduced motor noise and heat from D-term',
       })
 
-      // Verify RPM filter
-      recommendations.push({
-        id: uuidv4(),
-        issueId: issue.id,
-        type: 'adjustRPMFilter',
-        priority: 6,
-        confidence: issue.confidence * 0.8,
-        title: 'Verify RPM filter configuration',
-        description: 'RPM filter removes motor noise at source - ensure it is properly configured',
-        rationale:
-          'The RPM filter uses motor telemetry to precisely notch out motor noise harmonics. With 3 harmonics enabled, it covers the fundamental and first two overtones.',
-        risks: [
-          'Requires bidirectional DShot and ESC telemetry',
-          'Too many harmonics can add latency',
-        ],
-        changes: [
-          {
-            parameter: 'rpmFilterHarmonics',
-            recommendedChange: '3',
-            explanation: 'Set RPM filter to 3 harmonics for comprehensive motor noise removal',
-          },
-        ],
-        expectedImprovement: 'Precise motor noise removal, allowing lower general filtering',
-      })
+      // RPM filter-aware recommendation
+      if (rpmHarmonics !== undefined && rpmHarmonics >= 3) {
+        // RPM already enabled at 3 harmonics — skip "verify" rec
+      } else if (rpmHarmonics === 0 || rpmHarmonics === undefined) {
+        recommendations.push({
+          id: generateId(),
+          issueId: issue.id,
+          type: 'adjustRPMFilter',
+          priority: 6,
+          confidence: issue.confidence * 0.8,
+          title: 'Enable RPM filter',
+          description: 'RPM filter is not enabled — it removes motor noise at source',
+          rationale:
+            'The RPM filter uses motor telemetry to precisely notch out motor noise harmonics. Enabling it with 3 harmonics covers the fundamental and first two overtones.',
+          risks: [
+            'Requires bidirectional DShot and ESC telemetry',
+            'Too many harmonics can add latency',
+          ],
+          changes: [
+            {
+              parameter: 'rpmFilterHarmonics',
+              recommendedChange: '3',
+              explanation: 'Enable RPM filter with 3 harmonics for motor noise removal',
+            },
+          ],
+          expectedImprovement: 'Precise motor noise removal, allowing lower general filtering',
+        })
+      } else {
+        recommendations.push({
+          id: generateId(),
+          issueId: issue.id,
+          type: 'adjustRPMFilter',
+          priority: 6,
+          confidence: issue.confidence * 0.8,
+          title: 'Increase RPM filter harmonics',
+          description: `RPM filter has ${rpmHarmonics} harmonic(s) — increase to 3 for better coverage`,
+          rationale:
+            'The RPM filter uses motor telemetry to precisely notch out motor noise harmonics. With 3 harmonics enabled, it covers the fundamental and first two overtones.',
+          risks: [
+            'More harmonics add slight computation overhead',
+            'Marginal latency increase',
+          ],
+          changes: [
+            {
+              parameter: 'rpmFilterHarmonics',
+              recommendedChange: '3',
+              explanation: 'Set RPM filter to 3 harmonics for comprehensive motor noise removal',
+            },
+          ],
+          expectedImprovement: 'Better motor noise removal at higher harmonics',
+        })
+      }
     }
 
     return recommendations

@@ -4,14 +4,7 @@ import { LogFrame } from '../types/LogFrame'
 import { QuadProfile } from '../types/QuadProfile'
 import { extractAxisData, deriveSampleRate } from '../utils/SignalAnalysis'
 import { calculateRMS, analyzeFrequency, calculateError } from '../utils/FrequencyAnalysis'
-
-function uuidv4(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-    const r = (Math.random() * 16) | 0
-    const v = c === 'x' ? r : (r & 0x3) | 0x8
-    return v.toString(16)
-  })
-}
+import { generateId } from '../utils/generateId'
 
 /**
  * Detects oscillations at high throttle indicating insufficient TPA
@@ -47,8 +40,11 @@ export const HighThrottleOscillationRule: TuningRule = {
     const spectrum = analyzeFrequency(error, sampleRate)
     const frequency = spectrum.dominantFrequency
 
+    // Yaw has higher moment of inertia — raise thresholds to avoid false positives
+    const yawMultiplier = window.axis === 'yaw' ? 1.5 : 1.0
+
     // Detected if significant error oscillation in the 5-100 Hz range (scaled by profile)
-    if (errorRMS <= 8 * scale || frequency < 5 || frequency > 100) {
+    if (errorRMS <= 8 * scale * yawMultiplier || frequency < 5 || frequency > 100) {
       return []
     }
 
@@ -61,13 +57,13 @@ export const HighThrottleOscillationRule: TuningRule = {
     }
     const amplitude = errorMax - errorMin
 
-    // Classify severity based on amplitude (scaled by profile)
+    // Classify severity based on amplitude (scaled by profile and yaw multiplier)
     let severity: 'low' | 'medium' | 'high'
-    if (amplitude > 50 * scale) {
+    if (amplitude > 50 * scale * yawMultiplier) {
       severity = 'high'
-    } else if (amplitude > 30 * scale) {
+    } else if (amplitude > 30 * scale * yawMultiplier) {
       severity = 'medium'
-    } else if (amplitude > 18 * scale) {
+    } else if (amplitude > 18 * scale * yawMultiplier) {
       severity = 'low'
     } else {
       severity = 'low'
@@ -76,7 +72,7 @@ export const HighThrottleOscillationRule: TuningRule = {
     const confidence = Math.min(0.95, 0.6 + errorRMS * 0.01 + (frequency > 10 ? 0.1 : 0))
 
     issues.push({
-      id: uuidv4(),
+      id: generateId(),
       type: 'highThrottleOscillation',
       severity,
       axis: window.axis,
@@ -101,7 +97,7 @@ export const HighThrottleOscillationRule: TuningRule = {
 
       // Increase TPA rate
       recommendations.push({
-        id: uuidv4(),
+        id: generateId(),
         issueId: issue.id,
         type: 'adjustTPA',
         priority: 8,
@@ -126,7 +122,7 @@ export const HighThrottleOscillationRule: TuningRule = {
 
       // Lower TPA breakpoint
       recommendations.push({
-        id: uuidv4(),
+        id: generateId(),
         issueId: issue.id,
         type: 'adjustTPA',
         priority: 7,
@@ -151,7 +147,7 @@ export const HighThrottleOscillationRule: TuningRule = {
 
       // Reduce P gain
       recommendations.push({
-        id: uuidv4(),
+        id: generateId(),
         issueId: issue.id,
         type: 'decreasePID',
         priority: 6,

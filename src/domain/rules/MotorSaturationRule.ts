@@ -3,14 +3,7 @@ import { AnalysisWindow, DetectedIssue, Recommendation } from '../types/Analysis
 import { LogFrame } from '../types/LogFrame'
 import { QuadProfile } from '../types/QuadProfile'
 import { detectMotorSaturation } from '../utils/SignalAnalysis'
-
-function uuidv4(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-    const r = (Math.random() * 16) | 0
-    const v = c === 'x' ? r : (r & 0x3) | 0x8
-    return v.toString(16)
-  })
-}
+import { generateId } from '../utils/generateId'
 
 /**
  * Detects motor saturation (motors hitting max output) and recommends PID/TPA adjustments
@@ -24,8 +17,8 @@ export const MotorSaturationRule: TuningRule = {
   applicableAxes: ['roll'], // Global issue, use roll only to avoid 3x duplicates
 
   condition: (window: AnalysisWindow, _frames: LogFrame[]): boolean => {
-    // Only analyze windows with active flight (throttle above idle)
-    return window.metadata.avgThrottle > 1300
+    // Analyze windows with active flight (throttle above idle)
+    return window.metadata.avgThrottle > 1100
   },
 
   detect: (window: AnalysisWindow, frames: LogFrame[], profile?: QuadProfile): DetectedIssue[] => {
@@ -35,37 +28,35 @@ export const MotorSaturationRule: TuningRule = {
 
     const metrics = detectMotorSaturation(windowFrames)
 
-    if (!metrics.detected) {
-      return []
+    // Motor saturation detection (only above 1300 throttle)
+    if (metrics.detected && window.metadata.avgThrottle > 1300) {
+      let severity: 'low' | 'medium' | 'high'
+      if (metrics.saturationPercentage > 30 * scale) {
+        severity = 'high'
+      } else if (metrics.saturationPercentage > 15 * scale) {
+        severity = 'medium'
+      } else if (metrics.saturationPercentage > 8 * scale) {
+        severity = 'low'
+      } else {
+        severity = 'low'
+      }
+
+      const confidence = Math.min(0.95, 0.7 + metrics.saturationPercentage * 0.005)
+
+      issues.push({
+        id: generateId(),
+        type: 'motorSaturation',
+        severity,
+        axis: window.axis,
+        timeRange: [window.startTime, window.endTime],
+        description: `Motor saturation: ${metrics.saturationPercentage.toFixed(1)}% at max output, asymmetry: ${(metrics.asymmetry * 100).toFixed(1)}%`,
+        metrics: {
+          motorSaturation: metrics.saturationPercentage,
+          amplitude: metrics.averageMotorOutput, // Store for insufficient authority check
+        },
+        confidence,
+      })
     }
-
-    // Classify severity based on saturation percentage (scaled by profile)
-    let severity: 'low' | 'medium' | 'high'
-    if (metrics.saturationPercentage > 30 * scale) {
-      severity = 'high'
-    } else if (metrics.saturationPercentage > 15 * scale) {
-      severity = 'medium'
-    } else if (metrics.saturationPercentage > 8 * scale) {
-      severity = 'low'
-    } else {
-      severity = 'low'
-    }
-
-    // Confidence based on sample size and consistency
-    const confidence = Math.min(0.95, 0.7 + metrics.saturationPercentage * 0.005)
-
-    issues.push({
-      id: uuidv4(),
-      type: 'motorSaturation',
-      severity,
-      axis: window.axis,
-      timeRange: [window.startTime, window.endTime],
-      description: `Motor saturation: ${metrics.saturationPercentage.toFixed(1)}% at max output, asymmetry: ${(metrics.asymmetry * 100).toFixed(1)}%`,
-      metrics: {
-        motorSaturation: metrics.saturationPercentage,
-      },
-      confidence,
-    })
 
     return issues
   },
@@ -78,10 +69,35 @@ export const MotorSaturationRule: TuningRule = {
 
       const saturation = issue.metrics.motorSaturation || 0
 
+      // Check for underpowered build: if average hover motor output > 60% of range
+      // the build lacks authority and PID reduction won't help
+      const avgMotor = issue.metrics.amplitude // We store averageMotorOutput in amplitude
+      if (avgMotor !== undefined && avgMotor > 1600) {
+        recommendations.push({
+          id: generateId(),
+          issueId: issue.id,
+          type: 'hardwareCheck',
+          priority: 9,
+          confidence: issue.confidence,
+          category: 'hardware',
+          title: 'Build lacks motor authority',
+          description: `Average motor output is ${avgMotor.toFixed(0)} (${((avgMotor - 1000) / 10).toFixed(0)}% of range) — this build is underpowered for the weight`,
+          rationale:
+            'When hover requires more than 60% of motor authority, there is insufficient headroom for PID corrections and maneuvers. Reducing PIDs would worsen tracking without fixing saturation. The solution is hardware: lighter battery, more powerful motors, or reduced weight.',
+          risks: [
+            'May need motor or prop upgrade',
+            'Lighter battery means shorter flight time',
+          ],
+          changes: [],
+          expectedImprovement: 'More motor headroom for PID corrections, eliminating the saturation-tune-worse cycle',
+        })
+        continue // Don't suggest PID reduction for underpowered builds
+      }
+
       if (saturation > 15) {
         // Critical/High: Reduce master multiplier
         recommendations.push({
-          id: uuidv4(),
+          id: generateId(),
           issueId: issue.id,
           type: 'adjustMasterMultiplier',
           priority: 9,
@@ -108,7 +124,7 @@ export const MotorSaturationRule: TuningRule = {
       if (saturation > 15) {
         // High: Increase TPA rate
         recommendations.push({
-          id: uuidv4(),
+          id: generateId(),
           issueId: issue.id,
           type: 'adjustTPA',
           priority: 7,
@@ -135,7 +151,7 @@ export const MotorSaturationRule: TuningRule = {
       if (saturation > 8 && saturation <= 15) {
         // Medium: Reduce P and D
         recommendations.push({
-          id: uuidv4(),
+          id: generateId(),
           issueId: issue.id,
           type: 'decreasePID',
           priority: 6,
@@ -167,7 +183,7 @@ export const MotorSaturationRule: TuningRule = {
       if (saturation > 5 && saturation <= 8) {
         // Low: Increase TPA as a light touch
         recommendations.push({
-          id: uuidv4(),
+          id: generateId(),
           issueId: issue.id,
           type: 'adjustTPA',
           priority: 4,

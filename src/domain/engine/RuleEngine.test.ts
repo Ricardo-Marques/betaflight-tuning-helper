@@ -6,7 +6,9 @@ import type { IssueType, Severity, Axis, AnalysisResult } from '../types/Analysi
 const VALID_ISSUE_TYPES: IssueType[] = [
   'bounceback', 'propwash', 'midThrottleWobble', 'highFrequencyNoise',
   'lowFrequencyOscillation', 'motorSaturation', 'gyroNoise', 'dtermNoise',
-  'highThrottleOscillation', 'underdamped', 'overdamped',
+  'highThrottleOscillation', 'underdamped', 'overdamped', 'overFiltering',
+  'cgOffset', 'motorImbalance', 'bearingNoise', 'frameResonance',
+  'electricalNoise', 'escDesync', 'voltageSag',
 ]
 
 const VALID_SEVERITIES: Severity[] = ['low', 'medium', 'high']

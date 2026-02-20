@@ -1,17 +1,10 @@
 import { TuningRule } from '../types/TuningRule'
 import { AnalysisWindow, DetectedIssue, Recommendation } from '../types/Analysis'
-import { LogFrame } from '../types/LogFrame'
+import { LogFrame, LogMetadata } from '../types/LogFrame'
 import { QuadProfile } from '../types/QuadProfile'
 import { extractAxisData, deriveSampleRate } from '../utils/SignalAnalysis'
 import { calculateRMS, analyzeFrequency } from '../utils/FrequencyAnalysis'
-
-function uuidv4(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-    const r = (Math.random() * 16) | 0
-    const v = c === 'x' ? r : (r & 0x3) | 0x8
-    return v.toString(16)
-  })
-}
+import { generateId } from '../utils/generateId'
 
 /**
  * Detects excessive gyro noise floor during stable hover/cruise
@@ -71,7 +64,7 @@ export const GyroNoiseRule: TuningRule = {
     const confidence = Math.min(0.95, 0.6 + gyroRMS * 0.02 + highBandRatio * 0.2)
 
     issues.push({
-      id: uuidv4(),
+      id: generateId(),
       type: 'gyroNoise',
       severity,
       axis: window.axis,
@@ -87,7 +80,7 @@ export const GyroNoiseRule: TuningRule = {
     return issues
   },
 
-  recommend: (issues: DetectedIssue[], _frames: LogFrame[], profile?: QuadProfile): Recommendation[] => {
+  recommend: (issues: DetectedIssue[], _frames: LogFrame[], profile?: QuadProfile, _metadata?: LogMetadata): Recommendation[] => {
     const recommendations: Recommendation[] = []
 
     for (const issue of issues) {
@@ -98,7 +91,7 @@ export const GyroNoiseRule: TuningRule = {
       // Whoop-specific aggressive filtering warning
       if (profile?.overrides.warnAggressiveFiltering) {
         recommendations.push({
-          id: uuidv4(),
+          id: generateId(),
           issueId: issue.id,
           type: 'adjustFiltering',
           priority: 7,
@@ -118,7 +111,7 @@ export const GyroNoiseRule: TuningRule = {
 
       // Increase gyro filtering
       recommendations.push({
-        id: uuidv4(),
+        id: generateId(),
         issueId: issue.id,
         type: 'adjustFiltering',
         priority: 8,
@@ -143,7 +136,7 @@ export const GyroNoiseRule: TuningRule = {
 
       // Adjust dynamic notch
       recommendations.push({
-        id: uuidv4(),
+        id: generateId(),
         issueId: issue.id,
         type: 'adjustFiltering',
         priority: 7,
@@ -169,7 +162,7 @@ export const GyroNoiseRule: TuningRule = {
       // Extreme cases: informational about hardware vibration
       if (gyroRMS > 12) {
         recommendations.push({
-          id: uuidv4(),
+          id: generateId(),
           issueId: issue.id,
           type: 'adjustFiltering',
           priority: 5,
