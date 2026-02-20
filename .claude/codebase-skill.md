@@ -101,7 +101,7 @@ LogStore sets frames + metadata → triggers AnalysisStore.analyze()
 RuleEngine.analyzeLog():
   1. Segment log into 100ms windows (50% overlap)
   2. Classify flight phase per window (idle/hover/cruise/punch/propwash/flip/roll)
-  3. Run each of 8 rules: condition() → detect() → recommend()
+  3. Run each rule: condition() → detect() → recommend()
   4. Temporal dedup issues (100ms gap merge, then collapse by type+axis)
   5. Dedup recommendations (key on parameter:axis, not title)
   6. Generate summary + flight segments

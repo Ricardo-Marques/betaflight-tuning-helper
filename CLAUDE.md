@@ -17,7 +17,7 @@ E2E tests use Playwright (`pnpm test`). Aim for the full suite to run in ~10 min
 
 - **Domain layer** (`src/domain/`) — Pure logic, no React/MobX imports
   - `engine/RuleEngine.ts` — Segments log into windows, runs rules, deduplicates issues and recommendations
-  - `rules/` — 8 self-contained `TuningRule` objects (BouncebackRule, PropwashRule, WobbleRule, TrackingQualityRule, MotorSaturationRule, DTermNoiseRule, GyroNoiseRule, HighThrottleOscillationRule)
+  - `rules/` — Self-contained `TuningRule` objects (BouncebackRule, PropwashRule, WobbleRule, TrackingQualityRule, MotorSaturationRule, DTermNoiseRule, GyroNoiseRule, FeedforwardNoiseRule, HighThrottleOscillationRule, + hardware rules)
   - `types/` — `LogFrame`, `Analysis` (DetectedIssue, Recommendation, ParameterChange), `TuningRule` interface
   - `utils/` — FFT (Cooley-Tukey), signal analysis algorithms
 - **Stores** (`src/stores/`) — MobX with `makeAutoObservable`

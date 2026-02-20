@@ -326,8 +326,11 @@ export function getAxisValue(data: AxisData, axis: Axis): number {
  */
 export function extractAxisData(
   frames: LogFrame[],
-  field: 'gyroADC' | 'setpoint' | 'pidP' | 'pidI' | 'pidD' | 'pidSum',
+  field: 'gyroADC' | 'setpoint' | 'pidP' | 'pidI' | 'pidD' | 'pidSum' | 'feedforward',
   axis: Axis
 ): number[] {
+  if (field === 'feedforward') {
+    return frames.map(f => f.feedforward ? getAxisValue(f.feedforward, axis) : 0)
+  }
   return frames.map(f => getAxisValue(f[field], axis))
 }

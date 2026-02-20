@@ -29,6 +29,9 @@ export const ISSUE_CHART_DESCRIPTIONS: Record<IssueType, string> = {
   dtermNoise:
     'Enable the D-term trace - it will look excessively spiky or noisy in the flagged region. D-term amplifies high-frequency gyro changes, so noisy gyro produces an even noisier D output. The motors may show high-frequency chatter as a result.',
 
+  feedforwardNoise:
+    'Enable the Feedforward trace - during steady sticks (no active input), it should be near zero. If you see jittery spikes or elevated activity on the FF trace while the Setpoint is flat, RC link noise is leaking into the feedforward path and driving unnecessary motor corrections.',
+
   highThrottleOscillation:
     'On the Gyro trace, look for oscillations that appear specifically when the Motor traces are at high output (punch-outs or fast climbs). The gyro becomes wavy or ringy in a way not present at lower throttle. The oscillation may appear as a clear sine-wave pattern on top of the commanded movement.',
 

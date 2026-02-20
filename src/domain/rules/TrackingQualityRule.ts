@@ -5,6 +5,7 @@ import { QuadProfile } from '../types/QuadProfile'
 import { calculateRMS, calculateError, calculateStdDev, estimatePhaseLag } from '../utils/FrequencyAnalysis'
 import { extractAxisData, deriveSampleRate } from '../utils/SignalAnalysis'
 import { generateId } from '../utils/generateId'
+import { generateAxisRecommendation } from './TrackingRecommendations'
 
 /**
  * Detects poor tracking quality during active flight maneuvers
@@ -132,6 +133,19 @@ export const TrackingQualityRule: TuningRule = {
     // Calculate confidence based on signal quality
     const confidence = Math.min(0.95, 0.6 + signalToNoise * 0.05)
 
+    // Compute feedforward contribution if FF data is present
+    const hasFeedforward = windowFrames.some(f => f.feedforward !== undefined)
+    let feedforwardRMS: number | undefined
+    let feedforwardContribution: number | undefined
+    if (hasFeedforward) {
+      const ffSignal = extractAxisData(windowFrames, 'feedforward', window.axis)
+      const pidSumSignal = extractAxisData(windowFrames, 'pidSum', window.axis)
+      feedforwardRMS = calculateRMS(ffSignal)
+      const pidSumRMS = calculateRMS(pidSumSignal)
+      const total = pidSumRMS + feedforwardRMS
+      feedforwardContribution = total > 0 ? feedforwardRMS / total : 0
+    }
+
     issues.push({
       id: generateId(),
       type: issueType,
@@ -145,6 +159,8 @@ export const TrackingQualityRule: TuningRule = {
         rmsError,
         signalToNoise,
         phaseLagMs: lag.lagMs,
+        ...(feedforwardRMS !== undefined && { feedforwardRMS }),
+        ...(feedforwardContribution !== undefined && { feedforwardContribution }),
       },
       confidence,
     })
@@ -183,127 +199,8 @@ export const TrackingQualityRule: TuningRule = {
         severityOrder[current.severity] > severityOrder[worst.severity] ? current : worst
       )
 
-      const normalizedError = worstIssue.metrics.normalizedError || 0
-      const amplitudeRatio = worstIssue.metrics.amplitudeRatio || 0
-
-      // Recommendation logic based on issue type
-      if (worstIssue.type === 'overFiltering') {
-        // Over-filtering: high phase lag with clean gyro — raise filter multipliers
-        recommendations.push({
-          id: generateId(),
-          issueId: worstIssue.id,
-          type: 'adjustFiltering',
-          priority: 8,
-          confidence: worstIssue.confidence,
-          title: 'Raise filter cutoffs',
-          description: 'Filters are too aggressive — causing tracking delay without meaningful noise reduction',
-          rationale:
-            'The gyro noise floor is already clean, but the tracking error is high due to excessive filter delay. Raising the filter multipliers reduces phase lag without adding significant noise.',
-          risks: [
-            'May slightly increase motor noise if noise floor was borderline',
-            'Monitor motor temperatures after adjustment',
-          ],
-          changes: [
-            {
-              parameter: 'gyroFilterMultiplier',
-              recommendedChange: '+10',
-              explanation: `Raise gyro filter multiplier to reduce ${worstIssue.metrics.phaseLagMs?.toFixed(1) ?? ''}ms phase lag`,
-            },
-            {
-              parameter: 'dtermFilterMultiplier',
-              recommendedChange: '+10',
-              explanation: 'Raise D-term filter multiplier to reduce filtering delay',
-            },
-          ],
-          expectedImprovement: 'Reduced phase lag, more responsive tracking with maintained noise levels',
-        })
-      } else if (worstIssue.type === 'overdamped') {
-        // Low amplitude ratio + high error = insufficient P gain or excessive D
-        const pIncrease = normalizedError > 50 ? '+0.5' : normalizedError > 35 ? '+0.4' : '+0.3'
-
-        recommendations.push({
-          id: generateId(),
-          issueId: worstIssue.id,
-          type: 'increasePID',
-          priority: 8,
-          confidence: worstIssue.confidence,
-          title: `Increase P gain on ${axis}`,
-          description: 'Gyro not reaching setpoint - overdamped or insufficient P',
-          rationale:
-            'Low amplitude ratio indicates the quad is not generating enough corrective force to match commanded rates. The response is sluggish, possibly due to too little P or too much D dampening the response.',
-          risks: [
-            'Too much P can cause rapid oscillations',
-            'May need corresponding D increase',
-            'Monitor motor temperatures',
-          ],
-          changes: [
-            {
-              parameter: 'pidPGain',
-              recommendedChange: pIncrease,
-              axis: axis as 'roll' | 'pitch' | 'yaw',
-              explanation: `Increase P to improve tracking authority (current error: ${normalizedError.toFixed(1)}%)`,
-            },
-          ],
-          expectedImprovement: 'Gyro will follow setpoint more closely during maneuvers',
-        })
-      } else if (worstIssue.type === 'underdamped') {
-        // Underdamped: overshooting setpoint - too much P or not enough D
-        const dIncrease = normalizedError > 50 ? '+0.3' : normalizedError > 35 ? '+0.2' : '+0.15'
-
-        recommendations.push({
-          id: generateId(),
-          issueId: worstIssue.id,
-          type: 'increasePID',
-          priority: 7,
-          confidence: worstIssue.confidence,
-          title: `Increase D gain on ${axis}`,
-          description: 'Underdamped response - overshooting setpoint',
-          rationale:
-            'High amplitude ratio with tracking error indicates the quad is overshooting its target and oscillating around it. Increasing D gain provides more damping to resist overshoot. If D is already high, consider reducing P instead.',
-          risks: [
-            'High D amplifies gyro noise - monitor motor temperatures',
-            'May need filter adjustment if D-term noise increases',
-            'If D is already high, reduce P instead',
-          ],
-          changes: [
-            {
-              parameter: 'pidDGain',
-              recommendedChange: dIncrease,
-              axis: axis as 'roll' | 'pitch' | 'yaw',
-              explanation: `Increase D to damp overshoot (amplitude ratio: ${amplitudeRatio.toFixed(0)}%)`,
-            },
-          ],
-          expectedImprovement: 'Reduced overshoot and cleaner tracking',
-        })
-      } else {
-        // Generic tracking issue - try feedforward first
-        const ffIncrease = normalizedError > 35 ? '+8%' : normalizedError > 25 ? '+6%' : '+4%'
-
-        recommendations.push({
-          id: generateId(),
-          issueId: worstIssue.id,
-          type: 'adjustFeedforward',
-          priority: 6,
-          confidence: worstIssue.confidence * 0.9,
-          title: `Increase Feedforward on ${axis}`,
-          description: 'Moderate tracking error - feedforward can help',
-          rationale:
-            'Feedforward anticipates needed control inputs, reducing tracking lag without relying solely on error correction.',
-          risks: [
-            'Too much feedforward can cause overshoot on stick inputs',
-            'May feel "twitchy" if overdone',
-          ],
-          changes: [
-            {
-              parameter: 'pidFeedforward',
-              recommendedChange: ffIncrease,
-              axis: axis as 'roll' | 'pitch' | 'yaw',
-              explanation: `Increase feedforward for more proactive tracking (current error: ${normalizedError.toFixed(1)}%)`,
-            },
-          ],
-          expectedImprovement: 'Reduced lag, more locked-in feel during active maneuvers',
-        })
-      }
+      const rec = generateAxisRecommendation(axis, worstIssue)
+      if (rec) recommendations.push(rec)
     }
 
     // If multiple axes have high errors, suggest master multiplier

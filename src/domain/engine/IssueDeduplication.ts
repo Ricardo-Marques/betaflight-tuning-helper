@@ -109,6 +109,8 @@ export function deduplicateIssues(issues: DetectedIssue[]): DetectedIssue[] {
         worstMetrics.motorSaturation = Math.max(worstMetrics.motorSaturation ?? 0, m.motorSaturation)
       if (m.noiseFloor !== undefined)
         worstMetrics.noiseFloor = Math.max(worstMetrics.noiseFloor ?? 0, m.noiseFloor)
+      if (m.feedforwardRMS !== undefined)
+        worstMetrics.feedforwardRMS = Math.max(worstMetrics.feedforwardRMS ?? 0, m.feedforwardRMS)
     }
 
     // Prepend occurrence count to the description

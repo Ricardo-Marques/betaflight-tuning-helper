@@ -11,6 +11,7 @@ import { MotorSaturationRule } from '../rules/MotorSaturationRule'
 import { DTermNoiseRule } from '../rules/DTermNoiseRule'
 import { HighThrottleOscillationRule } from '../rules/HighThrottleOscillationRule'
 import { GyroNoiseRule } from '../rules/GyroNoiseRule'
+import { FeedforwardNoiseRule } from '../rules/FeedforwardNoiseRule'
 import { ElectricalNoiseRule } from '../rules/ElectricalNoiseRule'
 import { CgOffsetRule } from '../rules/CgOffsetRule'
 import { MotorHealthRule } from '../rules/MotorHealthRule'
@@ -38,6 +39,7 @@ export class RuleEngine {
     this.registerRule(DTermNoiseRule)
     this.registerRule(HighThrottleOscillationRule)
     this.registerRule(GyroNoiseRule)
+    this.registerRule(FeedforwardNoiseRule)
     this.registerRule(ElectricalNoiseRule)
     this.registerRule(CgOffsetRule)
     this.registerRule(MotorHealthRule)

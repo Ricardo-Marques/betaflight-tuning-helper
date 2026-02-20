@@ -74,6 +74,7 @@ export type IssueType =
   | 'motorSaturation'
   | 'gyroNoise'
   | 'dtermNoise'
+  | 'feedforwardNoise'
   | 'highThrottleOscillation'
   | 'underdamped'
   | 'overdamped'
@@ -133,6 +134,12 @@ export interface IssueMetrics {
 
   /** Whether I-term windup was detected (pidI/pidP ratio > 0.5) */
   itermWindup?: boolean
+
+  /** RMS of FF signal in analysis window (deg/s) */
+  feedforwardRMS?: number
+
+  /** FF RMS / (pidSum RMS + FF RMS), range 0-1 */
+  feedforwardContribution?: number
 }
 
 export type FrequencyBand = 'low' | 'mid' | 'high'
@@ -213,6 +220,11 @@ export type BetaflightParameter =
   // RPM filter
   | 'rpmFilterHarmonics'
   | 'rpmFilterMinHz'
+
+  // Feedforward
+  | 'feedforwardTransition'    // feedforward_transition (0-100)
+  | 'feedforwardJitterFactor'  // feedforward_jitter_factor (0-20)
+  | 'feedforwardSmoothFactor'  // feedforward_smooth_factor (0-95)
 
   // Other
   | 'dynamicIdle'

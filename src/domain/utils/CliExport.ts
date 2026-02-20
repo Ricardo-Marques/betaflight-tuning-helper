@@ -23,6 +23,9 @@ const GLOBAL_PARAM_MAP: Partial<Record<BetaflightParameter, string>> = {
   dynamicNotchMaxHz: 'dyn_notch_max_hz',
   rpmFilterHarmonics: 'rpm_filter_harmonics',
   rpmFilterMinHz: 'rpm_filter_min_hz',
+  feedforwardTransition: 'feedforward_transition',
+  feedforwardJitterFactor: 'feedforward_jitter_factor',
+  feedforwardSmoothFactor: 'feedforward_smooth_factor',
   dynamicIdle: 'dshot_idle_value',
   tpaRate: 'tpa_rate',
   tpaBreakpoint: 'tpa_breakpoint',
@@ -39,6 +42,9 @@ export const PARAMETER_DISPLAY_NAMES: Record<BetaflightParameter, string> = {
   pidDGain: 'D Gain',
   pidDMinGain: 'D Min',
   pidFeedforward: 'Feedforward',
+  feedforwardTransition: 'FF Transition',
+  feedforwardJitterFactor: 'FF Jitter Factor',
+  feedforwardSmoothFactor: 'FF Smooth Factor',
   gyroFilterMultiplier: 'Gyro Filter',
   dtermFilterMultiplier: 'D-term Filter',
   dynamicNotchCount: 'Dyn Notch Count',
@@ -162,6 +168,10 @@ export function getGlobalValue(
       return filterSettings?.dtermFilterMultiplier
     case 'itermRelaxCutoff':
       return filterSettings?.itermRelaxCutoff
+    case 'feedforwardTransition':
+    case 'feedforwardJitterFactor':
+    case 'feedforwardSmoothFactor':
+      return undefined // Not parsed from log headers yet
     default:
       return undefined
   }

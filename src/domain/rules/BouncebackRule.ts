@@ -3,7 +3,7 @@ import { AnalysisWindow, DetectedIssue, Recommendation } from '../types/Analysis
 import { LogFrame } from '../types/LogFrame'
 import { QuadProfile } from '../types/QuadProfile'
 import { detectBounceback, extractAxisData, deriveSampleRate } from '../utils/SignalAnalysis'
-import { calculateStdDev } from '../utils/FrequencyAnalysis'
+import { calculateRMS, calculateStdDev } from '../utils/FrequencyAnalysis'
 import { generateId } from '../utils/generateId'
 
 /**
@@ -52,6 +52,14 @@ export const BouncebackRule: TuningRule = {
     const signalToNoise = Math.abs(metrics.overshoot) / (calculateStdDev(gyro) + 1)
     const confidence = Math.min(0.95, 0.6 + signalToNoise * 0.1)
 
+    // Compute feedforward RMS if FF data is present
+    const hasFeedforward = windowFrames.some(f => f.feedforward !== undefined)
+    let feedforwardRMS: number | undefined
+    if (hasFeedforward) {
+      const ffSignal = extractAxisData(windowFrames, 'feedforward', window.axis)
+      feedforwardRMS = calculateRMS(ffSignal)
+    }
+
     issues.push({
       id: generateId(),
       type: 'bounceback',
@@ -63,6 +71,7 @@ export const BouncebackRule: TuningRule = {
         overshoot: metrics.overshoot,
         settlingTime: metrics.settlingTime,
         amplitude: metrics.overshoot,
+        ...(feedforwardRMS !== undefined && { feedforwardRMS }),
       },
       confidence,
     })
@@ -78,10 +87,65 @@ export const BouncebackRule: TuningRule = {
 
       const overshoot = issue.metrics.overshoot || 0
       const settlingTime = issue.metrics.settlingTime || 0
+      const feedforwardRMS = issue.metrics.feedforwardRMS
+      const hasFfData = feedforwardRMS !== undefined
 
-      // Decision logic based on bounceback characteristics
-      if (overshoot > 50 && settlingTime < 100) {
+      // FF-aware classification: use actual FF data when available
+      if (hasFfData && feedforwardRMS > overshoot * 0.3) {
+        // FF data available and FF is high (contributing >30% of overshoot magnitude)
+        // Primary: lower feedforward transition to reduce FF during stick deceleration
+        recommendations.push({
+          id: generateId(),
+          issueId: issue.id,
+          type: 'adjustFeedforward',
+          priority: 9,
+          confidence: issue.confidence,
+          title: `Reduce FF transition on ${issue.axis}`,
+          description: 'Feedforward is driving overshoot on stick release — reduce transition to taper FF during deceleration',
+          rationale:
+            `Feedforward RMS (${feedforwardRMS.toFixed(1)}°/s) is significant relative to the ${overshoot.toFixed(1)}° overshoot. Lowering feedforward_transition reduces FF authority during stick deceleration without hurting active-flight response.`,
+          risks: [
+            'May slightly reduce responsiveness on fast direction changes',
+            'Only affects stick deceleration phase',
+          ],
+          changes: [
+            {
+              parameter: 'feedforwardTransition',
+              recommendedChange: '25',
+              explanation: 'Lower FF transition to reduce overshoot on stick release',
+            },
+          ],
+          expectedImprovement: 'Cleaner stick stops with maintained tracking during active flying',
+        })
+
+        // Secondary: reduce FF gain as fallback
+        recommendations.push({
+          id: generateId(),
+          issueId: issue.id,
+          type: 'adjustFeedforward',
+          priority: 7,
+          confidence: issue.confidence * 0.85,
+          title: `Reduce Feedforward on ${issue.axis}`,
+          description: 'Lower feedforward gain as secondary measure if transition alone is insufficient',
+          rationale:
+            'If reducing feedforward transition alone doesn\'t resolve the overshoot, reducing the FF gain directly lowers the feedforward contribution across all stick movements.',
+          risks: [
+            'May slightly increase tracking lag during active flying',
+            'May feel less responsive on initial stick inputs',
+          ],
+          changes: [
+            {
+              parameter: 'pidFeedforward',
+              recommendedChange: '-8%',
+              axis: issue.axis,
+              explanation: 'Reduce feedforward gain to prevent overshoot on stick release',
+            },
+          ],
+          expectedImprovement: 'Reduced overshoot with moderate tracking trade-off',
+        })
+      } else if (overshoot > 50 && settlingTime < 100) {
         // Large overshoot with fast settling - P is too high, overshooting target
+        // (FF data available but low, or no FF data — P-driven)
         recommendations.push({
           id: generateId(),
           issueId: issue.id,
@@ -106,9 +170,8 @@ export const BouncebackRule: TuningRule = {
           ],
           expectedImprovement: 'Smoother stick release with less overshoot',
         })
-      } else if (overshoot > 30 && settlingTime < 80) {
-        // Moderate overshoot with fast settling - likely feedforward-driven
-        // On Betaflight 4.3+, feedforward is a primary cause of overshoot on stick release
+      } else if (!hasFfData && overshoot > 30 && settlingTime < 80) {
+        // No FF data: preserve existing heuristic (moderate overshoot + fast settling = likely FF)
         recommendations.push({
           id: generateId(),
           issueId: issue.id,
