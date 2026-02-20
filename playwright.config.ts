@@ -1,7 +1,5 @@
 import { defineConfig } from '@playwright/test'
 
-const serverURL = process.env.CI ? 'http://localhost:4173' : 'http://localhost:5173'
-
 export default defineConfig({
   testDir: './e2e',
   timeout: 60_000,
@@ -12,7 +10,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: 'list',
   use: {
-    baseURL: serverURL,
+    baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
     viewport: { width: 1920, height: 1080 },
   },
@@ -23,8 +21,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: process.env.CI ? 'pnpm preview' : 'pnpm dev',
-    url: serverURL,
+    command: 'pnpm dev',
+    url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
   },
