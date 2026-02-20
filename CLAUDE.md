@@ -35,7 +35,7 @@ E2E tests use Playwright (`pnpm test`). Aim for the full suite to run in ~10 min
 - Rules are plain objects conforming to `TuningRule` interface — registered in `RuleEngine` constructor
 - Issue dedup: temporal merge (100ms gap) then collapse by type+axis into single entry with count
 - Recommendation dedup: keyed on `parameter:axis` from `changes[]`, not title string
-- Chart downsamples to max 2000 points
+- Chart uses adaptive downsampling (300–2500 pts) with FPS-based feedback
 - All Betaflight parameter names defined in `BetaflightParameter` union type in `Analysis.ts`
 
 ## Conventions

@@ -72,7 +72,12 @@ npx tsx scripts/take-screenshots.ts composite  # Re-composite from existing raws
 | `src/domain/types/LogFrame.ts` | ~167 | LogFrame, LogMetadata, AxisData interfaces |
 | `src/domain/types/TuningRule.ts` | ~60 | TuningRule interface (condition, detect, recommend) |
 | `src/components/RecommendationsPanel.tsx` | ~1429 | Tuning recommendations UI (tabs, CLI export, accept tune) |
-| `src/components/LogChart.tsx` | ~375 | Recharts line chart with issue markers |
+| `src/components/LogChart.tsx` | ~385 | Recharts line chart with issue markers |
+| `src/components/logChart/useChartData.ts` | ~100 | Downsample frames → chart data points |
+| `src/components/logChart/useChartInteractions.ts` | ~330 | Mouse drag/click handlers, issue selection on chart click |
+| `src/components/logChart/useIssueLabels.ts` | ~135 | Compute label positions, stacking, severity sorting |
+| `src/components/logChart/useIssuePopover.ts` | ~245 | Hover/forced popover HTML, glow effect on selection |
+| `src/components/LogChart.styles.ts` | ~230 | Styled components for chart, labels, popover, overlays |
 | `src/components/FileUpload.tsx` | ~770 | Drag-drop upload, parse progress, metadata display |
 | `src/workers/logParser.worker.ts` | ~400 | Web Worker: parses .bbl/.bfl/.txt/.csv in background |
 | `src/domain/utils/CliExport.ts` | ~384 | Map recommendations → Betaflight CLI `set` commands |
@@ -289,7 +294,7 @@ useFlashDownloadStore()  // Flash download progress
 
 - Located in `e2e/*.spec.ts`
 - Helpers: `e2e/helpers.ts`, `e2e/data-verification-helpers.ts`
-- Sample log: `test-logs/bflLog.BFL`
+- Sample log: `test-logs/shortLog.BFL`
 - Run: `pnpm test` (full), `pnpm test:headed` (visible browser)
 - Config: `playwright.config.ts` — Chromium only, 1920x1080, 60s timeout
 - **Selectors**: Use `data-testid` attributes
@@ -392,10 +397,30 @@ Understanding this prevents confusion when working on analysis:
 | Emotion styled components only | Theme-aware, dynamic dark/light mode |
 | Files under 300 lines | Maintainability, split by domain |
 | No `any` in domain layer | Type safety, ESLint warning-level |
-| Chart downsamples to max 2000 points | Recharts performance |
+| Chart adaptive downsampling (300–2500 pts) | Progressive formula + FPS feedback loop in `useChartData.ts` |
 | FFT capped at 2048 samples | Avoid slowdown on large logs |
 | Web Worker for parsing | Prevent main thread blocking on large files |
 | No backend | Everything client-side, works offline (PWA) |
+
+---
+
+## Zoom System
+
+Zoom is percentage-based (0–100%). `UIStore.zoomStart` / `zoomEnd` define the visible window.
+
+**Minimum zoom window** is enforced in **3 places** — all must agree:
+
+| Location | What it controls |
+|----------|-----------------|
+| `UIStore.setZoom()` | Safety floor when start ≥ end (0.01% absolute minimum) |
+| `useChartInteractions.ts` (wheel handler) | Scroll-to-zoom on the chart area |
+| `RangeSlider.tsx` (minWindow prop) | Handle drag + scroll-to-zoom on the slider |
+
+The minimum is **dynamic based on log duration** so that full zoom always shows a 0.2s window:
+```ts
+const minZoomPct = (0.2 / totalDuration) * 100
+```
+`LogChart.tsx` computes this and passes it to `RangeSlider` via the `minWindow` prop. The chart scroll handler in `useChartInteractions` computes the same value from `logStore.duration`.
 
 ---
 
