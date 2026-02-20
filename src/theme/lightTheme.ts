@@ -47,6 +47,7 @@ export const lightTheme: Theme = {
       pidI: '#06b6d4',      // cyan-500
       pidD: '#8b5cf6',      // violet-500
       pidSum: '#ec4899',    // pink-500
+      feedforward: '#eab308', // yellow-500
       motor1: '#ef4444',    // red-500
       motor2: '#f59e0b',    // amber-500
       motor3: '#10b981',    // emerald-500

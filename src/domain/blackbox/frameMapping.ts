@@ -140,6 +140,15 @@ export function toLogFrame(
     logFrame.stateFlags = v[stateFlags] ?? 0
   }
 
+  const axisFRoll = fieldIndex.get('axisF[0]')
+  if (axisFRoll !== undefined) {
+    logFrame.feedforward = {
+      roll: v[axisFRoll] ?? 0,
+      pitch: v[fieldIndex.get('axisF[1]')!] ?? 0,
+      yaw: v[fieldIndex.get('axisF[2]')!] ?? 0,
+    }
+  }
+
   return logFrame
 }
 

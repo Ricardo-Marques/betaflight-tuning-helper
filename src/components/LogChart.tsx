@@ -209,6 +209,11 @@ export const LogChart = observer(() => {
           <ToggleChip data-testid="toggle-pidsum" role="checkbox" aria-checked={uiStore.showPidSum} isActive={uiStore.showPidSum} chipColor={theme.colors.chart.pidSum} onClick={uiStore.togglePidSum}>
             <ToggleChipDot dotColor={theme.colors.chart.pidSum} />PID Sum
           </ToggleChip>
+          {logStore.hasFeedforward && (
+            <ToggleChip data-testid="toggle-feedforward" role="checkbox" aria-checked={uiStore.showFeedforward} isActive={uiStore.showFeedforward} chipColor={theme.colors.chart.feedforward} onClick={uiStore.toggleFeedforward}>
+              <ToggleChipDot dotColor={theme.colors.chart.feedforward} />FF
+            </ToggleChip>
+          )}
           <ToggleChip data-testid="toggle-motors" role="checkbox" aria-checked={uiStore.showMotors} isActive={uiStore.showMotors} chipColor={theme.colors.chart.motor1} onClick={uiStore.toggleMotors}>
             <ToggleChipDot dotColor={theme.colors.chart.motor1} />Motors
           </ToggleChip>
@@ -405,6 +410,10 @@ export const LogChart = observer(() => {
               <Line type="monotone" dataKey={(f: LogFrame) => f.pidSum[uiStore.selectedAxis]} yAxisId="pid" stroke={theme.colors.chart.pidSum}
                 strokeWidth={1.5} dot={false} activeDot={isDraggingObs || tooltipSuppressed ? false : undefined} name="PID Sum" isAnimationActive={false} />
             )}
+            {uiStore.showFeedforward && (
+              <Line type="monotone" dataKey={(f: LogFrame) => f.feedforward?.[uiStore.selectedAxis]} yAxisId="pid" stroke={theme.colors.chart.feedforward}
+                strokeWidth={1.5} dot={false} activeDot={isDraggingObs || tooltipSuppressed ? false : undefined} name="FF" isAnimationActive={false} />
+            )}
             {uiStore.showMotors && (
               <>
                 <Line type="monotone" dataKey={(f: LogFrame) => f.motor[0]} yAxisId="motor" stroke={theme.colors.chart.motor1}
@@ -487,6 +496,9 @@ export const LogChart = observer(() => {
         )}
         {uiStore.showPidSum && (
           <LegendItem><LegendSwatch style={{ backgroundColor: theme.colors.chart.pidSum }} />PID Sum</LegendItem>
+        )}
+        {uiStore.showFeedforward && (
+          <LegendItem><LegendSwatch style={{ backgroundColor: theme.colors.chart.feedforward }} />FF</LegendItem>
         )}
         {uiStore.showMotors && (
           <>

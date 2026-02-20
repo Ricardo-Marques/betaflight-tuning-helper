@@ -44,6 +44,7 @@ export interface ThemeColors {
     pidI: string
     pidD: string
     pidSum: string
+    feedforward: string
     motor1: string
     motor2: string
     motor3: string

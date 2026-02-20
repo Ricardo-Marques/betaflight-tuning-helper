@@ -195,6 +195,12 @@ async function parseTxtLog(file: File): Promise<void> {
   const pidSumPitchIdx = fieldIndex.get('axisSum[1]') ?? -1
   const pidSumYawIdx = fieldIndex.get('axisSum[2]') ?? -1
 
+  // Feedforward indices (BF 4.1+)
+  const ffRollIdx = fieldIndex.get('axisF[0]') ?? -1
+  const ffPitchIdx = fieldIndex.get('axisF[1]') ?? -1
+  const ffYawIdx = fieldIndex.get('axisF[2]') ?? -1
+  const hasFF = ffRollIdx >= 0
+
   // Motor indices
   const motor1Idx = fieldIndex.get('motor[0]') ?? -1
   const motor2Idx = fieldIndex.get('motor[1]') ?? -1
@@ -295,6 +301,14 @@ async function parseTxtLog(file: File): Promise<void> {
       },
 
       throttle: throttleIdx >= 0 ? values[throttleIdx] : 1000,
+    }
+
+    if (hasFF) {
+      frame.feedforward = {
+        roll: values[ffRollIdx],
+        pitch: ffPitchIdx >= 0 ? values[ffPitchIdx] : 0,
+        yaw: ffYawIdx >= 0 ? values[ffYawIdx] : 0,
+      }
     }
 
     frames.push(frame)
@@ -438,13 +452,18 @@ function computeDomains(frames: LogFrame[]): DomainRanges {
       if (s < sigMin[axis]) sigMin[axis] = s
       if (s > sigMax[axis]) sigMax[axis] = s
 
-      // PID: P/I/D/Sum
+      // PID: P/I/D/Sum + feedforward
       const p = frame.pidP[axis]
       const i = frame.pidI[axis]
       const d = frame.pidD[axis]
       const sum = frame.pidSum[axis]
-      const lo = Math.min(p, i, d, sum)
-      const hi = Math.max(p, i, d, sum)
+      let lo = Math.min(p, i, d, sum)
+      let hi = Math.max(p, i, d, sum)
+      if (frame.feedforward) {
+        const ff = frame.feedforward[axis]
+        if (ff < lo) lo = ff
+        if (ff > hi) hi = ff
+      }
       if (lo < pidMin[axis]) pidMin[axis] = lo
       if (hi > pidMax[axis]) pidMax[axis] = hi
     }

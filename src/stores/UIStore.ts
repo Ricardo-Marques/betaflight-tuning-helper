@@ -29,6 +29,7 @@ export class UIStore {
   showPidP: boolean = false
   showPidI: boolean = false
   showPidD: boolean = false
+  showFeedforward: boolean = false
   showMotors: boolean = true
   showThrottle: boolean = false
   showIssues: boolean = true
@@ -135,6 +136,10 @@ export class UIStore {
 
   togglePidD = (): void => {
     this.showPidD = !this.showPidD
+  }
+
+  toggleFeedforward = (): void => {
+    this.showFeedforward = !this.showFeedforward
   }
 
   toggleMotors = (): void => {
@@ -298,6 +303,7 @@ export class UIStore {
     this.showPidP = false
     this.showPidI = false
     this.showPidD = false
+    this.showFeedforward = false
     this.showMotors = true
     this.showThrottle = false
     this.showIssues = true

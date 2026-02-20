@@ -47,6 +47,7 @@ export const darkTheme: Theme = {
       pidI: '#22d3ee',      // cyan-400
       pidD: '#a78bfa',      // violet-400
       pidSum: '#f472b6',    // pink-400
+      feedforward: '#facc15', // yellow-400
       motor1: '#f87171',    // red-400
       motor2: '#fbbf24',    // amber-400
       motor3: '#34d399',    // emerald-400

@@ -70,6 +70,10 @@ export class LogStore {
     return this.metadata?.looptime ?? 8000
   }
 
+  get hasFeedforward(): boolean {
+    return this.metadata?.fieldNames.includes('axisF[0]') ?? false
+  }
+
   /** Gyro + setpoint min/max per axis with 2% padding. Cached by MobX. */
   get signalDomains(): Record<Axis, [number, number]> {
     if (this.precomputedDomains) return this.precomputedDomains.signal
@@ -122,8 +126,13 @@ export class LogStore {
         const i = frame.pidI[axis]
         const d = frame.pidD[axis]
         const sum = frame.pidSum[axis]
-        const lo = Math.min(p, i, d, sum)
-        const hi = Math.max(p, i, d, sum)
+        let lo = Math.min(p, i, d, sum)
+        let hi = Math.max(p, i, d, sum)
+        if (frame.feedforward) {
+          const ff = frame.feedforward[axis]
+          if (ff < lo) lo = ff
+          if (ff > hi) hi = ff
+        }
         if (lo < mins[axis]) mins[axis] = lo
         if (hi > maxs[axis]) maxs[axis] = hi
       }

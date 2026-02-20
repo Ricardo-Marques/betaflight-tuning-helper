@@ -33,6 +33,9 @@ export interface LogFrame {
   // D-term setpoint (if available)
   dtermSetpoint?: AxisData
 
+  // Feedforward output (BF 4.1+, axisF[0-2])
+  feedforward?: AxisData
+
   // Debug values (varies by debug mode)
   debug?: number[]
 
