@@ -29,19 +29,21 @@ Everything runs 100% client-side. No data leaves your browser, no account requir
 
 ![Download Logs Directly from FC](screenshots/01-download-from-fc.png)
 
-![Instant Flight Analysis](screenshots/02-analysis-overview.png)
+![Read Settings from FC](screenshots/02-read-from-fc.png)
 
-![Pinpoint Tuning Problems](screenshots/03-issue-detection.png)
+![Review & Write to FC](screenshots/03-accept-write.png)
 
-![Read Settings from FC](screenshots/04-read-from-fc.png)
+![Apply Changes Directly](screenshots/04-write-confirm.png)
 
-![Review & Write to FC](screenshots/05-accept-write.png)
+![Pinpoint Tuning Problems](screenshots/05-issue-detection.png)
 
-![Apply Changes Directly](screenshots/06-write-confirm.png)
+![Hardware Issue Detection](screenshots/06-hardware-fixes.png)
 
-![Deep Signal Analysis](screenshots/07-signal-analysis.png)
+![Instant Flight Analysis](screenshots/07-analysis-overview.png)
 
-![Personalized Experience](screenshots/08-light-mode.png)
+![Deep Signal Analysis](screenshots/08-signal-analysis.png)
+
+![Personalized Experience](screenshots/09-light-mode.png)
 
 ## Features
 

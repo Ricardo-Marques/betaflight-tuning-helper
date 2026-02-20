@@ -44,7 +44,7 @@ const SHOWCASE_CARDS: ShowcaseCard[] = [
   },
   {
     id: 2,
-    filename: '02-analysis-overview.png',
+    filename: '07-analysis-overview.png',
     rawFile: 'raw-02-overview.png',
     title: 'Instant Flight Analysis',
     description:
@@ -53,7 +53,7 @@ const SHOWCASE_CARDS: ShowcaseCard[] = [
   },
   {
     id: 3,
-    filename: '03-issue-detection.png',
+    filename: '05-issue-detection.png',
     rawFile: 'raw-03-issue.png',
     title: 'Pinpoint Tuning Problems',
     description:
@@ -62,7 +62,7 @@ const SHOWCASE_CARDS: ShowcaseCard[] = [
   },
   {
     id: 4,
-    filename: '04-read-from-fc.png',
+    filename: '02-read-from-fc.png',
     rawFile: 'raw-04-read-fc.png',
     title: 'Read Settings from FC',
     description:
@@ -71,7 +71,7 @@ const SHOWCASE_CARDS: ShowcaseCard[] = [
   },
   {
     id: 5,
-    filename: '05-accept-write.png',
+    filename: '03-accept-write.png',
     rawFile: 'raw-05-accept-write.png',
     title: 'Review & Write to FC',
     description:
@@ -80,7 +80,7 @@ const SHOWCASE_CARDS: ShowcaseCard[] = [
   },
   {
     id: 6,
-    filename: '06-write-confirm.png',
+    filename: '04-write-confirm.png',
     rawFile: 'raw-06-write-confirm.png',
     title: 'Apply Changes Directly',
     description:
@@ -88,8 +88,17 @@ const SHOWCASE_CARDS: ShowcaseCard[] = [
     accent: '#059669',
   },
   {
+    id: 9,
+    filename: '06-hardware-fixes.png',
+    rawFile: 'raw-09-hardware-fixes.png',
+    title: 'Hardware Issue Detection',
+    description:
+      'Not every problem is a software fix. The app flags hardware-related issues — bent props, worn bearings, loose motors — separately so you know what needs a physical inspection.',
+    accent: '#f97316',
+  },
+  {
     id: 7,
-    filename: '07-signal-analysis.png',
+    filename: '08-signal-analysis.png',
     rawFile: 'raw-07-signals.png',
     title: 'Deep Signal Analysis',
     description:
@@ -98,7 +107,7 @@ const SHOWCASE_CARDS: ShowcaseCard[] = [
   },
   {
     id: 8,
-    filename: '08-light-mode.png',
+    filename: '09-light-mode.png',
     rawFile: 'raw-08-light.png',
     title: 'Personalized Experience',
     description:
@@ -126,8 +135,8 @@ async function uploadAndAnalyze(page: Page): Promise<void> {
 
 async function enableDarkMode(page: Page): Promise<void> {
   const btn = page.locator('button[aria-label="Toggle theme"]')
-  const title = await btn.getAttribute('title')
-  if (title === 'Switch to dark mode') {
+  const tooltip = await btn.locator('.theme-tooltip').textContent()
+  if (tooltip?.trim() === 'Switch to dark mode') {
     await btn.click()
     await waitForStable(page, 500)
   }
@@ -135,8 +144,8 @@ async function enableDarkMode(page: Page): Promise<void> {
 
 async function enableLightMode(page: Page): Promise<void> {
   const btn = page.locator('button[aria-label="Toggle theme"]')
-  const title = await btn.getAttribute('title')
-  if (title === 'Switch to light mode') {
+  const tooltip = await btn.locator('.theme-tooltip').textContent()
+  if (tooltip?.trim() === 'Switch to light mode') {
     await btn.click()
     await waitForStable(page, 500)
   }
@@ -530,6 +539,32 @@ async function capture8(page: Page): Promise<void> {
   await page.screenshot({ path: path.join(RAW_DIR, 'raw-08-light.png') })
 }
 
+async function capture9(page: Page): Promise<void> {
+  console.log('Taking screenshot 9: Hardware fixes (dark)...')
+  await enableDarkMode(page)
+
+  // Reset zoom
+  await page.getByTestId('zoom-reset-button').click()
+  await waitForStable(page, 500)
+
+  // Switch to Fixes tab
+  await page
+    .getByTestId('right-panel')
+    .locator('button')
+    .filter({ hasText: /^Fixes/ })
+    .click()
+  await waitForStable(page, 500)
+
+  // Expand the hardware issues section
+  const hardwareToggle = page.locator('button').filter({ hasText: /Hardware issues/ })
+  if ((await hardwareToggle.count()) > 0) {
+    await hardwareToggle.click()
+    await waitForStable(page, 500)
+  }
+
+  await page.screenshot({ path: path.join(RAW_DIR, 'raw-09-hardware-fixes.png') })
+}
+
 const CAPTURE_FNS: Record<number, (page: Page) => Promise<void>> = {
   1: capture1,
   2: capture2,
@@ -539,6 +574,7 @@ const CAPTURE_FNS: Record<number, (page: Page) => Promise<void>> = {
   6: capture6,
   7: capture7,
   8: capture8,
+  9: capture9,
 }
 
 // ── Compositing ─────────────────────────────────────────────────────
@@ -689,8 +725,8 @@ async function main(): Promise<void> {
   }
 
   // Determine which screenshots to take
-  const requested = args.map(Number).filter((n) => n >= 1 && n <= 8)
-  const ids = requested.length > 0 ? requested : [1, 2, 3, 4, 5, 6, 7, 8]
+  const requested = args.map(Number).filter((n) => n >= 1 && n <= 9)
+  const ids = requested.length > 0 ? requested : [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
   console.log(`Capturing screenshot(s): ${ids.join(', ')}`)
   console.log('Launching browser...')
