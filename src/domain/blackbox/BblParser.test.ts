@@ -87,22 +87,31 @@ describe('BblParser', () => {
   describe('physically plausible values', () => {
     it('gyro values are within ±2000 deg/s', () => {
       const { frames } = loadTestBflLog()
+      let maxAbs = 0
       for (const f of frames) {
-        expect(Math.abs(f.gyroADC.roll)).toBeLessThanOrEqual(2000)
-        expect(Math.abs(f.gyroADC.pitch)).toBeLessThanOrEqual(2000)
-        expect(Math.abs(f.gyroADC.yaw)).toBeLessThanOrEqual(2000)
+        const r = Math.abs(f.gyroADC.roll)
+        const p = Math.abs(f.gyroADC.pitch)
+        const y = Math.abs(f.gyroADC.yaw)
+        if (r > maxAbs) maxAbs = r
+        if (p > maxAbs) maxAbs = p
+        if (y > maxAbs) maxAbs = y
       }
+      expect(maxAbs).toBeLessThanOrEqual(2000)
     })
 
     it('motor values are in valid range', () => {
       const { frames } = loadTestBflLog()
+      let min = Infinity
+      let max = -Infinity
       for (const f of frames) {
         for (const m of f.motor) {
-          expect(m).toBeGreaterThanOrEqual(0)
-          // Betaflight uses 11-bit motor values (0–2047)
-          expect(m).toBeLessThanOrEqual(2048)
+          if (m < min) min = m
+          if (m > max) max = m
         }
       }
+      // Betaflight uses 11-bit motor values (0–2047)
+      expect(min).toBeGreaterThanOrEqual(0)
+      expect(max).toBeLessThanOrEqual(2048)
     })
   })
 
