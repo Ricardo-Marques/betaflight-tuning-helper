@@ -103,8 +103,12 @@ RuleEngine.analyzeLog():
   2. Classify flight phase per window (idle/hover/cruise/punch/propwash/flip/roll)
   3. Run each rule: condition() → detect() → recommend()
   4. Temporal dedup issues (100ms gap merge, then collapse by type+axis)
-  5. Dedup recommendations (key on parameter:axis, not title)
-  6. Generate summary + flight segments
+  5. Cross-axis correlation (annotate patterns, generate hardware recs)
+  6. Frequency issue merge (collapse same-freq frameResonance/bearingNoise across axes)
+  7. Temporal progression analysis (annotate trends, generate meta-issues)
+  8. Generate recommendations (settings-aware, with currentValue populated)
+  9. Dedup recommendations (key on parameter:axis, not title)
+  10. Generate summary + flight segments
     ↓
 AnalysisStore.result populated → observer() components re-render
     ↓

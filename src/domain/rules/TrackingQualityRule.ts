@@ -1,11 +1,12 @@
 import { TuningRule } from '../types/TuningRule'
 import { AnalysisWindow, DetectedIssue, Recommendation } from '../types/Analysis'
-import { LogFrame } from '../types/LogFrame'
+import { LogFrame, LogMetadata } from '../types/LogFrame'
 import { QuadProfile } from '../types/QuadProfile'
 import { calculateRMS, calculateError, calculateStdDev, estimatePhaseLag } from '../utils/FrequencyAnalysis'
 import { extractAxisData, deriveSampleRate } from '../utils/SignalAnalysis'
 import { generateId } from '../utils/generateId'
 import { generateAxisRecommendation } from './TrackingRecommendations'
+import { populateCurrentValues } from '../utils/SettingsLookup'
 
 /**
  * Detects poor tracking quality during active flight maneuvers
@@ -168,7 +169,7 @@ export const TrackingQualityRule: TuningRule = {
     return issues
   },
 
-  recommend: (issues: DetectedIssue[], _frames: LogFrame[]): Recommendation[] => {
+  recommend: (issues: DetectedIssue[], _frames: LogFrame[], _profile?: QuadProfile, metadata?: LogMetadata): Recommendation[] => {
     const recommendations: Recommendation[] = []
 
     // Group issues by axis to detect widespread problems
@@ -199,7 +200,7 @@ export const TrackingQualityRule: TuningRule = {
         severityOrder[current.severity] > severityOrder[worst.severity] ? current : worst
       )
 
-      const rec = generateAxisRecommendation(axis, worstIssue)
+      const rec = generateAxisRecommendation(axis, worstIssue, metadata)
       if (rec) recommendations.push(rec)
     }
 
@@ -248,7 +249,9 @@ export const TrackingQualityRule: TuningRule = {
       })
     }
 
+    if (metadata) {
+      return recommendations.map(r => ({ ...r, changes: populateCurrentValues(r.changes, metadata) }))
+    }
     return recommendations
   },
 }
-

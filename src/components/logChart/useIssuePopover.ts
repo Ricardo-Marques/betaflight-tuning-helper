@@ -76,7 +76,7 @@ export function useIssuePopover(
           <p style="font-size:0.875rem;font-weight:500;color:${theme.colors.text.primary}">${issue.description}</p>
           <span style="padding:0.125rem 0.375rem;border-radius:0.25rem;font-size:0.75rem;font-weight:500;flex-shrink:0;background-color:${sevBgColor(issue.severity)};color:${sevTextColor(issue.severity)}">${issue.severity.toUpperCase()}</span>
         </div>
-        <p style="font-size:0.75rem;color:${theme.colors.text.muted};margin-bottom:0.25rem">Axis: ${issue.axis}</p>
+        <p style="font-size:0.75rem;color:${theme.colors.text.muted};margin-bottom:0.25rem">Axis: ${issue.crossAxisContext ? issue.crossAxisContext.description : issue.axis}</p>
         <div style="font-size:0.75rem;color:${theme.colors.text.secondary}">${metrics.join('')}</div>
       </div></div>`)
     })

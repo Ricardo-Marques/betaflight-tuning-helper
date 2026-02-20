@@ -4,6 +4,7 @@ import { LogFrame, LogMetadata } from '../types/LogFrame'
 import { QuadProfile } from '../types/QuadProfile'
 import { detectPropwash, deriveSampleRate } from '../utils/SignalAnalysis'
 import { generateId } from '../utils/generateId'
+import { populateCurrentValues, lookupCurrentValue } from '../utils/SettingsLookup'
 
 /**
  * Detects propwash oscillations during throttle drops
@@ -114,32 +115,35 @@ export const PropwashRule: TuningRule = {
 
       if (amplitude > 60) {
         // Severe propwash - multiple interventions needed
-        recommendations.push(
-          {
-            id: generateId(),
-            issueId: issue.id,
-            type: 'increasePID',
-            priority: 9,
-            confidence: issue.confidence,
-            title: `Increase D_min on ${issue.axis}`,
-            description: 'Severe propwash requires stronger low-throttle damping',
-            rationale:
-              'D_min provides damping specifically at low throttle where propwash occurs. Higher D_min resists oscillations from disturbed air.',
-            risks: [
-              'May increase motor temperature',
-              'Could amplify noise if gyro filtering insufficient',
-            ],
-            changes: [
-              {
-                parameter: 'pidDMinGain',
-                recommendedChange: '+0.4',
-                axis: issue.axis,
-                explanation: 'Significant D_min increase for propwash resistance',
-              },
-            ],
-            expectedImprovement: 'Reduced oscillation amplitude during throttle drops by 40-60%',
-          },
-          {
+        recommendations.push({
+          id: generateId(),
+          issueId: issue.id,
+          type: 'increasePID',
+          priority: 9,
+          confidence: issue.confidence,
+          title: `Increase D_min on ${issue.axis}`,
+          description: 'Severe propwash requires stronger low-throttle damping',
+          rationale:
+            'D_min provides damping specifically at low throttle where propwash occurs. Higher D_min resists oscillations from disturbed air.',
+          risks: [
+            'May increase motor temperature',
+            'Could amplify noise if gyro filtering insufficient',
+          ],
+          changes: [
+            {
+              parameter: 'pidDMinGain',
+              recommendedChange: '+0.4',
+              axis: issue.axis,
+              explanation: 'Significant D_min increase for propwash resistance',
+            },
+          ],
+          expectedImprovement: 'Reduced oscillation amplitude during throttle drops by 40-60%',
+        })
+
+        // Skip dynamic idle increase if already >= 40
+        const currentIdle = metadata ? lookupCurrentValue('dynamicIdle', metadata) : undefined
+        if (currentIdle === undefined || currentIdle < 40) {
+          recommendations.push({
             id: generateId(),
             issueId: issue.id,
             type: 'adjustDynamicIdle',
@@ -162,8 +166,8 @@ export const PropwashRule: TuningRule = {
             ],
             expectedImprovement:
               'More stable descents with better motor authority in disturbed air',
-          }
-        )
+          })
+        }
       } else if (frequency > 30 && dtermActivity > 100) {
         // High-frequency propwash with D-term struggling — RPM filter-aware
         const rpmHarmonics = metadata?.filterSettings?.rpmFilterHarmonics
@@ -265,8 +269,9 @@ export const PropwashRule: TuningRule = {
       }
     }
 
+    if (metadata) {
+      return recommendations.map(r => ({ ...r, changes: populateCurrentValues(r.changes, metadata) }))
+    }
     return recommendations
   },
 }
-
-

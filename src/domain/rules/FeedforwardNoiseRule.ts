@@ -1,10 +1,11 @@
 import { TuningRule } from '../types/TuningRule'
 import { AnalysisWindow, DetectedIssue, Recommendation } from '../types/Analysis'
-import { LogFrame } from '../types/LogFrame'
+import { LogFrame, LogMetadata } from '../types/LogFrame'
 import { QuadProfile } from '../types/QuadProfile'
 import { extractAxisData, deriveSampleRate } from '../utils/SignalAnalysis'
 import { calculateRMS, analyzeFrequency } from '../utils/FrequencyAnalysis'
 import { generateId } from '../utils/generateId'
+import { populateCurrentValues } from '../utils/SettingsLookup'
 
 /**
  * Detects noisy feedforward during steady sticks (no active input).
@@ -66,7 +67,7 @@ export const FeedforwardNoiseRule: TuningRule = {
       severity,
       axis: window.axis,
       timeRange: [window.startTime, window.endTime],
-      description: `FF noise: ${ffRMS.toFixed(1)}°/s RMS during steady sticks on ${window.axis}`,
+      description: `FF noise: ${ffRMS.toFixed(1)}°/s RMS during steady sticks`,
       metrics: {
         feedforwardRMS: ffRMS,
         noiseFloor: ffRMS,
@@ -78,7 +79,7 @@ export const FeedforwardNoiseRule: TuningRule = {
     return issues
   },
 
-  recommend: (issues: DetectedIssue[]): Recommendation[] => {
+  recommend: (issues: DetectedIssue[], _frames: LogFrame[], _profile?: QuadProfile, metadata?: LogMetadata): Recommendation[] => {
     const recommendations: Recommendation[] = []
 
     for (const issue of issues) {
@@ -142,6 +143,9 @@ export const FeedforwardNoiseRule: TuningRule = {
       }
     }
 
+    if (metadata) {
+      return recommendations.map(r => ({ ...r, changes: populateCurrentValues(r.changes, metadata) }))
+    }
     return recommendations
   },
 }

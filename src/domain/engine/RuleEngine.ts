@@ -19,10 +19,15 @@ import { BearingNoiseRule } from '../rules/BearingNoiseRule'
 import { FrameResonanceRule } from '../rules/FrameResonanceRule'
 import { EscDesyncRule } from '../rules/EscDesyncRule'
 import { VoltageSagRule } from '../rules/VoltageSagRule'
+import { FilterNoiseComparisonRule } from '../rules/FilterNoiseComparisonRule'
+import { TemporalPatternRule } from '../rules/TemporalPatternRule'
 import { segmentLog } from './LogSegmenter'
 import { deduplicateIssues } from './IssueDeduplication'
 import { deduplicateRecommendations } from './RecommendationDedup'
 import { generateSummary, generateFlightSegments } from './AnalysisSummary'
+import { correlateAxes } from './CrossAxisCorrelation'
+import { mergeFrequencyIssues } from './FrequencyIssueMerge'
+import { analyzeTemporalProgression } from './TemporalProgressionAnalyzer'
 
 /**
  * Central rule engine that orchestrates analysis
@@ -47,6 +52,8 @@ export class RuleEngine {
     this.registerRule(FrameResonanceRule)
     this.registerRule(EscDesyncRule)
     this.registerRule(VoltageSagRule)
+    this.registerRule(FilterNoiseComparisonRule)
+    this.registerRule(TemporalPatternRule)
   }
 
   registerRule(rule: TuningRule): void {
@@ -113,9 +120,23 @@ export class RuleEngine {
   ): AnalysisResult {
     const deduplicatedIssues = deduplicateIssues(allIssues)
 
-    const recommendations = deduplicateRecommendations(
-      this.generateRecommendations(deduplicatedIssues, frames, profile, metadata)
+    // Cross-axis correlation: annotate issues and generate cross-axis recommendations
+    const { annotatedIssues: crossAxisAnnotated, crossAxisRecommendations } = correlateAxes(deduplicatedIssues)
+
+    // Merge same-frequency hardware issues (frame resonance, bearing noise) across axes
+    const { mergedIssues, updatedRecommendations: updatedCrossAxisRecs } =
+      mergeFrequencyIssues(crossAxisAnnotated, crossAxisRecommendations)
+
+    // Temporal progression: annotate trends and generate meta-issues
+    const { annotatedIssues, metaIssues } = analyzeTemporalProgression(
+      allIssues, mergedIssues, frames, metadata,
     )
+    const finalIssues = [...annotatedIssues, ...metaIssues]
+
+    const recommendations = deduplicateRecommendations([
+      ...this.generateRecommendations(finalIssues, frames, profile, metadata),
+      ...updatedCrossAxisRecs,
+    ])
 
     recommendations.sort((a, b) => b.priority - a.priority)
 
@@ -133,7 +154,7 @@ export class RuleEngine {
     }
 
     const sevRank: Record<string, number> = { high: 2, medium: 1, low: 0 }
-    deduplicatedIssues.sort((a, b) => {
+    finalIssues.sort((a, b) => {
       const sevDiff = (sevRank[b.severity] ?? 0) - (sevRank[a.severity] ?? 0)
       if (sevDiff !== 0) return sevDiff
       const priDiff = (issueRecPriority.get(b.id) ?? 0) - (issueRecPriority.get(a.id) ?? 0)
@@ -141,11 +162,11 @@ export class RuleEngine {
       return b.confidence - a.confidence
     })
 
-    const summary = generateSummary(deduplicatedIssues, recommendations)
-    const segments = generateFlightSegments(frames, deduplicatedIssues)
+    const summary = generateSummary(finalIssues, recommendations)
+    const segments = generateFlightSegments(frames, finalIssues)
 
     return {
-      issues: deduplicatedIssues,
+      issues: finalIssues,
       recommendations,
       summary,
       segments,

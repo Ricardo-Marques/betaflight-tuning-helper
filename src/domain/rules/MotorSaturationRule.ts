@@ -1,9 +1,10 @@
 import { TuningRule } from '../types/TuningRule'
 import { AnalysisWindow, DetectedIssue, Recommendation } from '../types/Analysis'
-import { LogFrame } from '../types/LogFrame'
+import { LogFrame, LogMetadata } from '../types/LogFrame'
 import { QuadProfile } from '../types/QuadProfile'
 import { detectMotorSaturation } from '../utils/SignalAnalysis'
 import { generateId } from '../utils/generateId'
+import { populateCurrentValues, lookupCurrentValue } from '../utils/SettingsLookup'
 
 /**
  * Detects motor saturation (motors hitting max output) and recommends PID/TPA adjustments
@@ -61,13 +62,14 @@ export const MotorSaturationRule: TuningRule = {
     return issues
   },
 
-  recommend: (issues: DetectedIssue[], _frames: LogFrame[]): Recommendation[] => {
+  recommend: (issues: DetectedIssue[], _frames: LogFrame[], _profile?: QuadProfile, metadata?: LogMetadata): Recommendation[] => {
     const recommendations: Recommendation[] = []
 
     for (const issue of issues) {
       if (issue.type !== 'motorSaturation') continue
 
       const saturation = issue.metrics.motorSaturation || 0
+      const currentTpa = metadata ? lookupCurrentValue('tpaRate', metadata) : undefined
 
       // Check for underpowered build: if average hover motor output > 60% of range
       // the build lacks authority and PID reduction won't help
@@ -121,8 +123,8 @@ export const MotorSaturationRule: TuningRule = {
         })
       }
 
-      if (saturation > 15) {
-        // High: Increase TPA rate
+      if (saturation > 15 && (currentTpa === undefined || currentTpa < 75)) {
+        // High: Increase TPA rate (skip if already >= 75)
         recommendations.push({
           id: generateId(),
           issueId: issue.id,
@@ -180,8 +182,8 @@ export const MotorSaturationRule: TuningRule = {
         })
       }
 
-      if (saturation > 5 && saturation <= 8) {
-        // Low: Increase TPA as a light touch
+      if (saturation > 5 && saturation <= 8 && (currentTpa === undefined || currentTpa < 75)) {
+        // Low: Increase TPA as a light touch (skip if already >= 75)
         recommendations.push({
           id: generateId(),
           issueId: issue.id,
@@ -208,6 +210,9 @@ export const MotorSaturationRule: TuningRule = {
       }
     }
 
+    if (metadata) {
+      return recommendations.map(r => ({ ...r, changes: populateCurrentValues(r.changes, metadata) }))
+    }
     return recommendations
   },
 }

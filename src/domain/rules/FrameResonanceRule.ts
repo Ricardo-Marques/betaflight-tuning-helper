@@ -1,9 +1,11 @@
 import { TuningRule } from '../types/TuningRule'
 import { AnalysisWindow, DetectedIssue, Recommendation } from '../types/Analysis'
-import { LogFrame } from '../types/LogFrame'
+import { LogFrame, LogMetadata } from '../types/LogFrame'
+import { QuadProfile } from '../types/QuadProfile'
 import { extractAxisData, deriveSampleRate } from '../utils/SignalAnalysis'
 import { analyzeFrequency, findSpectralPeaks } from '../utils/FrequencyAnalysis'
 import { generateId } from '../utils/generateId'
+import { populateCurrentValues } from '../utils/SettingsLookup'
 
 /**
  * Detects frame resonance by finding spectral peaks that stay at the SAME
@@ -73,7 +75,7 @@ export const FrameResonanceRule: TuningRule = {
     }]
   },
 
-  recommend: (issues: DetectedIssue[]): Recommendation[] => {
+  recommend: (issues: DetectedIssue[], _frames: LogFrame[], _profile?: QuadProfile, metadata?: LogMetadata): Recommendation[] => {
     const recommendations: Recommendation[] = []
 
     for (const issue of issues) {
@@ -127,6 +129,9 @@ export const FrameResonanceRule: TuningRule = {
       })
     }
 
+    if (metadata) {
+      return recommendations.map(r => ({ ...r, changes: populateCurrentValues(r.changes, metadata) }))
+    }
     return recommendations
   },
 }

@@ -1,10 +1,31 @@
 import { DetectedIssue, Recommendation } from '../types/Analysis'
+import { LogMetadata } from '../types/LogFrame'
 import { generateId } from '../utils/generateId'
+import { populateCurrentValues } from '../utils/SettingsLookup'
 
 /**
  * Generates per-axis tracking quality recommendations based on issue type and FF contribution
  */
 export function generateAxisRecommendation(
+  axis: string,
+  worstIssue: DetectedIssue,
+  metadata?: LogMetadata,
+): Recommendation | undefined {
+  // Skip filter raise if multiplier already >= 140
+  if (worstIssue.type === 'overFiltering' && metadata) {
+    const gyroMult = metadata.filterSettings?.gyroFilterMultiplier
+    const dtermMult = metadata.filterSettings?.dtermFilterMultiplier
+    if (gyroMult !== undefined && gyroMult >= 140 && dtermMult !== undefined && dtermMult >= 140) {
+      return undefined
+    }
+  }
+
+  const rec = generateAxisRecommendationInner(axis, worstIssue)
+  if (!rec || !metadata) return rec
+  return { ...rec, changes: populateCurrentValues(rec.changes, metadata) }
+}
+
+function generateAxisRecommendationInner(
   axis: string,
   worstIssue: DetectedIssue,
 ): Recommendation | undefined {

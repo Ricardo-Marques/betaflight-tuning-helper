@@ -3,7 +3,7 @@ import { DetectedIssue, Severity } from '../types/Analysis'
 /**
  * Return the higher of two severity levels
  */
-const severityRank: Record<string, number> = { low: 0, medium: 1, high: 2 }
+export const severityRank: Record<string, number> = { low: 0, medium: 1, high: 2 }
 
 export function maxSeverity(a: Severity, b: Severity): Severity {
   return severityRank[a] >= severityRank[b] ? a : b

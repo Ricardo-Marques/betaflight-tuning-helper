@@ -1371,7 +1371,9 @@ const IssueCard = observer(({ issue, onNavigateToRec, actionableRecIds }: { issu
 
       <IssueMetrics>
         <p>
-          <MetricLabel>Axis:</MetricLabel> {issue.axis}
+          <MetricLabel>Axis:</MetricLabel> {issue.crossAxisContext
+            ? issue.crossAxisContext.description
+            : issue.axis}
         </p>
         {issue.metrics.overshoot !== undefined && (
           <p>

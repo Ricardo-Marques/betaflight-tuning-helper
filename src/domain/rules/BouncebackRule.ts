@@ -1,10 +1,11 @@
 import { TuningRule } from '../types/TuningRule'
 import { AnalysisWindow, DetectedIssue, Recommendation } from '../types/Analysis'
-import { LogFrame } from '../types/LogFrame'
+import { LogFrame, LogMetadata } from '../types/LogFrame'
 import { QuadProfile } from '../types/QuadProfile'
 import { detectBounceback, extractAxisData, deriveSampleRate } from '../utils/SignalAnalysis'
 import { calculateRMS, calculateStdDev } from '../utils/FrequencyAnalysis'
 import { generateId } from '../utils/generateId'
+import { populateCurrentValues, isFFZero, isDGainZero } from '../utils/SettingsLookup'
 
 /**
  * Detects bounceback after rapid stick movements and recommends D/P adjustments
@@ -79,7 +80,7 @@ export const BouncebackRule: TuningRule = {
     return issues
   },
 
-  recommend: (issues: DetectedIssue[], _frames: LogFrame[]): Recommendation[] => {
+  recommend: (issues: DetectedIssue[], _frames: LogFrame[], _profile?: QuadProfile, metadata?: LogMetadata): Recommendation[] => {
     const recommendations: Recommendation[] = []
 
     for (const issue of issues) {
@@ -90,8 +91,13 @@ export const BouncebackRule: TuningRule = {
       const feedforwardRMS = issue.metrics.feedforwardRMS
       const hasFfData = feedforwardRMS !== undefined
 
+      // Skip FF reduction if FF is already zero for this axis
+      const ffIsZero = metadata ? isFFZero(metadata, issue.axis) : false
+      // Skip D increase if D is already zero (misconfiguration)
+      const dIsZero = metadata ? isDGainZero(metadata, issue.axis) : false
+
       // FF-aware classification: use actual FF data when available
-      if (hasFfData && feedforwardRMS > overshoot * 0.3) {
+      if (hasFfData && feedforwardRMS > overshoot * 0.3 && !ffIsZero) {
         // FF data available and FF is high (contributing >30% of overshoot magnitude)
         // Primary: lower feedforward transition to reduce FF during stick deceleration
         recommendations.push({
@@ -170,7 +176,7 @@ export const BouncebackRule: TuningRule = {
           ],
           expectedImprovement: 'Smoother stick release with less overshoot',
         })
-      } else if (!hasFfData && overshoot > 30 && settlingTime < 80) {
+      } else if (!hasFfData && overshoot > 30 && settlingTime < 80 && !ffIsZero) {
         // No FF data: preserve existing heuristic (moderate overshoot + fast settling = likely FF)
         recommendations.push({
           id: generateId(),
@@ -196,7 +202,7 @@ export const BouncebackRule: TuningRule = {
           ],
           expectedImprovement: 'Cleaner stick stops without sacrificing much tracking',
         })
-      } else if (settlingTime > 150) {
+      } else if (settlingTime > 150 && !dIsZero) {
         // Slow settling - underdamped, need more D or increase D_min
         recommendations.push({
           id: generateId(),
@@ -219,7 +225,7 @@ export const BouncebackRule: TuningRule = {
           ],
           expectedImprovement: 'Faster settling with less oscillation after stick release',
         })
-      } else {
+      } else if (!dIsZero) {
         // Moderate bounceback - adjust P/D balance
         recommendations.push({
           id: generateId(),
@@ -245,6 +251,9 @@ export const BouncebackRule: TuningRule = {
       }
     }
 
+    if (metadata) {
+      return recommendations.map(r => ({ ...r, changes: populateCurrentValues(r.changes, metadata) }))
+    }
     return recommendations
   },
 }

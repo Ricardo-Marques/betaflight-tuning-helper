@@ -5,6 +5,7 @@ import { QuadProfile } from '../types/QuadProfile'
 import { extractAxisData, deriveSampleRate } from '../utils/SignalAnalysis'
 import { calculateRMS, analyzeFrequency } from '../utils/FrequencyAnalysis'
 import { generateId } from '../utils/generateId'
+import { populateCurrentValues, lookupCurrentValue } from '../utils/SettingsLookup'
 
 /**
  * Detects excessive gyro noise floor during stable hover/cruise
@@ -69,7 +70,7 @@ export const GyroNoiseRule: TuningRule = {
       severity,
       axis: window.axis,
       timeRange: [window.startTime, window.endTime],
-      description: `Gyro noise: ${gyroRMS.toFixed(1)}°/s RMS, ${(highBandRatio * 100).toFixed(0)}% high-freq energy on ${window.axis}`,
+      description: `Gyro noise: ${gyroRMS.toFixed(1)}°/s RMS, ${(highBandRatio * 100).toFixed(0)}% high-freq energy`,
       metrics: {
         noiseFloor: gyroRMS,
         dominantBand: highBandRatio > 0.5 ? 'high' : gyroRMS > 8 ? 'mid' : 'low',
@@ -164,7 +165,9 @@ export const GyroNoiseRule: TuningRule = {
       }
 
       // Increase gyro filtering (gated on severity — lowpass is the bluntest tool)
-      if (issue.severity !== 'low') {
+      // Skip if gyro filter multiplier already <= 80
+      const currentGyroFilter = metadata ? lookupCurrentValue('gyroFilterMultiplier', metadata) : undefined
+      if (issue.severity !== 'low' && (currentGyroFilter === undefined || currentGyroFilter > 80)) {
         const lowpassChange = issue.severity === 'high' ? '-10' : '-5'
         recommendations.push({
           id: generateId(),
@@ -239,6 +242,9 @@ export const GyroNoiseRule: TuningRule = {
       }
     }
 
+    if (metadata) {
+      return recommendations.map(r => ({ ...r, changes: populateCurrentValues(r.changes, metadata) }))
+    }
     return recommendations
   },
 }

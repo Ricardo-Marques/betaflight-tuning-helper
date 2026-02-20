@@ -5,6 +5,7 @@ import { QuadProfile } from '../types/QuadProfile'
 import { extractAxisData, deriveSampleRate } from '../utils/SignalAnalysis'
 import { calculateRMS, analyzeFrequency } from '../utils/FrequencyAnalysis'
 import { generateId } from '../utils/generateId'
+import { populateCurrentValues, lookupCurrentValue } from '../utils/SettingsLookup'
 
 /**
  * Detects D-term amplifying high-frequency noise and recommends filtering/D adjustments
@@ -92,7 +93,9 @@ export const DTermNoiseRule: TuningRule = {
       if (issue.type !== 'dtermNoise') continue
 
       // Increase D-term filtering (gated on severity — lowpass is the bluntest tool)
-      if (issue.severity !== 'low') {
+      // Skip if filter multiplier already <= 80
+      const currentDtermFilter = metadata ? lookupCurrentValue('dtermFilterMultiplier', metadata) : undefined
+      if (issue.severity !== 'low' && (currentDtermFilter === undefined || currentDtermFilter > 80)) {
         const lowpassChange = issue.severity === 'high' ? '-10' : '-5'
         recommendations.push({
           id: generateId(),
@@ -198,6 +201,9 @@ export const DTermNoiseRule: TuningRule = {
       }
     }
 
+    if (metadata) {
+      return recommendations.map(r => ({ ...r, changes: populateCurrentValues(r.changes, metadata) }))
+    }
     return recommendations
   },
 }

@@ -1,10 +1,11 @@
 import { TuningRule } from '../types/TuningRule'
 import { AnalysisWindow, DetectedIssue, Recommendation } from '../types/Analysis'
-import { LogFrame } from '../types/LogFrame'
+import { LogFrame, LogMetadata } from '../types/LogFrame'
 import { QuadProfile } from '../types/QuadProfile'
 import { extractAxisData, deriveSampleRate } from '../utils/SignalAnalysis'
 import { calculateRMS, analyzeFrequency, calculateError } from '../utils/FrequencyAnalysis'
 import { generateId } from '../utils/generateId'
+import { populateCurrentValues, lookupCurrentValue } from '../utils/SettingsLookup'
 
 /**
  * Detects oscillations at high throttle indicating insufficient TPA
@@ -89,11 +90,13 @@ export const HighThrottleOscillationRule: TuningRule = {
     return issues
   },
 
-  recommend: (issues: DetectedIssue[], _frames: LogFrame[]): Recommendation[] => {
+  recommend: (issues: DetectedIssue[], _frames: LogFrame[], _profile?: QuadProfile, metadata?: LogMetadata): Recommendation[] => {
     const recommendations: Recommendation[] = []
 
     for (const issue of issues) {
       if (issue.type !== 'highThrottleOscillation') continue
+
+      const currentBreakpoint = metadata ? lookupCurrentValue('tpaBreakpoint', metadata) : undefined
 
       // Increase TPA rate
       recommendations.push({
@@ -120,7 +123,8 @@ export const HighThrottleOscillationRule: TuningRule = {
         expectedImprovement: 'Eliminated oscillations during punches and high-throttle flight',
       })
 
-      // Lower TPA breakpoint
+      // Lower TPA breakpoint (skip if already <= 1300)
+      if (currentBreakpoint === undefined || currentBreakpoint > 1300) {
       recommendations.push({
         id: generateId(),
         issueId: issue.id,
@@ -144,6 +148,7 @@ export const HighThrottleOscillationRule: TuningRule = {
         ],
         expectedImprovement: 'Smoother transition from mid to high throttle',
       })
+      }
 
       // Reduce P gain
       recommendations.push({
@@ -172,6 +177,9 @@ export const HighThrottleOscillationRule: TuningRule = {
       })
     }
 
+    if (metadata) {
+      return recommendations.map(r => ({ ...r, changes: populateCurrentValues(r.changes, metadata) }))
+    }
     return recommendations
   },
 }

@@ -5,6 +5,7 @@ import { QuadProfile } from '../types/QuadProfile'
 import { detectMidThrottleWobble, deriveSampleRate, extractAxisData } from '../utils/SignalAnalysis'
 import { calculateStdDev, calculateRMS } from '../utils/FrequencyAnalysis'
 import { generateId } from '../utils/generateId'
+import { populateCurrentValues, lookupCurrentValue } from '../utils/SettingsLookup'
 
 /**
  * Detects mid-throttle wobble without stick input
@@ -125,6 +126,9 @@ export const WobbleRule: TuningRule = {
         const iConfidence = hasItermWindup ? 0.90 : 0.80
         const pConfidence = hasItermWindup ? 0.65 : 0.75
 
+        // Skip iterm_relax reduction if already <= 10
+        const currentRelax = metadata ? lookupCurrentValue('itermRelaxCutoff', metadata) : undefined
+        if (currentRelax === undefined || currentRelax > 10) {
         recommendations.push({
           id: generateId(),
           issueId: issue.id,
@@ -151,6 +155,7 @@ export const WobbleRule: TuningRule = {
           expectedImprovement:
             'Reduced slow drift and correction cycles during hover/cruise',
         })
+        }
 
         // Also suggest reducing I gain directly if amplitude is high
         if (amplitude > 25) {
@@ -373,7 +378,9 @@ export const WobbleRule: TuningRule = {
       }
     }
 
+    if (metadata) {
+      return recommendations.map(r => ({ ...r, changes: populateCurrentValues(r.changes, metadata) }))
+    }
     return recommendations
   },
 }
-
