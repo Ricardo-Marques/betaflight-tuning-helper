@@ -43,7 +43,10 @@ export const darkTheme: Theme = {
     chart: {
       gyro: '#60a5fa',      // blue-400
       setpoint: '#34d399',  // emerald-400
+      pidP: '#fb923c',      // orange-400
+      pidI: '#22d3ee',      // cyan-400
       pidD: '#a78bfa',      // violet-400
+      pidSum: '#f472b6',    // pink-400
       motor1: '#f87171',    // red-400
       motor2: '#fbbf24',    // amber-400
       motor3: '#34d399',    // emerald-400

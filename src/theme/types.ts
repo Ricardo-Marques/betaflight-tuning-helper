@@ -40,7 +40,10 @@ export interface ThemeColors {
   chart: {
     gyro: string
     setpoint: string
+    pidP: string
+    pidI: string
     pidD: string
+    pidSum: string
     motor1: string
     motor2: string
     motor3: string

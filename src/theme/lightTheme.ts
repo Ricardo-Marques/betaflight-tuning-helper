@@ -43,7 +43,10 @@ export const lightTheme: Theme = {
     chart: {
       gyro: '#3b82f6',      // blue-500
       setpoint: '#10b981',  // emerald-500
+      pidP: '#f97316',      // orange-500
+      pidI: '#06b6d4',      // cyan-500
       pidD: '#8b5cf6',      // violet-500
+      pidSum: '#ec4899',    // pink-500
       motor1: '#ef4444',    // red-500
       motor2: '#f59e0b',    // amber-500
       motor3: '#10b981',    // emerald-500
