@@ -64,4 +64,13 @@ export const ISSUE_CHART_DESCRIPTIONS: Record<IssueType, string> = {
 
   voltageSag:
     'On the Motor traces, look for outputs that are noticeably higher later in the flight compared to early sections at similar throttle positions. The battery voltage is dropping, forcing motors to work harder to maintain the same thrust for the same throttle command.',
+
+  filterMismatch:
+    'Compare the gyro noise spectrum shape against the configured filter cutoff frequencies. Over-filtering shows a clean signal being cut prematurely, while under-filtering shows substantial noise energy above the filter cutoff still reaching the PIDs.',
+
+  thermalDegradation:
+    'Compare traces from early vs late in the flight. Multiple issue types (noise, oscillation, tracking) get progressively worse — the gyro becomes noisier, tracking less precise, and motors work harder as the flight progresses. This pattern suggests motors or ESCs are overheating.',
+
+  mechanicalEvent:
+    'Look for a clear before/after change in the gyro trace mid-flight. Before the event, the signal is relatively clean; after, you see new vibrations, noise spikes, or oscillations that persist for the rest of the flight. This suggests something physical changed — a prop strike, loose screw, or bearing failure.',
 }

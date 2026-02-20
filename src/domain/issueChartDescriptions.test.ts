@@ -26,6 +26,10 @@ const ALL_ISSUE_TYPES: IssueType[] = [
   'electricalNoise',
   'escDesync',
   'voltageSag',
+  'feedforwardNoise',
+  'filterMismatch',
+  'thermalDegradation',
+  'mechanicalEvent',
 ]
 
 describe('ISSUE_CHART_DESCRIPTIONS', () => {

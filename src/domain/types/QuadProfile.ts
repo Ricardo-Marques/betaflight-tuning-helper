@@ -9,6 +9,7 @@ export interface ThresholdScaling {
   motorSaturation: number
   trackingError: number
   highThrottleOscillation: number
+  filterMismatch: number
 }
 
 export interface RecommendationOverrides {

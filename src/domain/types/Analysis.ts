@@ -63,6 +63,21 @@ export interface DetectedIssue {
   occurrences?: [number, number][] // individual timeRanges before collapse
   peakTimes?: number[] // per-occurrence peak timestamps (µs), parallel to occurrences
   totalOccurrences?: number // total before limiting; undefined = no limiting applied
+  crossAxisContext?: CrossAxisContext
+  temporalPattern?: TemporalPattern
+}
+
+export interface TemporalPattern {
+  trend: 'worsening' | 'improving' | 'earlyOnly' | 'lateOnset' | 'suddenOnset' | 'stable'
+  description: string
+  confidence: number
+  likelyCause?: 'thermal' | 'battery' | 'mechanical' | 'coldStart'
+}
+
+export interface CrossAxisContext {
+  pattern: 'allAxes' | 'rollPitchOnly' | 'asymmetric' | 'yawOnly' | 'singleAxis'
+  affectedAxes: Axis[]
+  description: string
 }
 
 export type IssueType =
@@ -86,6 +101,9 @@ export type IssueType =
   | 'electricalNoise'
   | 'escDesync'
   | 'voltageSag'
+  | 'filterMismatch'
+  | 'thermalDegradation'
+  | 'mechanicalEvent'
 
 export type Severity = 'low' | 'medium' | 'high'
 
@@ -140,6 +158,15 @@ export interface IssueMetrics {
 
   /** FF RMS / (pidSum RMS + FF RMS), range 0-1 */
   feedforwardContribution?: number
+
+  /** Suggested filter cutoff frequency (Hz) for filterMismatch issues */
+  suggestedCutoffHz?: number
+
+  /** Current configured filter cutoff frequency (Hz) */
+  currentCutoffHz?: number
+
+  /** Whether filters are set too high or too low relative to noise */
+  filterDirection?: 'over' | 'under'
 }
 
 export type FrequencyBand = 'low' | 'mid' | 'high'

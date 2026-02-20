@@ -109,6 +109,7 @@ export class AnalysisStore {
       motorSaturation: this.quadProfile.thresholds.motorSaturation * m,
       trackingError: this.quadProfile.thresholds.trackingError * m,
       highThrottleOscillation: this.quadProfile.thresholds.highThrottleOscillation * m,
+      filterMismatch: this.quadProfile.thresholds.filterMismatch * m,
     }
     return { ...this.quadProfile, thresholds: scaledThresholds }
   }

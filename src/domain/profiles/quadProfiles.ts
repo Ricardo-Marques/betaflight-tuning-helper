@@ -13,6 +13,7 @@ const whoopProfile: QuadProfile = {
     motorSaturation: 1.8,
     trackingError: 1.3,
     highThrottleOscillation: 1.5,
+    filterMismatch: 1.5,
   },
   overrides: {
     propwashPreferItermRelax: true,
@@ -36,6 +37,7 @@ const toothpick3Profile: QuadProfile = {
     motorSaturation: 1.3,
     trackingError: 1.1,
     highThrottleOscillation: 1.2,
+    filterMismatch: 1.2,
   },
   overrides: {
     propwashPreferItermRelax: false,
@@ -59,6 +61,7 @@ const fiveInchProfile: QuadProfile = {
     motorSaturation: 1.0,
     trackingError: 1.0,
     highThrottleOscillation: 1.0,
+    filterMismatch: 1.0,
   },
   overrides: {
     propwashPreferItermRelax: false,
@@ -82,6 +85,7 @@ const sevenInchProfile: QuadProfile = {
     motorSaturation: 1.5,
     trackingError: 1.2,
     highThrottleOscillation: 1.3,
+    filterMismatch: 0.8,
   },
   overrides: {
     propwashPreferItermRelax: true,
@@ -105,6 +109,7 @@ const xclassProfile: QuadProfile = {
     motorSaturation: 2.0,
     trackingError: 1.4,
     highThrottleOscillation: 1.5,
+    filterMismatch: 0.7,
   },
   overrides: {
     propwashPreferItermRelax: true,
