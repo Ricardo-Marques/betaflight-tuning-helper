@@ -114,6 +114,14 @@ test.describe('Data Verification — Recommendations & CLI', () => {
     // Switch to Fixes tab to get recommendation titles
     await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Fixes/ }).click()
     const recSection = page.getByTestId('recommendations-section')
+
+    // Expand hardware section if present (collapsed by default)
+    const hwToggle = recSection.locator('button').filter({ hasText: /Hardware issues/ })
+    if (await hwToggle.count() > 0) {
+      await hwToggle.click()
+      await page.waitForTimeout(200)
+    }
+
     const recCards = recSection.locator('[data-rec-id]')
     const recTitles: string[] = []
     const recCount = await recCards.count()

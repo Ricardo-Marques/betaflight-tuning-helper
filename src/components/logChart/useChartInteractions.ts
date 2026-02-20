@@ -383,7 +383,6 @@ export function useChartInteractions(
     // Update data tooltip (gyro/setpoint/PID values at cursor)
     const dtEl = refs.dataTooltipRef.current
     if (dtEl) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const payload = _state?.activePayload as Array<{ name: string; value: number; color: string }> | undefined
       if (!payload?.length) {
         dtEl.style.display = 'none'

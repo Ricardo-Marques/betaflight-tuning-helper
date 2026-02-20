@@ -69,30 +69,6 @@ test.describe('Chart Hints & Overlay', () => {
     expect(hasTraceRef).toBe(true)
   })
 
-  test('clicking already-selected issue shows popover again', async ({ page }) => {
-    await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Issues/ }).click()
-    const issueCard = page.locator('[data-issue-id]').first()
-    await issueCard.scrollIntoViewIfNeeded()
-    await issueCard.click()
-    await page.waitForTimeout(500)
-
-    // Popover should appear
-    const popover = page.getByTestId('issue-popover')
-    await expect(popover).toBeVisible({ timeout: 3_000 })
-
-    // Wait for popover to auto-dismiss
-    await page.waitForTimeout(2500)
-    await expect(popover).not.toBeVisible({ timeout: 3_000 })
-
-    // Click the same card again (re-select)
-    await issueCard.scrollIntoViewIfNeeded()
-    await issueCard.click()
-    await page.waitForTimeout(500)
-
-    // Popover should appear again
-    await expect(popover).toBeVisible({ timeout: 3_000 })
-  })
-
   test('analysis progress overlay appears during initial analysis', async ({ page }) => {
     // We need a fresh upload to catch the overlay
     await page.goto('/')

@@ -9,6 +9,11 @@ import type { ChangelogEntry } from '../domain/types/Changelog'
  */
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   // 2026-02-19
+  { hash: '3795c10', date: '2026-02-19', message: 'Detect 7 new issue types: electrical noise, CG offset, motor health, bearing noise, frame resonance, ESC desync, and voltage sag', category: 'feature' },
+  { hash: '8e7ec1c', date: '2026-02-19', message: 'Smarter chart tooltips that avoid overlapping issue popovers', category: 'improvement' },
+  { hash: '8e7ec1c', date: '2026-02-19', message: 'Zoom hints when you reach the edge or hit the zoom limit', category: 'improvement' },
+  { hash: '185731f', date: '2026-02-19', message: 'Analysis shows progress instead of freezing on large logs', category: 'fix' },
+  { hash: 'ec22807', date: '2026-02-19', message: 'Large log files load faster with chunked parsing', category: 'improvement' },
   { hash: 'efee68a', date: '2026-02-19', message: 'Safety warning now clearly states the tool is experimental — always cross-reference suggestions', category: 'improvement' },
   { hash: '4cce095', date: '2026-02-19', message: 'Spectrum view no longer freezes when toggling on large logs', category: 'fix' },
   { hash: '587ca37', date: '2026-02-19', message: 'Zoom slider shows true zoom depth with an inner accent bar', category: 'improvement' },

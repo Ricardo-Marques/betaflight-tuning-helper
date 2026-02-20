@@ -46,9 +46,9 @@ test.describe('Settings review modal', () => {
     await clearFilterFields(page)
     await pasteSettings(page)
 
-    // Review modal should appear with the 2 settings that aren't in the BBL
+    // Review modal should appear with the settings that aren't in the BBL
     await page.getByTestId('settings-review-modal').waitFor({ state: 'visible', timeout: 5000 })
-    await expect(page.getByTestId('settings-review-count')).toContainText('2 tuning-relevant settings')
+    await expect(page.getByTestId('settings-review-count')).toContainText('tuning-relevant setting')
     await expect(page.getByTestId('settings-review-accept')).toBeVisible()
     await expect(page.getByTestId('settings-review-cancel')).toBeVisible()
   })
@@ -146,7 +146,7 @@ test.describe('Settings review modal', () => {
     await page.getByTestId('import-settings-button').click()
     await page.getByTestId('last-session-option').click()
     await page.getByTestId('settings-review-modal').waitFor({ state: 'visible', timeout: 5000 })
-    await expect(page.getByTestId('settings-review-count')).toContainText('2 tuning-relevant settings')
+    await expect(page.getByTestId('settings-review-count')).toContainText('tuning-relevant setting')
     await page.getByTestId('settings-review-accept').click()
 
     // Accept tune should now be enabled

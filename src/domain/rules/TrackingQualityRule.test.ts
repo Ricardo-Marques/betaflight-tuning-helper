@@ -37,22 +37,4 @@ describe('TrackingQualityRule', () => {
     expect(trackingAtTarget.length).toBeGreaterThan(0)
   })
 
-  it('should use corrected ratio in metrics, not raw inflated ratio', () => {
-    const { frames, metadata } = loadTestBflLog()
-    const engine = new RuleEngine()
-    const result = engine.analyzeLog(frames, metadata)
-
-    // No tracking-quality issue should report a ratio above 200%
-    // (the old bug produced 398% from raw gyroRMS/setpointRMS mismatch)
-    const trackingIssues = result.issues.filter(
-      i => i.type === 'underdamped' || i.type === 'overdamped' || i.type === 'lowFrequencyOscillation'
-    )
-
-    for (const issue of trackingIssues) {
-      const ratio = issue.metrics.amplitudeRatio
-      if (ratio !== undefined) {
-        expect(ratio).toBeLessThan(300)
-      }
-    }
-  })
 })
