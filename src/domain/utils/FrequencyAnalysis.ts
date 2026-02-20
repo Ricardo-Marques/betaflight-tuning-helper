@@ -80,44 +80,54 @@ interface Complex {
 
 function fft(signal: number[]): Complex[] {
   const n = signal.length
-  if (n <= 1) {
-    return [{ real: signal[0] || 0, imag: 0 }]
+
+  // Single pre-allocated output array — no intermediate arrays, no recursion
+  const out: Complex[] = new Array(n)
+  for (let i = 0; i < n; i++) {
+    out[i] = { real: signal[i] || 0, imag: 0 }
   }
 
-  // Divide
-  const even = signal.filter((_, i) => i % 2 === 0)
-  const odd = signal.filter((_, i) => i % 2 === 1)
-
-  // Conquer
-  const evenFFT = fft(even)
-  const oddFFT = fft(odd)
-
-  // Combine
-  const result: Complex[] = new Array(n)
-  for (let k = 0; k < n / 2; k++) {
-    const angle = (-2 * Math.PI * k) / n
-    const twiddle: Complex = {
-      real: Math.cos(angle),
-      imag: Math.sin(angle),
+  // Bit-reversal permutation
+  for (let i = 1, j = 0; i < n; i++) {
+    let bit = n >> 1
+    while (j & bit) {
+      j ^= bit
+      bit >>= 1
     }
-
-    const t: Complex = {
-      real: twiddle.real * oddFFT[k].real - twiddle.imag * oddFFT[k].imag,
-      imag: twiddle.real * oddFFT[k].imag + twiddle.imag * oddFFT[k].real,
-    }
-
-    result[k] = {
-      real: evenFFT[k].real + t.real,
-      imag: evenFFT[k].imag + t.imag,
-    }
-
-    result[k + n / 2] = {
-      real: evenFFT[k].real - t.real,
-      imag: evenFFT[k].imag - t.imag,
+    j ^= bit
+    if (i < j) {
+      const tmp = out[i]
+      out[i] = out[j]
+      out[j] = tmp
     }
   }
 
-  return result
+  // Butterfly stages
+  for (let size = 2; size <= n; size <<= 1) {
+    const half = size >> 1
+    const angleStep = (-2 * Math.PI) / size
+    for (let i = 0; i < n; i += size) {
+      for (let k = 0; k < half; k++) {
+        const angle = angleStep * k
+        const twRe = Math.cos(angle)
+        const twIm = Math.sin(angle)
+        const evenIdx = i + k
+        const oddIdx = i + k + half
+        const tRe = twRe * out[oddIdx].real - twIm * out[oddIdx].imag
+        const tIm = twRe * out[oddIdx].imag + twIm * out[oddIdx].real
+        out[oddIdx] = {
+          real: out[evenIdx].real - tRe,
+          imag: out[evenIdx].imag - tIm,
+        }
+        out[evenIdx] = {
+          real: out[evenIdx].real + tRe,
+          imag: out[evenIdx].imag + tIm,
+        }
+      }
+    }
+  }
+
+  return out
 }
 
 /**
@@ -177,6 +187,47 @@ function padSignal(signal: number[], targetLength: number): number[] {
  */
 function nextPowerOf2(n: number): number {
   return Math.pow(2, Math.ceil(Math.log2(n)))
+}
+
+/**
+ * Spectral peak found by findSpectralPeaks
+ */
+export interface SpectralPeak {
+  frequency: number
+  magnitude: number
+  /** Index in the FFT result arrays */
+  binIndex: number
+}
+
+/**
+ * Returns top N peaks from an FFT result (local maxima sorted by magnitude).
+ * A local maximum is a bin whose magnitude exceeds both neighbors.
+ * @param frequencies FFT frequency array
+ * @param magnitudes FFT magnitude array
+ * @param topN Number of peaks to return (default 5)
+ * @param minFrequency Minimum frequency to consider (default 5 Hz, skip DC)
+ * @param maxFrequency Maximum frequency to consider (default Infinity)
+ */
+export function findSpectralPeaks(
+  frequencies: number[],
+  magnitudes: number[],
+  topN: number = 5,
+  minFrequency: number = 5,
+  maxFrequency: number = Infinity
+): SpectralPeak[] {
+  const peaks: SpectralPeak[] = []
+
+  for (let i = 1; i < magnitudes.length - 1; i++) {
+    const freq = frequencies[i]
+    if (freq < minFrequency || freq > maxFrequency) continue
+
+    if (magnitudes[i] > magnitudes[i - 1] && magnitudes[i] > magnitudes[i + 1]) {
+      peaks.push({ frequency: freq, magnitude: magnitudes[i], binIndex: i })
+    }
+  }
+
+  peaks.sort((a, b) => b.magnitude - a.magnitude)
+  return peaks.slice(0, topN)
 }
 
 /**

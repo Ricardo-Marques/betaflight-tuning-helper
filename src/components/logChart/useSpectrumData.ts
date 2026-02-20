@@ -1,8 +1,9 @@
 import { useLogStore, useUIStore } from '../../stores/RootStore'
 import { useComputed } from '../../lib/mobx-reactivity'
 import { extractAxisData, deriveSampleRate } from '../../domain/utils/SignalAnalysis'
-import { computeAveragedSpectrum } from '../../domain/utils/SpectrumAnalysis'
+import { computeAveragedSpectrum, MAX_SAMPLES } from '../../domain/utils/SpectrumAnalysis'
 import type { SpectralPeak } from '../../domain/utils/FrequencyAnalysis'
+import type { LogFrame } from '../../domain/types/LogFrame'
 
 export interface SpectrumPoint {
   frequency: number
@@ -24,6 +25,12 @@ const EMPTY: SpectrumDataResult = {
   nyquist: 0, frameCount: 0, sampleRate: 0,
 }
 
+// Module-level cache: avoids recomputing FFT when toggling chart modes.
+// Invalidates naturally when frames reference changes (new log) or axis changes.
+let cachedFrames: LogFrame[] | null = null
+let cachedAxis: string | null = null
+let cachedResult: SpectrumDataResult = EMPTY
+
 export function useSpectrumData(): SpectrumDataResult {
   const logStore = useLogStore()
   const uiStore = useUIStore()
@@ -35,8 +42,17 @@ export function useSpectrumData(): SpectrumDataResult {
     const frames = logStore.frames
     if (frames.length < 64) return EMPTY
 
+    const axis = uiStore.selectedAxis
+
+    // Cache hit — same frames array reference and same axis
+    if (frames === cachedFrames && axis === cachedAxis) return cachedResult
+
     const sampleRate = deriveSampleRate(frames)
-    const signal = extractAxisData(frames, 'gyroADC', uiStore.selectedAxis)
+
+    // Cap to MAX_SAMPLES before extraction — computeAveragedSpectrum only
+    // uses the first MAX_SAMPLES anyway, so avoid creating a huge intermediate array
+    const cappedFrames = frames.length > MAX_SAMPLES ? frames.slice(0, MAX_SAMPLES) : frames
+    const signal = extractAxisData(cappedFrames, 'gyroADC', axis)
     const { frequencies, magnitudes, peaks } = computeAveragedSpectrum(signal, sampleRate)
 
     if (frequencies.length === 0) return EMPTY
@@ -69,7 +85,7 @@ export function useSpectrumData(): SpectrumDataResult {
       spectrumData.push({ frequency: frequencies[i], magnitude: magnitudes[i] })
     }
 
-    return {
+    const result: SpectrumDataResult = {
       spectrumData,
       peaks: peaks.filter(p => p.frequency <= displayMax),
       maxMagnitude: maxMag,
@@ -78,5 +94,12 @@ export function useSpectrumData(): SpectrumDataResult {
       frameCount: frames.length,
       sampleRate,
     }
+
+    // Update cache
+    cachedFrames = frames
+    cachedAxis = axis
+    cachedResult = result
+
+    return result
   })
 }
