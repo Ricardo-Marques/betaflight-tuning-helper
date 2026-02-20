@@ -12,10 +12,31 @@ interface ParseProgressMessage {
   message: string
 }
 
+export interface DomainRanges {
+  signal: Record<'roll' | 'pitch' | 'yaw', [number, number]>
+  pid: Record<'roll' | 'pitch' | 'yaw', [number, number]>
+  motor: [number, number]
+}
+
 interface ParseCompleteMessage {
   type: 'complete'
   frames: LogFrame[]
   metadata: LogMetadata
+  domains: DomainRanges
+}
+
+interface TransferStartMessage {
+  type: 'transfer-start'
+  totalFrames: number
+  chunkCount: number
+  metadata: LogMetadata
+  domains: DomainRanges
+}
+
+interface TransferChunkMessage {
+  type: 'transfer-chunk'
+  frames: LogFrame[]
+  chunkIndex: number
 }
 
 interface ParseErrorMessage {
@@ -24,7 +45,12 @@ interface ParseErrorMessage {
 }
 
 // Union of all worker message types
-export type WorkerMessage = ParseProgressMessage | ParseCompleteMessage | ParseErrorMessage
+export type WorkerMessage =
+  | ParseProgressMessage
+  | ParseCompleteMessage
+  | TransferStartMessage
+  | TransferChunkMessage
+  | ParseErrorMessage
 
 self.onmessage = async (e: MessageEvent) => {
   const { file, fileType } = e.data
@@ -193,6 +219,10 @@ async function parseTxtLog(file: File): Promise<void> {
     )
   }
 
+  // Estimate frame count to scale progress bar — reserve room for structured-clone transfer
+  const estimatedFrames = lines.length - headerEndIndex - 1
+  const ceiling = getParseProgressCeiling(estimatedFrames)
+
   postProgress(30, 'Parsing frames...')
 
   // Parse data frames
@@ -269,9 +299,9 @@ async function parseTxtLog(file: File): Promise<void> {
 
     frames.push(frame)
 
-    // Progress update
+    // Progress update — scale to 30..ceiling to leave room for transfer
     if (i % 1000 === 0) {
-      const progress = 30 + Math.floor(((i - dataStartIndex) / (lines.length - dataStartIndex)) * 60)
+      const progress = 30 + Math.floor(((i - dataStartIndex) / (lines.length - dataStartIndex)) * (ceiling - 30))
       postProgress(progress, `Parsed ${frames.length} frames...`)
     }
   }
@@ -304,16 +334,7 @@ async function parseTxtLog(file: File): Promise<void> {
     metadata.duration = frames[frames.length - 1].time / 1_000_000 // Already zero-based
   }
 
-  postProgress(95, 'Finalizing...')
-
-  const completeMessage: ParseCompleteMessage = {
-    type: 'complete',
-    frames,
-    metadata,
-  }
-
-  postProgress(100, 'Complete!')
-  self.postMessage(completeMessage)
+  await sendFrames(frames, metadata, ceiling)
 }
 
 /**
@@ -325,20 +346,16 @@ async function parseBblLog(file: File): Promise<void> {
   const buffer = await file.arrayBuffer()
   const data = new Uint8Array(buffer)
 
+  // Estimate frame count from file size (~150 bytes per frame) to scale progress bar
+  const estimatedFrames = Math.floor(data.length / 150)
+  const ceiling = getParseProgressCeiling(estimatedFrames)
+
   const { frames, metadata } = parseBblBuffer(data, (progress, message) => {
-    postProgress(progress, message)
+    // Scale parser's 0-100 range into 0..ceiling to leave room for transfer
+    postProgress(Math.floor(progress * ceiling / 100), message)
   })
 
-  postProgress(95, 'Finalizing...')
-
-  const completeMessage: ParseCompleteMessage = {
-    type: 'complete',
-    frames,
-    metadata,
-  }
-
-  postProgress(100, 'Complete!')
-  self.postMessage(completeMessage)
+  await sendFrames(frames, metadata, ceiling)
 }
 
 /**
@@ -382,6 +399,130 @@ function extractMetadata(
     craftName,
     frameCount: 0, // Will be updated after parsing
     duration: 0, // Will be updated after parsing
+  }
+}
+
+/**
+ * How much of the progress bar to allocate for parsing vs. the structured-clone
+ * transfer to the main thread. Large frame arrays take noticeably longer to
+ * transfer, so we reserve more visual room for that phase.
+ */
+function getParseProgressCeiling(estimatedFrames: number): number {
+  if (estimatedFrames > 100_000) return 80
+  if (estimatedFrames > 50_000) return 85
+  if (estimatedFrames > 20_000) return 90
+  return 95
+}
+
+/**
+ * Single O(n) pass to compute min/max domains for signal, PID, and motor channels.
+ * Runs in the worker so the main thread never has to iterate all frames for chart ranges.
+ */
+function computeDomains(frames: LogFrame[]): DomainRanges {
+  const axes = ['roll', 'pitch', 'yaw'] as const
+
+  const sigMin = { roll: Infinity, pitch: Infinity, yaw: Infinity }
+  const sigMax = { roll: -Infinity, pitch: -Infinity, yaw: -Infinity }
+  const pidMin = { roll: Infinity, pitch: Infinity, yaw: Infinity }
+  const pidMax = { roll: -Infinity, pitch: -Infinity, yaw: -Infinity }
+  let motorMin = Infinity
+  let motorMax = -Infinity
+
+  for (const frame of frames) {
+    for (const axis of axes) {
+      // Signal: gyro + setpoint
+      const g = frame.gyroADC[axis]
+      const s = frame.setpoint[axis]
+      if (g < sigMin[axis]) sigMin[axis] = g
+      if (g > sigMax[axis]) sigMax[axis] = g
+      if (s < sigMin[axis]) sigMin[axis] = s
+      if (s > sigMax[axis]) sigMax[axis] = s
+
+      // PID: P/I/D/Sum
+      const p = frame.pidP[axis]
+      const i = frame.pidI[axis]
+      const d = frame.pidD[axis]
+      const sum = frame.pidSum[axis]
+      const lo = Math.min(p, i, d, sum)
+      const hi = Math.max(p, i, d, sum)
+      if (lo < pidMin[axis]) pidMin[axis] = lo
+      if (hi > pidMax[axis]) pidMax[axis] = hi
+    }
+
+    // Motors + throttle
+    for (const m of frame.motor) {
+      if (m < motorMin) motorMin = m
+      if (m > motorMax) motorMax = m
+    }
+    const t = frame.throttle
+    if (t < motorMin) motorMin = t
+    if (t > motorMax) motorMax = t
+  }
+
+  const signal = {} as Record<'roll' | 'pitch' | 'yaw', [number, number]>
+  const pid = {} as Record<'roll' | 'pitch' | 'yaw', [number, number]>
+  for (const axis of axes) {
+    const sigRange = sigMax[axis] - sigMin[axis]
+    const sigMargin = sigRange * 0.02
+    signal[axis] = [sigMin[axis] - sigMargin, sigMax[axis] + sigMargin]
+
+    const pidRange = pidMax[axis] - pidMin[axis]
+    const pidMargin = pidRange * 0.02
+    pid[axis] = [pidMin[axis] - pidMargin, pidMax[axis] + pidMargin]
+  }
+
+  const motorRange = motorMax - motorMin
+  const motorMargin = motorRange * 0.05
+
+  return { signal, pid, motor: [motorMin - motorMargin, motorMax + motorMargin] }
+}
+
+/** Threshold above which we use chunked transfer for real progress tracking. */
+const CHUNK_THRESHOLD = 20_000
+
+/**
+ * Send parsed frames to the main thread. Small files go as a single message.
+ * Large files are sent in chunks so the main thread can show real transfer
+ * progress instead of a stuck progress bar.
+ */
+async function sendFrames(frames: LogFrame[], metadata: LogMetadata, ceiling: number): Promise<void> {
+  const domains = computeDomains(frames)
+
+  if (frames.length < CHUNK_THRESHOLD) {
+    postProgress(ceiling, 'Finalizing...')
+    const msg: ParseCompleteMessage = { type: 'complete', frames, metadata, domains }
+    self.postMessage(msg)
+    return
+  }
+
+  // Target ~15 chunks for smooth progress, clamped to reasonable sizes
+  const chunkSize = Math.max(5_000, Math.min(50_000, Math.ceil(frames.length / 15)))
+  const chunkCount = Math.ceil(frames.length / chunkSize)
+
+  const startMsg: TransferStartMessage = {
+    type: 'transfer-start',
+    totalFrames: frames.length,
+    chunkCount,
+    metadata,
+    domains,
+  }
+  self.postMessage(startMsg)
+
+  for (let i = 0; i < chunkCount; i++) {
+    const start = i * chunkSize
+    const end = Math.min(start + chunkSize, frames.length)
+    const chunkMsg: TransferChunkMessage = {
+      type: 'transfer-chunk',
+      frames: frames.slice(start, end),
+      chunkIndex: i,
+    }
+    self.postMessage(chunkMsg)
+
+    // Yield between chunks so messages are dispatched individually,
+    // allowing the main thread to process and paint between them
+    if (i < chunkCount - 1) {
+      await new Promise<void>(resolve => setTimeout(resolve, 0))
+    }
   }
 }
 
