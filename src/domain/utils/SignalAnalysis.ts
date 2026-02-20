@@ -2,6 +2,10 @@ import { LogFrame, AxisData } from '../types/LogFrame'
 import { Axis } from '../types/Analysis'
 import { calculateRMS, analyzeFrequency } from './FrequencyAnalysis'
 
+// Re-export motor analysis for backwards compatibility
+export { detectMotorSaturation } from './MotorAnalysis'
+export type { MotorSaturationMetrics } from './MotorAnalysis'
+
 /**
  * Detects bounceback after a rapid stick return
  * Returns overshoot ratio and settling time
@@ -193,20 +197,8 @@ export function detectPropwash(
   const windowSetpoint = analysisWindow.map(f => getAxisValue(f.setpoint, axis))
   const windowDterm = analysisWindow.map(f => getAxisValue(f.pidD, axis))
 
-  // Check for low setpoint (propwash occurs without stick input)
-  const avgSetpoint = calculateRMS(windowSetpoint)
-  if (avgSetpoint > 50) {
-    // Significant stick input, not propwash
-    return {
-      detected: false,
-      frequency: 0,
-      amplitude: 0,
-      duration: 0,
-      dtermActivity: 0,
-    }
-  }
-
-  // Calculate error oscillation
+  // Use error signal (gyro - setpoint) so commanded movement is isolated from
+  // unwanted oscillation — catches propwash during active flying, not just idle stick
   const error = windowGyro.map((g, i) => g - windowSetpoint[i])
   const errorRMS = calculateRMS(error)
 
@@ -301,56 +293,6 @@ export function detectMidThrottleWobble(
     frequency,
     amplitude: gyroRMS,
     frequencyBand,
-  }
-}
-
-/**
- * Detects motor saturation
- */
-export interface MotorSaturationMetrics {
-  detected: boolean
-  saturationPercentage: number // % of time any motor at 100%
-  averageMotorOutput: number
-  asymmetry: number // Coefficient of variation across motors
-}
-
-export function detectMotorSaturation(frames: LogFrame[]): MotorSaturationMetrics {
-  const motorCount = frames[0]?.motor.length || 4
-  let saturatedFrames = 0
-  const motorSums = new Array(motorCount).fill(0)
-
-  for (const frame of frames) {
-    const motors = frame.motor
-    let frameSaturated = false
-    for (let i = 0; i < motorCount; i++) {
-      motorSums[i] += motors[i]
-      if (!frameSaturated && motors[i] >= 1990) {
-        // Consider 1990+ as saturated (allows for small margin)
-        saturatedFrames++
-        frameSaturated = true // Count frame once but keep summing all motors
-      }
-    }
-  }
-
-  const saturationPercentage = (saturatedFrames / frames.length) * 100
-
-  // Calculate average motor output
-  const motorAverages = motorSums.map(sum => sum / frames.length)
-  const averageMotorOutput =
-    motorAverages.reduce((sum, avg) => sum + avg, 0) / motorCount
-
-  // Calculate asymmetry (coefficient of variation)
-  const mean = averageMotorOutput
-  const variance =
-    motorAverages.reduce((sum, avg) => sum + (avg - mean) ** 2, 0) / motorCount
-  const stdDev = Math.sqrt(variance)
-  const asymmetry = mean > 0 ? stdDev / mean : 0
-
-  return {
-    detected: saturationPercentage > 5, // More than 5% saturation is concerning
-    saturationPercentage,
-    averageMotorOutput,
-    asymmetry,
   }
 }
 

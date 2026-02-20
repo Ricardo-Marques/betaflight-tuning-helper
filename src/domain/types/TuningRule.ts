@@ -18,12 +18,12 @@ export interface TuningRule {
   /**
    * Detects issues in the window
    */
-  detect: (window: AnalysisWindow, frames: LogFrame[], profile?: QuadProfile) => DetectedIssue[]
+  detect: (window: AnalysisWindow, frames: LogFrame[], profile?: QuadProfile, metadata?: LogMetadata) => DetectedIssue[]
 
   /**
    * Generates recommendations for detected issues
    */
-  recommend: (issues: DetectedIssue[], frames: LogFrame[], profile?: QuadProfile) => Recommendation[]
+  recommend: (issues: DetectedIssue[], frames: LogFrame[], profile?: QuadProfile, metadata?: LogMetadata) => Recommendation[]
 
   /**
    * Base confidence for this rule (0-1)

@@ -76,6 +76,14 @@ export type IssueType =
   | 'highThrottleOscillation'
   | 'underdamped'
   | 'overdamped'
+  | 'overFiltering'
+  | 'cgOffset'
+  | 'motorImbalance'
+  | 'bearingNoise'
+  | 'frameResonance'
+  | 'electricalNoise'
+  | 'escDesync'
+  | 'voltageSag'
 
 export type Severity = 'low' | 'medium' | 'high'
 
@@ -121,6 +129,9 @@ export interface IssueMetrics {
 
   /** Absolute timestamp (µs) of the most pronounced point in this occurrence */
   peakTime?: number
+
+  /** Whether I-term windup was detected (pidI/pidP ratio > 0.5) */
+  itermWindup?: boolean
 }
 
 export type FrequencyBand = 'low' | 'mid' | 'high'
@@ -149,6 +160,12 @@ export interface Recommendation {
 
   // Additional issue IDs linked during recommendation dedup
   relatedIssueIds?: string[]
+
+  // Whether this recommendation is for a software or hardware problem
+  category?: 'software' | 'hardware'
+
+  // Human-readable explanation when conflicting recommendations were merged
+  conflictContext?: string
 }
 
 export type RecommendationType =
@@ -160,6 +177,7 @@ export type RecommendationType =
   | 'adjustRPMFilter'
   | 'adjustMasterMultiplier'
   | 'adjustFeedforward'
+  | 'hardwareCheck'
 
 /**
  * Specific parameter change in Betaflight slider language
