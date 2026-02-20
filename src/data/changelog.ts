@@ -8,6 +8,9 @@ import type { ChangelogEntry } from '../domain/types/Changelog'
  * is user-facing (new feature, meaningful fix, or UX improvement).
  */
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // 2026-02-20
+  { hash: 'cc60bca', date: '2026-02-20', message: 'Limit issue occurrences to the 5 most confident, reducing chart clutter on busy logs', category: 'improvement' },
+
   // 2026-02-19
   { hash: '3795c10', date: '2026-02-19', message: 'Detect 7 new issue types: electrical noise, CG offset, motor health, bearing noise, frame resonance, ESC desync, and voltage sag', category: 'feature' },
   { hash: '8e7ec1c', date: '2026-02-19', message: 'Smarter chart tooltips that avoid overlapping issue popovers', category: 'improvement' },
