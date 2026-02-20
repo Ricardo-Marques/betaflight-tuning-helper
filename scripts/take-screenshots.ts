@@ -18,7 +18,7 @@ const __dirname = path.dirname(__filename)
 const ROOT = path.resolve(__dirname, '..')
 const SCREENSHOTS_DIR = path.join(ROOT, 'screenshots')
 const RAW_DIR = path.join(SCREENSHOTS_DIR, 'raw')
-const TEST_LOG = path.join(ROOT, 'test-logs', 'bflLog.BFL')
+const TEST_LOG = path.join(ROOT, 'test-logs', 'shortLog.BFL')
 const BASE_URL = 'http://localhost:5173'
 
 const VIEWPORT = { width: 1920, height: 1080 }

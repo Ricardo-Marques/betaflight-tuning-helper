@@ -5,8 +5,8 @@ import { fileURLToPath } from 'url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-export const BFL_PATH = path.resolve(__dirname, '../test-logs/bflLog.BFL')
-export const CSV_PATH = path.resolve(__dirname, '../test-logs/bflLog.BFL.csv')
+export const BFL_PATH = path.resolve(__dirname, '../test-logs/shortLog.BFL')
+export const CSV_PATH = path.resolve(__dirname, '../test-logs/shortLog.BFL.csv')
 
 export async function uploadAndAnalyze(page: Page, filePath = BFL_PATH) {
   await page.locator('#file-upload').setInputFiles(filePath)
