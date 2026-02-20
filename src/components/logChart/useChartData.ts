@@ -2,49 +2,51 @@ import { useLogStore, useUIStore } from '../../stores/RootStore'
 import { useComputed } from '../../lib/mobx-reactivity'
 import type { LogFrame } from '../../domain/types/LogFrame'
 
-export interface ChartDataPoint {
-  time: number
-  gyro: number
-  setpoint: number
-  pidSum: number
-  pidP: number
-  pidI: number
-  pidD: number
-  motor1: number
-  motor2: number
-  motor3: number
-  motor4: number
-  throttle: number
-}
-
 interface ChartDataResult {
   zoomDuration: number
   visibleFrames: LogFrame[]
-  chartData: ChartDataPoint[]
+  timeDomain: [number, number]
   yDomain: [number, number]
   motorDomain: [number, number]
   pidDomain: [number, number]
 }
 
-export function useChartData(isDraggingObs: boolean): ChartDataResult {
+export function useChartData(): ChartDataResult {
   const logStore = useLogStore()
   const uiStore = useUIStore()
 
   const zoomDuration = uiStore.zoomEnd - uiStore.zoomStart
 
-  const visibleFrames = useComputed((): LogFrame[] => {
-    if (logStore.frames.length === 0) return []
-
-    const totalFrames = logStore.frames.length
+  // Stable time domain: derived from source boundary frames (before downsampling)
+  // so the XAxis domain never wobbles due to min-max bucket selection.
+  const timeDomain = useComputed((): [number, number] => {
+    const source = logStore.frames
+    if (source.length === 0) return [0, 1]
+    const totalFrames = source.length
     const startIdx = Math.floor((uiStore.zoomStart / 100) * totalFrames)
-    const endIdx = Math.ceil((uiStore.zoomEnd / 100) * totalFrames)
+    const endIdx = Math.min(Math.ceil((uiStore.zoomEnd / 100) * totalFrames), totalFrames) - 1
+    return [source[startIdx].time / 1e6, source[Math.max(startIdx, endIdx)].time / 1e6]
+  })
 
-    const maxPoints = isDraggingObs ? 500 : 2000
+  const visibleFrames = useComputed((): LogFrame[] => {
+    const source = logStore.frames
+    if (source.length === 0) return []
+
+    const totalFrames = source.length
+    const startIdx = Math.floor((uiStore.zoomStart / 100) * totalFrames)
+    const endIdx = Math.min(Math.ceil((uiStore.zoomEnd / 100) * totalFrames), totalFrames)
     const rangeLen = endIdx - startIdx
+
+    // Progressive downsampling based on rangeLen (visible frame count).
+    // rangeLen = visibleDuration x sampleRate, so higher sample rates naturally get
+    // more aggressive downsampling. Baseline: ~800 pts for 20k frames (~10s @ 2kHz).
+    // 2kHz 5s→1000, 10s→800, 1min→450, 5min→250 | 8kHz 5s→600, 1min→250
+    const scaled = 800 / Math.pow(rangeLen / 20000, 0.35)
+    const maxPoints = Math.max(200, Math.min(1500, Math.round(scaled)))
 
     // No downsampling needed
     if (rangeLen <= maxPoints) {
-      return logStore.frames.slice(startIdx, endIdx)
+      return source.slice(startIdx, endIdx)
     }
 
     // Min-max bucket downsampling: preserve the gyro envelope
@@ -52,7 +54,6 @@ export function useChartData(isDraggingObs: boolean): ChartDataResult {
     const bucketCount = maxPoints >> 1
     const bucketSize = rangeLen / bucketCount
     const result: LogFrame[] = []
-    const frames = logStore.frames
 
     for (let b = 0; b < bucketCount; b++) {
       const bStart = startIdx + Math.floor(b * bucketSize)
@@ -64,38 +65,21 @@ export function useChartData(isDraggingObs: boolean): ChartDataResult {
       let maxIdx = bStart
 
       for (let i = bStart; i < bEnd; i++) {
-        const v = frames[i].gyroADC[axis]
+        const v = source[i].gyroADC[axis]
         if (v < minVal) { minVal = v; minIdx = i }
         if (v > maxVal) { maxVal = v; maxIdx = i }
       }
 
       if (minIdx === maxIdx) {
-        result.push(frames[minIdx])
+        result.push(source[minIdx])
       } else if (minIdx < maxIdx) {
-        result.push(frames[minIdx], frames[maxIdx])
+        result.push(source[minIdx], source[maxIdx])
       } else {
-        result.push(frames[maxIdx], frames[minIdx])
+        result.push(source[maxIdx], source[minIdx])
       }
     }
 
     return result
-  })
-
-  const chartData = useComputed((): ChartDataPoint[] => {
-    return visibleFrames.map(frame => ({
-      time: frame.time / 1000000,
-      gyro: frame.gyroADC[uiStore.selectedAxis],
-      setpoint: frame.setpoint[uiStore.selectedAxis],
-      pidSum: frame.pidSum[uiStore.selectedAxis],
-      pidP: frame.pidP[uiStore.selectedAxis],
-      pidI: frame.pidI[uiStore.selectedAxis],
-      pidD: frame.pidD[uiStore.selectedAxis],
-      motor1: frame.motor[0],
-      motor2: frame.motor[1],
-      motor3: frame.motor[2],
-      motor4: frame.motor[3],
-      throttle: frame.throttle,
-    }))
   })
 
   // Global gyro/setpoint domain for the selected axis (cached in LogStore)
@@ -103,6 +87,10 @@ export function useChartData(isDraggingObs: boolean): ChartDataResult {
 
   // Stable motor/throttle domain computed from the entire log (never changes during pan)
   const motorDomain = useComputed((): [number, number] => {
+    // Use precomputed domain from worker when available (avoids iterating all frames)
+    const precomputed = logStore.motorDomain
+    if (precomputed) return precomputed
+
     const frames = logStore.frames
     if (frames.length === 0) return [0, 2000]
 
@@ -129,5 +117,5 @@ export function useChartData(isDraggingObs: boolean): ChartDataResult {
   // Global PID domain for the selected axis (cached in LogStore)
   const pidDomain = logStore.pidDomains[uiStore.selectedAxis]
 
-  return { zoomDuration, visibleFrames, chartData, yDomain, motorDomain, pidDomain }
+  return { zoomDuration, visibleFrames, timeDomain, yDomain, motorDomain, pidDomain }
 }

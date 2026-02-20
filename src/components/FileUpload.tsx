@@ -66,7 +66,8 @@ const UploadButton = styled.label`
   font-size: 0.9375rem;
   font-weight: 600;
   border-radius: 0.5rem;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+  border: none;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12), 0 0 0 1px rgb(0 0 0 / 0.04);
   color: ${(p) => p.theme.colors.button.primaryText};
   background-color: ${(p) => p.theme.colors.button.primary};
   cursor: pointer;
@@ -95,32 +96,41 @@ const SecondaryUploadButton = styled.label`
   font-size: 0.9375rem;
   font-weight: 600;
   border-radius: 0.5rem;
-  border: 1px solid ${(p) => p.theme.colors.border.main};
-  color: ${(p) => p.theme.colors.text.secondary};
-  background-color: transparent;
+  border: none;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12), 0 0 0 1px rgb(0 0 0 / 0.04);
+  color: ${(p) => p.theme.colors.button.secondaryText};
+  background-color: ${(p) => p.theme.colors.button.secondary};
   cursor: pointer;
   transition:
     background-color 0.15s,
     color 0.15s;
 
   &:hover {
-    background-color: ${(p) => p.theme.colors.button.secondary};
-    color: ${(p) => p.theme.colors.text.primary};
+    background-color: ${(p) => p.theme.colors.button.secondaryHover};
   }
+`
+
+const SampleRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  margin-top: 0.75rem;
+  font-size: 0.8125rem;
+  color: ${(p) => p.theme.colors.text.muted};
 `
 
 const SampleLink = styled.button<{ disabled?: boolean }>`
   font-size: 0.8125rem;
-  color: ${(p) => p.theme.colors.text.muted};
+  color: ${(p) => p.theme.colors.text.link};
   background: none;
   border: none;
   cursor: ${(p) => (p.disabled ? 'default' : 'pointer')};
-  padding: 0.5rem 0;
-  margin-top: 0.75rem;
+  padding: 0.25rem 0;
   opacity: ${(p) => (p.disabled ? 0.5 : 1)};
 
   &:hover:not(:disabled) {
-    color: ${(p) => p.theme.colors.text.secondary};
+    text-decoration: underline;
   }
 `
 
@@ -287,6 +297,13 @@ const LinkButton = styled.button`
   }
 `
 
+const TrimNote = styled.p`
+  font-size: 0.6875rem;
+  color: ${(p) => p.theme.colors.text.muted};
+  font-style: italic;
+  margin-top: 0.25rem;
+`
+
 const ChangeFileButton = styled.button`
   margin-top: 0.75rem;
   padding: 0.375rem 0.875rem;
@@ -311,14 +328,15 @@ const ChangeFileButton = styled.button`
 export const FileUpload = observer(() => {
   const { logStore, uiStore, analysisStore } = useStores()
   const [isDragging, setIsDragging] = useObservableState(false)
-  const [loadingSample, setLoadingSample] = useObservableState(false)
+  const [loadingSample, setLoadingSample] = useObservableState<string | false>(false)
 
-  const handleLoadSample = async (): Promise<void> => {
-    setLoadingSample(true)
+  const handleLoadSample = async (variant: 'short' | 'long'): Promise<void> => {
+    const filename = variant === 'short' ? 'sample-short.BFL' : 'sample-long.BFL'
+    setLoadingSample(variant)
     try {
-      const response = await fetch(`${import.meta.env.BASE_URL}sample.BFL`)
+      const response = await fetch(`${import.meta.env.BASE_URL}${filename}`)
       const blob = await response.blob()
-      const file = new File([blob], 'sample.BFL', {
+      const file = new File([blob], filename, {
         type: 'application/octet-stream',
       })
       uiStore.setZoom(0, 100)
@@ -415,13 +433,24 @@ export const FileUpload = observer(() => {
                 Select file
               </SecondaryUploadButton>
             </ButtonRow>
-            <SampleLink
-              data-testid="load-sample-log"
-              disabled={loadingSample}
-              onClick={handleLoadSample}
-            >
-              {loadingSample ? 'Loading...' : 'or try with a sample log'}
-            </SampleLink>
+            <SampleRow>
+              or try a sample:
+              <SampleLink
+                data-testid="load-sample-log"
+                disabled={!!loadingSample}
+                onClick={() => handleLoadSample('short')}
+              >
+                {loadingSample === 'short' ? 'Loading...' : 'short flight'}
+              </SampleLink>
+              /
+              <SampleLink
+                data-testid="load-sample-long-log"
+                disabled={!!loadingSample}
+                onClick={() => handleLoadSample('long')}
+              >
+                {loadingSample === 'long' ? 'Loading...' : 'long flight'}
+              </SampleLink>
+            </SampleRow>
             <FormatHint>
               Supports .bbl, .bfl, .txt, .csv (Betaflight Blackbox)
             </FormatHint>
@@ -725,6 +754,11 @@ export const FileUpload = observer(() => {
                 <MetadataLabel>Craft:</MetadataLabel>{' '}
                 {logStore.metadata.craftName}
               </p>
+            )}
+            {logStore.trimInfo && (
+              <TrimNote>
+                First and last {logStore.trimInfo.startSeconds.toFixed(1)}s trimmed (takeoff/landing noise)
+              </TrimNote>
             )}
             <ChangeFileButton
               data-testid="upload-different-file"

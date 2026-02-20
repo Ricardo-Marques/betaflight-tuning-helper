@@ -112,71 +112,6 @@ const HandleChevron = styled.span`
   user-select: none;
 `
 
-const ReanalyzingOverlay = styled.div`
-  position: absolute;
-  inset: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(2px);
-  pointer-events: all;
-`
-
-const AnalysisOverlay = styled.div`
-  position: absolute;
-  inset: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(2px);
-  pointer-events: none;
-`
-
-const AnalysisOverlayCard = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-  background-color: rgba(0, 0, 0, 0.6);
-  padding: 1.5rem 2.5rem;
-  border-radius: 0.75rem;
-  min-width: 14rem;
-`
-
-const AnalysisOverlayText = styled.span`
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #fff;
-`
-
-const AnalysisOverlayTrack = styled.div`
-  width: 100%;
-  background-color: rgba(255, 255, 255, 0.2);
-  border-radius: 9999px;
-  height: 0.375rem;
-`
-
-const AnalysisOverlayFill = styled.div<{ width: number }>`
-  background-color: #fff;
-  height: 0.375rem;
-  border-radius: 9999px;
-  transition: width 0.3s;
-  width: ${p => p.width}%;
-`
-
-const ReanalyzingLabel = styled.span`
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #fff;
-  background-color: rgba(0, 0, 0, 0.6);
-  padding: 0.5rem 1.25rem;
-  border-radius: 0.5rem;
-`
-
 const LeftPanelWrapper = styled.div`
   flex-shrink: 0;
   overflow: hidden;
@@ -289,7 +224,6 @@ interface DragState {
 export const App = observer(() => {
   const uiStore = useUIStore()
   const logStore = useLogStore()
-  const analysisStore = useAnalysisStore()
   const [globalDragging, setGlobalDragging] = useObservableState(false)
   const dragCounter = { current: 0 }
 
@@ -414,6 +348,15 @@ export const App = observer(() => {
     }
   }
 
+  const analysisStore = useAnalysisStore()
+
+  const handleIssueDeselect = (e: React.MouseEvent): void => {
+    if (!analysisStore.selectedIssueId) return
+    const target = e.target as HTMLElement
+    if (target.closest('[data-issue-zone]')) return
+    analysisStore.selectIssue(null)
+  }
+
   const isLoaded = logStore.isLoaded
   const isMobile = uiStore.isMobileLayout
 
@@ -428,6 +371,7 @@ export const App = observer(() => {
 
   return (
     <AppContainer
+      onMouseDown={handleIssueDeselect}
       onDragEnter={handleGlobalDragEnter}
       onDragOver={handleGlobalDragOver}
       onDragLeave={handleGlobalDragLeave}
@@ -494,21 +438,6 @@ export const App = observer(() => {
         </FullScreenUpload>
       ) : isMobile ? (
         <MobileContent>
-          {analysisStore.isReanalyzing && (
-            <ReanalyzingOverlay>
-              <ReanalyzingLabel>Updating analysis...</ReanalyzingLabel>
-            </ReanalyzingOverlay>
-          )}
-          {analysisStore.analysisStatus === 'analyzing' && !analysisStore.isReanalyzing && (
-            <AnalysisOverlay>
-              <AnalysisOverlayCard>
-                <AnalysisOverlayText>{analysisStore.analysisMessage || 'Detecting issues...'}</AnalysisOverlayText>
-                <AnalysisOverlayTrack>
-                  <AnalysisOverlayFill width={analysisStore.analysisProgress} />
-                </AnalysisOverlayTrack>
-              </AnalysisOverlayCard>
-            </AnalysisOverlay>
-          )}
           {uiStore.mobileActiveTab === 'upload' && <LeftPanel />}
           {uiStore.mobileActiveTab === 'chart' && (
             <MobileChartArea>
@@ -516,28 +445,13 @@ export const App = observer(() => {
             </MobileChartArea>
           )}
           {uiStore.mobileActiveTab === 'tune' && (
-            <MobilePanelArea>
+            <MobilePanelArea data-issue-zone>
               <RecommendationsPanel />
             </MobilePanelArea>
           )}
         </MobileContent>
       ) : (
         <MainContent>
-          {analysisStore.isReanalyzing && (
-            <ReanalyzingOverlay>
-              <ReanalyzingLabel>Updating analysis...</ReanalyzingLabel>
-            </ReanalyzingOverlay>
-          )}
-          {analysisStore.analysisStatus === 'analyzing' && !analysisStore.isReanalyzing && (
-            <AnalysisOverlay>
-              <AnalysisOverlayCard>
-                <AnalysisOverlayText>{analysisStore.analysisMessage || 'Detecting issues...'}</AnalysisOverlayText>
-                <AnalysisOverlayTrack>
-                  <AnalysisOverlayFill width={analysisStore.analysisProgress} />
-                </AnalysisOverlayTrack>
-              </AnalysisOverlayCard>
-            </AnalysisOverlay>
-          )}
           {uiStore.leftPanelOpen && (
             <LeftPanelWrapper
               ref={leftPanelRef}
@@ -580,6 +494,7 @@ export const App = observer(() => {
             <RightPanelWrapper
               ref={rightPanelRef}
               data-testid="right-panel"
+              data-issue-zone
               style={{ width: uiStore.rightPanelWidth }}
             >
               <RecommendationsPanel />

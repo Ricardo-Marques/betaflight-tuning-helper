@@ -11,6 +11,42 @@ const PanelContainer = styled.div`
   background-color: ${p => p.theme.colors.background.panel};
 `
 
+const PanelHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.375rem 0.5rem 0.375rem 0.75rem;
+  border-bottom: 1px solid ${p => p.theme.colors.border.main};
+`
+
+const PanelTitle = styled.span`
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: ${p => p.theme.colors.text.muted};
+`
+
+const CollapseButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.25rem;
+  border: none;
+  background: none;
+  color: ${p => p.theme.colors.text.muted};
+  cursor: pointer;
+  font-size: 0.875rem;
+  line-height: 1;
+
+  &:hover {
+    background-color: ${p => p.theme.colors.background.hover};
+    color: ${p => p.theme.colors.text.primary};
+  }
+`
+
 const SectionBorder = styled.div`
   border-bottom: 1px solid ${p => p.theme.colors.border.main};
 `
@@ -31,6 +67,36 @@ const SegmentsTitle = styled.h3`
   letter-spacing: 0.08em;
   color: ${p => p.theme.colors.text.muted};
   margin-bottom: 0.75rem;
+`
+
+const AnalyzingPanel = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+`
+
+const AnalyzingText = styled.span`
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: ${p => p.theme.colors.text.primary};
+`
+
+const AnalyzingTrack = styled.div`
+  width: 10rem;
+  background-color: ${p => p.theme.colors.border.main};
+  border-radius: 9999px;
+  height: 0.25rem;
+`
+
+const AnalyzingFill = styled.div<{ width: number }>`
+  background-color: ${p => p.theme.colors.button.primary};
+  height: 0.25rem;
+  border-radius: 9999px;
+  transition: width 0.3s;
+  width: ${p => p.width}%;
 `
 
 const SegmentList = styled.div`
@@ -117,11 +183,31 @@ export const LeftPanel = observer(() => {
 
   return (
     <PanelContainer>
+      <PanelHeader>
+        <PanelTitle>Log Setup</PanelTitle>
+        <CollapseButton
+          onClick={uiStore.toggleLeftPanel}
+          title="Collapse panel"
+        >
+          {'\u2039'}
+        </CollapseButton>
+      </PanelHeader>
       <SectionBorder>
         <FileUpload />
       </SectionBorder>
 
       {logStore.isLoaded && <ProfileSelector />}
+
+      {logStore.isLoaded && analysisStore.analysisStatus === 'analyzing' && (
+        <AnalyzingPanel>
+          <AnalyzingText>
+            {analysisStore.analysisMessage || 'Detecting issues...'}
+          </AnalyzingText>
+          <AnalyzingTrack>
+            <AnalyzingFill width={analysisStore.analysisProgress} />
+          </AnalyzingTrack>
+        </AnalyzingPanel>
+      )}
 
       {analysisStore.isComplete && analysisStore.segments.length > 0 && (
         <SegmentsScrollArea>

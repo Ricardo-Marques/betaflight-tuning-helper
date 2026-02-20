@@ -96,14 +96,40 @@ export const ToggleChip = styled.button<{ isActive: boolean; chipColor?: string 
   cursor: pointer;
   transition: all 0.15s;
 
-  &:hover {
+  &:hover:not(:disabled) {
     border-color: ${p => p.chipColor ?? p.theme.colors.border.focus};
     color: ${p => p.theme.colors.text.primary};
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+    pointer-events: none;
   }
 
   @media (pointer: coarse) {
     padding: 0.375rem 0.625rem;
   }
+`
+
+export const ToggleChipWrapper = styled.span`
+  display: inline-flex;
+`
+
+export const ToggleChipTooltip = styled.div`
+  position: fixed;
+  white-space: nowrap;
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 400;
+  line-height: 1.4;
+  color: ${p => p.theme.colors.text.primary};
+  background-color: ${p => p.theme.colors.chart.tooltipBg};
+  border: 1px solid ${p => p.theme.colors.chart.tooltipBorder};
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  pointer-events: none;
 `
 
 export const ToggleChipDot = styled.span<{ dotColor: string }>`
@@ -120,12 +146,15 @@ export const IssueSummaryStrip = styled.div`
   align-items: center;
   gap: 0.75rem;
   padding: 0.375rem 1rem;
+  min-height: 2rem;
   background-color: ${p => p.theme.colors.background.panel};
 `
 
 export const IssueSummaryLabel = styled.span`
   font-size: 0.75rem;
   color: ${p => p.theme.colors.text.muted};
+  white-space: nowrap;
+  flex-shrink: 0;
 `
 
 export const IssueSummaryLink = styled.button`
@@ -146,7 +175,17 @@ export const IssuePillList = styled.div`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  min-width: 0;
+  flex: 1;
+`
+
+export const IssuePillOverflow = styled.span`
+  font-size: 0.75rem;
+  color: ${p => p.theme.colors.text.muted};
+  white-space: nowrap;
+  flex-shrink: 0;
 `
 
 export const IssuePill = styled.button`
@@ -158,6 +197,8 @@ export const IssuePill = styled.button`
   background: none;
   border: none;
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
 
   &:hover {
     text-decoration: underline;
@@ -205,7 +246,8 @@ export const ChartLabel = styled.span`
   transform: translateX(-50%);
   white-space: nowrap;
   pointer-events: all;
-  cursor: default;
+  cursor: pointer;
+  padding: 2px 4px;
 `
 
 export const HoverPopover = styled.div`
@@ -218,6 +260,26 @@ export const HoverPopover = styled.div`
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
   padding: 0.75rem;
   max-width: 40rem;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+`
+
+export const DataTooltip = styled.div`
+  position: fixed;
+  z-index: 49;
+  pointer-events: none;
+  background-color: ${p => p.theme.colors.chart.tooltipBg};
+  border: 1px solid ${p => p.theme.colors.chart.tooltipBorder};
+  border-radius: 6px;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  padding: 0.5rem 0.625rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: ${p => p.theme.colors.text.primary};
+  white-space: nowrap;
 `
 
 export const ZoomControls = styled.div`

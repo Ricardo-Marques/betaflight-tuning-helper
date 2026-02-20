@@ -2,7 +2,29 @@ import { observer } from 'mobx-react-lite'
 import { useThemeStore } from '../stores/RootStore'
 import styled from '@emotion/styled'
 
+const Tooltip = styled.span`
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  white-space: nowrap;
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 400;
+  line-height: 1.4;
+  color: ${p => p.theme.colors.text.primary};
+  background-color: ${p => p.theme.colors.chart.tooltipBg};
+  border: 1px solid ${p => p.theme.colors.chart.tooltipBorder};
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 1000;
+  transition: opacity 0.15s;
+`
+
 const ToggleButton = styled.button`
+  position: relative;
   background: none;
   border: none;
   cursor: pointer;
@@ -16,6 +38,10 @@ const ToggleButton = styled.button`
 
   &:hover {
     background-color: rgba(255, 255, 255, 0.15);
+
+    .theme-tooltip {
+      opacity: 1;
+    }
   }
 
   svg {
@@ -35,7 +61,6 @@ export const ThemeToggle = observer(() => {
   return (
     <ToggleButton
       onClick={themeStore.toggleTheme}
-      title={themeStore.isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
       aria-label="Toggle theme"
     >
       {themeStore.isDarkMode ? (
@@ -49,6 +74,7 @@ export const ThemeToggle = observer(() => {
           <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
         </svg>
       )}
+      <Tooltip className="theme-tooltip">{themeStore.isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}</Tooltip>
     </ToggleButton>
   )
 })

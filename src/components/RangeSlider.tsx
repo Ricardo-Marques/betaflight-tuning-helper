@@ -13,6 +13,7 @@ const RangeSliderWrapper = styled.div`
   margin-bottom: 0.75rem;
   user-select: none;
   cursor: grab;
+  overflow: hidden;
 
   &:active {
     cursor: grabbing;
@@ -54,7 +55,6 @@ const RangeSliderAccent = styled.div`
   background: rgba(255, 255, 255, 0.35);
   pointer-events: none;
   z-index: 1;
-  min-width: 2px;
 `
 
 const RangeSliderHandle = styled.div`
@@ -88,17 +88,21 @@ interface RangeSliderProps {
   onChange: (start: number, end: number) => void
   onDragStart?: () => void
   onDragEnd?: () => void
+  onEdgeHit?: () => void
+  onFullZoomAttempt?: () => void
+  onMaxZoomAttempt?: () => void
   minWindow?: number
 }
 
-export const RangeSlider = observer(({ start, end, onChange, onDragStart, onDragEnd, minWindow }: RangeSliderProps) => {
+export const RangeSlider = observer(({ start, end, onChange, onDragStart, onDragEnd, onEdgeHit, onFullZoomAttempt, onMaxZoomAttempt, minWindow }: RangeSliderProps) => {
   const MIN_WINDOW = minWindow ?? DEFAULT_MIN_WINDOW
   const wrapperRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
   const dragType = useRef<'start' | 'end' | 'fill' | null>(null)
   const dragOrigin = useRef<{ x: number; startVal: number; endVal: number }>({ x: 0, startVal: 0, endVal: 0 })
-  const propsRef = useRef({ start, end, onChange, onDragStart, onDragEnd, MIN_WINDOW })
-  propsRef.current = { start, end, onChange, onDragStart, onDragEnd, MIN_WINDOW }
+  const hintFired = useRef(false)
+  const propsRef = useRef({ start, end, onChange, onDragStart, onDragEnd, onEdgeHit, onFullZoomAttempt, onMaxZoomAttempt, MIN_WINDOW })
+  propsRef.current = { start, end, onChange, onDragStart, onDragEnd, onEdgeHit, onFullZoomAttempt, onMaxZoomAttempt, MIN_WINDOW }
 
   // rAF throttle: store pending values, commit once per frame
   const rafId = useRef<number>(0)
@@ -143,6 +147,15 @@ export const RangeSlider = observer(({ start, end, onChange, onDragStart, onDrag
       const pctDelta = (pxDelta / trackRect.width) * 100
       let newStart = dragOrigin.current.startVal + pctDelta
       let newEnd = dragOrigin.current.endVal + pctDelta
+
+      const windowSize = dragOrigin.current.endVal - dragOrigin.current.startVal
+      if (windowSize >= 99.99) {
+        propsRef.current.onFullZoomAttempt?.()
+      } else if (!hintFired.current && (newStart < 0 || newEnd > 100)) {
+        hintFired.current = true
+        propsRef.current.onEdgeHit?.()
+      }
+
       if (newStart < 0) { newEnd -= newStart; newStart = 0 }
       if (newEnd > 100) { newStart -= newEnd - 100; newEnd = 100 }
       scheduleUpdate(Math.max(0, newStart), Math.min(100, newEnd))
@@ -166,6 +179,7 @@ export const RangeSlider = observer(({ start, end, onChange, onDragStart, onDrag
     e.preventDefault()
     e.stopPropagation()
     dragType.current = type
+    hintFired.current = false
     dragOrigin.current = { x: e.clientX, startVal: propsRef.current.start, endVal: propsRef.current.end }
     propsRef.current.onDragStart?.()
     document.addEventListener('mousemove', handleMouseMove)
@@ -190,6 +204,16 @@ export const RangeSlider = observer(({ start, end, onChange, onDragStart, onDrag
       const dur = curEnd - curStart
       const factor = e.deltaY < 0 ? 0.85 : 1 / 0.85
       const newDur = Math.min(100, Math.max(minW, dur * factor))
+
+      // At full zoom trying to zoom out further — show hint
+      if (dur >= 99.99 && newDur >= 99.99) {
+        propsRef.current.onFullZoomAttempt?.()
+      }
+      // At max zoom trying to zoom in further — show hint
+      if (dur <= minW + 0.01 && newDur <= minW + 0.01 && e.deltaY < 0) {
+        propsRef.current.onMaxZoomAttempt?.()
+      }
+
       const rect = el.getBoundingClientRect()
       const cursorRatio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
       const center = curStart + dur * cursorRatio
@@ -235,10 +259,10 @@ export const RangeSlider = observer(({ start, end, onChange, onDragStart, onDrag
 
   // Fill spans from left handle's left edge to right handle's right edge
   const fillLeft = leftHandleLeft
-  const fillWidth = `max(${MIN_FILL_PX + 2 * HANDLE_W_PX}px, calc(${end - start}% + ${2 * HANDLE_W_PX}px))`
+  const fillRight = `calc(100% - (${rightHandleLeft}) - ${HANDLE_W_PX}px)`
 
   const accentLeft = `max(0px, ${start}%)`
-  const accentWidth = `max(2px, ${end - start}%)`
+  const accentRight = `max(calc(100% - ${end}%), calc(100% - (${rightHandleLeft})))`
 
   return (
     <RangeSliderWrapper ref={wrapperRef} onMouseDown={e => startDrag('fill', e)}>
@@ -246,7 +270,7 @@ export const RangeSlider = observer(({ start, end, onChange, onDragStart, onDrag
       <RangeSliderFill
         style={{
           left: fillLeft,
-          width: fillWidth,
+          right: fillRight,
           transform: 'translateY(-50%)',
         }}
         onMouseDown={e => startDrag('fill', e)}
@@ -254,7 +278,7 @@ export const RangeSlider = observer(({ start, end, onChange, onDragStart, onDrag
       <RangeSliderAccent
         style={{
           left: accentLeft,
-          width: accentWidth,
+          right: accentRight,
           transform: 'translateY(-50%)',
         }}
       />

@@ -9,20 +9,21 @@ import {
 } from 'recharts'
 import {
   ChartWrapper, EmptyState, AxisBar, AxisLabel, AxisButton,
-  ToggleBar, ToggleChip, ToggleChipDot,
-  IssueSummaryStrip, IssueSummaryLabel, IssueSummaryLink, IssuePillList, IssuePill, IssueDot,
-  ChartContainer, LabelOverlay, ChartLabel, HoverPopover,
+  ToggleBar, ToggleChip, ToggleChipDot, ToggleChipWrapper, ToggleChipTooltip,
+  IssueSummaryStrip, IssueSummaryLabel, IssueSummaryLink, IssuePillList, IssuePill, IssueDot, IssuePillOverflow,
+  ChartContainer, LabelOverlay, ChartLabel, HoverPopover, DataTooltip,
   ZoomControls, ZoomHeader, ZoomInfoLabel, ZoomResetBtn,
   AxisSwitchToast,
   ChartLegend, LegendItem, LegendSwatch,
 } from './LogChart.styles'
 import { RangeSlider } from './RangeSlider'
+import type { LogFrame } from '../domain/types/LogFrame'
 import { useChartData } from './logChart/useChartData'
 import { useSpectrumData } from './logChart/useSpectrumData'
 import { useIssueLabels, shortLabel } from './logChart/useIssueLabels'
 import { useIssuePopover } from './logChart/useIssuePopover'
 import type { HoveredIssues } from './logChart/useIssuePopover'
-import { useChartInteractions } from './logChart/useChartInteractions'
+import { useChartInteractions, resolveTooltipCollision } from './logChart/useChartInteractions'
 import { SpectrumChart } from './SpectrumChart'
 
 export const LogChart = observer(() => {
@@ -39,9 +40,14 @@ export const LogChart = observer(() => {
   const forcedPopoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hoverClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const glowTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const issueStripRef = useRef<HTMLDivElement>(null)
+  const stripHeightRef = useRef<number>(0)
+  const chipTooltipRef = useRef<HTMLDivElement>(null)
+  const dataTooltipRef = useRef<HTMLDivElement>(null)
 
   // Shared observable state
   const [isDraggingObs, setIsDraggingObs] = useObservableState(false)
+  const [tooltipSuppressed, setTooltipSuppressed] = useObservableState(false)
   const [containerWidth, setContainerWidth] = useObservableState(0)
   // Observable box so autoruns re-fire when the chart DOM element mounts/unmounts.
   // Must be a box (not useObservableState) so the autoruns can track it directly.
@@ -61,17 +67,22 @@ export const LogChart = observer(() => {
       ? theme.colors.severity.medium
       : theme.colors.severity.low
 
-  const { zoomDuration, visibleFrames, chartData, yDomain, motorDomain, pidDomain } = useChartData(isDraggingObs)
+  const { zoomDuration, visibleFrames, timeDomain, yDomain, motorDomain, pidDomain } = useChartData()
   const spectrumResult = useSpectrumData()
-  const { visibleIssues, visibleLabels } = useIssueLabels(visibleFrames, chartData, containerWidth, severityColor)
+  const { visibleIssues, visibleLabels, visibleReferenceLines } = useIssueLabels(visibleFrames, containerWidth, severityColor)
 
   const popoverRefs = { popoverRef, hoveredIssuesRef, popoverSourceRef, forcedPopoverTimer, hoverClearTimer, glowTimer, chartContainerRef }
-  const popoverActions = useIssuePopover(popoverRefs, visibleIssues, chartData, containerWidth, severityColor, chartMountedBox)
+  const popoverActions = useIssuePopover(popoverRefs, severityColor)
   const { showGlow, updateHoverPopover } = popoverActions
 
-  const interactionRefs = { chartContainerRef, hoveredIssuesRef, popoverSourceRef, popoverRef, hoverClearTimer, forcedPopoverTimer }
-  const { handleChartMouseMove, handleChartMouseLeave, handleChartMouseDown, handleChartMouseUp, handleRangeChange } =
-    useChartInteractions(interactionRefs, { setIsDraggingObs, setContainerWidth }, visibleIssues, chartData, isDraggingObs, popoverActions, chartMountedBox)
+  const interactionRefs = { chartContainerRef, hoveredIssuesRef, popoverSourceRef, popoverRef, hoverClearTimer, forcedPopoverTimer, dataTooltipRef }
+  const { handleChartMouseMove, handleChartMouseLeave, handleChartMouseDown, handleChartMouseUp, handleRangeChange, popoverCooldownUntil } =
+    useChartInteractions(interactionRefs, {
+      setIsDraggingObs, setTooltipSuppressed, setContainerWidth,
+      triggerFullZoomHint: () => triggerZoomHint('Fully zoomed out — use mouse wheel or slider to zoom in'),
+      triggerMaxZoomHint: () => triggerZoomHint('Maximum zoom reached'),
+      triggerEdgeHint: () => triggerZoomHint("You've reached the edge of the log"),
+    }, visibleLabels, visibleFrames, isDraggingObs, popoverActions, chartMountedBox)
 
   // Auto-switch axis when an issue on a different axis is selected
   useAutorun(() => {
@@ -82,11 +93,69 @@ export const LogChart = observer(() => {
     }
   })
 
+  // Pill overflow measurement state (measurement runs after showUpdating is computed below)
+  const pillListRef = useRef<HTMLDivElement>(null)
+  const [overflowCount, setOverflowCount] = useObservableState(0)
+  const rafRef = useRef<number>(0)
+
+  // Zoom/pan hint toast — triggered directly by interaction handlers
+  const [zoomHintMessage, setZoomHintMessage] = useObservableState('')
+  const zoomHintKeyRef = useRef(0)
+  const zoomHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const currentHintRef = useRef('')
+
+  const lastHintTime = useRef(0)
+
+  const triggerZoomHint = (message: string): void => {
+    const now = Date.now()
+    // Restart animation if message changed or toast has started fading (1.2s into 1.5s animation)
+    if (currentHintRef.current !== message || now - lastHintTime.current > 1200) {
+      zoomHintKeyRef.current++
+      lastHintTime.current = now
+    }
+    currentHintRef.current = message
+    setZoomHintMessage(message)
+    if (zoomHintTimerRef.current) clearTimeout(zoomHintTimerRef.current)
+    zoomHintTimerRef.current = setTimeout(() => {
+      currentHintRef.current = ''
+      setZoomHintMessage('')
+      zoomHintTimerRef.current = null
+    }, 1600)
+  }
+
   // Zoom info
   const totalDuration = logStore.duration
   const windowSec = (zoomDuration / 100) * totalDuration
   const zoomLevel = 100 / zoomDuration
+  const showUpdating = isDraggingObs && zoomDuration < 99.99 && uiStore.showIssues
   const minZoomWindow = totalDuration > 0 ? (0.2 / totalDuration) * 100 : 1
+
+  // Capture strip height when not updating so we can preserve it during drag
+  if (!showUpdating && issueStripRef.current) {
+    stripHeightRef.current = issueStripRef.current.offsetHeight
+  }
+
+  // Measure pill overflow after each paint where pills are visible
+  if (!showUpdating && visibleIssues.length > 0 && uiStore.showIssues) {
+    cancelAnimationFrame(rafRef.current)
+    rafRef.current = requestAnimationFrame(() => {
+      const el = pillListRef.current
+      if (!el || el.children.length === 0) return
+      const containerRight = el.getBoundingClientRect().right
+      let hidden = 0
+      for (let i = el.children.length - 1; i >= 0; i--) {
+        if ((el.children[i] as HTMLElement).getBoundingClientRect().right > containerRight + 1) {
+          hidden++
+        } else {
+          break
+        }
+      }
+      if (hidden !== overflowCount) setOverflowCount(hidden)
+    })
+  } else if (overflowCount !== 0) {
+    cancelAnimationFrame(rafRef.current)
+    rafRef.current = requestAnimationFrame(() => setOverflowCount(0))
+  }
 
   if (!logStore.isLoaded) {
     return (
@@ -146,15 +215,43 @@ export const LogChart = observer(() => {
           <ToggleChip data-testid="toggle-throttle" role="checkbox" aria-checked={uiStore.showThrottle} isActive={uiStore.showThrottle} chipColor={theme.colors.chart.throttle} onClick={uiStore.toggleThrottle}>
             <ToggleChipDot dotColor={theme.colors.chart.throttle} />Throttle
           </ToggleChip>
-          <ToggleChip data-testid="toggle-issues" role="checkbox" aria-checked={uiStore.showIssues} isActive={uiStore.showIssues} onClick={uiStore.toggleIssues}>
-            Issues
-          </ToggleChip>
+          {analysisStore.analysisStatus === 'analyzing' ? (
+            <ToggleChipWrapper
+              onMouseEnter={e => {
+                const tt = chipTooltipRef.current
+                if (!tt) return
+                const rect = e.currentTarget.getBoundingClientRect()
+                tt.style.display = 'block'
+                tt.style.top = `${rect.bottom + 6}px`
+                tt.style.left = `${rect.left + rect.width / 2}px`
+                tt.style.transform = 'translateX(-50%)'
+              }}
+              onMouseLeave={() => {
+                const tt = chipTooltipRef.current
+                if (tt) tt.style.display = 'none'
+              }}
+            >
+              <ToggleChip data-testid="toggle-issues" role="checkbox" aria-checked={uiStore.showIssues} isActive={uiStore.showIssues} disabled>
+                Issues
+              </ToggleChip>
+            </ToggleChipWrapper>
+          ) : (
+            <ToggleChip data-testid="toggle-issues" role="checkbox" aria-checked={uiStore.showIssues} isActive={uiStore.showIssues} onClick={uiStore.toggleIssues}>
+              Issues
+            </ToggleChip>
+          )}
         </ToggleBar>}
       </AxisBar>
 
-      {analysisStore.isComplete && uiStore.chartMode === 'time' && (
-        <IssueSummaryStrip data-testid="issues-in-view">
-          {!uiStore.showIssues ? (
+      {(analysisStore.analysisStatus === 'analyzing' || analysisStore.isComplete) && uiStore.chartMode === 'time' && (
+        <IssueSummaryStrip data-testid="issues-in-view" data-issue-zone ref={issueStripRef}
+          style={showUpdating && stripHeightRef.current ? { height: stripHeightRef.current } : undefined}
+        >
+          {analysisStore.analysisStatus === 'analyzing' ? (
+            <IssueSummaryLabel>Analyzing flight data...</IssueSummaryLabel>
+          ) : showUpdating ? (
+            <IssueSummaryLabel>Updating...</IssueSummaryLabel>
+          ) : !uiStore.showIssues ? (
             <>
               <IssueSummaryLabel>Issues hidden</IssueSummaryLabel>
               <IssueSummaryLink onClick={uiStore.toggleIssues}>Show issues</IssueSummaryLink>
@@ -164,7 +261,7 @@ export const LogChart = observer(() => {
           ) : (
             <>
               <IssueSummaryLabel>{visibleIssues.length} issue{visibleIssues.length !== 1 ? 's' : ''} in view</IssueSummaryLabel>
-              <IssuePillList>
+              <IssuePillList ref={pillListRef}>
                 {visibleIssues.map(issue => (
                   <IssuePill
                     key={issue.id}
@@ -214,6 +311,9 @@ export const LogChart = observer(() => {
                   </IssuePill>
                 ))}
               </IssuePillList>
+              {overflowCount > 0 && (
+                <IssuePillOverflow>...and {overflowCount} more</IssuePillOverflow>
+              )}
             </>
           )}
         </IssueSummaryStrip>
@@ -222,10 +322,10 @@ export const LogChart = observer(() => {
       {uiStore.chartMode === 'spectrum' ? (
         <SpectrumChart spectrumResult={spectrumResult} />
       ) : (
-      <ChartContainer data-testid="chart-container" ref={chartContainerCallbackRef}>
+      <ChartContainer data-testid="chart-container" data-issue-zone ref={chartContainerCallbackRef}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
-            data={chartData}
+            data={visibleFrames}
             margin={{ top: 20, right: 5, bottom: 5, left: 5 }}
             onMouseDown={handleChartMouseDown}
             onMouseMove={handleChartMouseMove}
@@ -234,8 +334,8 @@ export const LogChart = observer(() => {
           >
             <CartesianGrid strokeDasharray="3 3" stroke={theme.colors.chart.grid} />
             <XAxis
-              dataKey="time" type="number"
-              domain={chartData.length > 0 ? [chartData[0].time, chartData[chartData.length - 1].time] : [0, 1]}
+              dataKey={(f: LogFrame) => f.time / 1e6} type="number"
+              domain={timeDomain}
               allowDataOverflow height={50}
               label={{ value: 'Time', position: 'insideBottom', offset: -2 }}
               stroke={theme.colors.chart.axis} tick={{ dy: 4 }}
@@ -247,112 +347,79 @@ export const LogChart = observer(() => {
             <YAxis yAxisId="pid" hide domain={pidDomain} allowDataOverflow />
             <YAxis yAxisId="motor" hide domain={motorDomain} allowDataOverflow />
             <Tooltip
-              active={isDraggingObs ? false : undefined}
-              labelFormatter={(value: number) => value >= 60 ? `${Math.floor(value / 60)}m:${(value % 60).toFixed(3).padStart(6, '0')}s` : `${value.toFixed(3)}s`}
-              contentStyle={{
-                backgroundColor: theme.colors.chart.tooltipBg,
-                border: `1px solid ${theme.colors.chart.tooltipBorder}`,
-                borderRadius: '6px',
-                color: theme.colors.text.primary,
-              }}
+              active={(isDraggingObs || tooltipSuppressed) ? false : undefined}
+              content={() => null}
             />
 
-            {/* Issue reference lines — hidden during drag for performance */}
-            {!isDraggingObs && (() => {
-              const sevRank: Record<string, number> = { high: 0, medium: 1, low: 2 }
-              const allLines: { x: number; issue: typeof visibleIssues[0]; idx: number; isSelected: boolean; sev: number }[] = []
-              for (const issue of visibleIssues) {
-                if (!uiStore.showIssues && issue.id !== analysisStore.selectedIssueId) continue
-                const times = issue.occurrences ?? [issue.timeRange]
-                const isIssueSelected = issue.id === analysisStore.selectedIssueId
-                for (let idx = 0; idx < times.length; idx++) {
-                  const isThisOcc = isIssueSelected && analysisStore.selectedOccurrenceIdx === idx
-                  const peakT = (issue.peakTimes?.[idx] ?? issue.metrics.peakTime ?? (times[idx][0] + times[idx][1]) / 2) / 1000000
-                  allLines.push({ x: peakT, issue, idx, isSelected: isThisOcc, sev: sevRank[issue.severity] ?? 2 })
-                }
-              }
-              const posHighest = new Map<string, number>()
-              const posHasSelected = new Map<string, boolean>()
-              for (const l of allLines) {
-                const xKey = l.x.toFixed(6)
-                const best = posHighest.get(xKey)
-                if (best === undefined || l.sev < best) posHighest.set(xKey, l.sev)
-                if (l.isSelected) posHasSelected.set(xKey, true)
-              }
-              allLines.sort((a, b) => b.sev - a.sev || (a.isSelected ? 1 : -1))
-              return allLines.flatMap(l => {
-                const xKey = l.x.toFixed(6)
-                const isHighestAtPos = l.sev === posHighest.get(xKey)
-                const anySelectedAtPos = posHasSelected.get(xKey) ?? false
-                const showAsSelected = isHighestAtPos && anySelectedAtPos
-                const elements = []
-                if (showAsSelected && showGlow) {
-                  elements.push(
-                    <ReferenceLine key={`issue-glow-${l.issue.id}-${l.idx}`} x={l.x} yAxisId="primary"
-                      stroke={severityColor(l.issue.severity)} strokeWidth={10} strokeOpacity={0.25} ifOverflow="hidden" />
-                  )
-                }
-                const hasSelection = analysisStore.selectedIssueId !== null
-                const isOnAxis = l.issue.axis === uiStore.selectedAxis
-                const lineOpacity = showAsSelected
-                  ? undefined
-                  : hasSelection
-                    ? 0.3
-                    : isOnAxis ? undefined : 0.25
-                if (showAsSelected) {
-                  elements.push(
-                    <ReferenceLine key={`issue-outline-${l.issue.id}-${l.idx}`} x={l.x} yAxisId="primary"
-                      stroke={theme.colors.background.app} strokeWidth={7} ifOverflow="hidden" />
-                  )
-                }
+            {/* Issue reference lines (downsampled by severity priority) */}
+            {visibleReferenceLines.flatMap(entry => {
+              const isOnAxis = entry.issue.axis === uiStore.selectedAxis
+              const hasSelection = analysisStore.selectedIssueId !== null
+              const lineOpacity = entry.isSelected
+                ? undefined
+                : hasSelection
+                  ? 0.3
+                  : isOnAxis ? undefined : 0.25
+              const elements = []
+              if (entry.isSelected && showGlow) {
                 elements.push(
-                  <ReferenceLine key={`issue-${l.issue.id}-${l.idx}`} x={l.x} yAxisId="primary"
-                    stroke={severityColor(l.issue.severity)} strokeWidth={showAsSelected ? 3.5 : 1.5}
-                    strokeDasharray={showAsSelected ? undefined : '4 3'} strokeOpacity={lineOpacity} ifOverflow="hidden" />
+                  <ReferenceLine key={`issue-glow-${entry.key}`} x={entry.x} yAxisId="primary"
+                    stroke={severityColor(entry.issue.severity)} strokeWidth={10} strokeOpacity={0.25} ifOverflow="hidden" />
                 )
-                return elements
-              })
-            })()}
+              }
+              if (entry.isSelected) {
+                elements.push(
+                  <ReferenceLine key={`issue-outline-${entry.key}`} x={entry.x} yAxisId="primary"
+                    stroke={theme.colors.background.app} strokeWidth={7} ifOverflow="hidden" />
+                )
+              }
+              elements.push(
+                <ReferenceLine key={`issue-${entry.key}`} x={entry.x} yAxisId="primary"
+                  stroke={severityColor(entry.issue.severity)} strokeWidth={entry.isSelected ? 3.5 : 1.5}
+                  strokeDasharray={entry.isSelected ? undefined : '4 3'} strokeOpacity={lineOpacity} ifOverflow="hidden" />
+              )
+              return elements
+            })}
 
             {uiStore.showGyro && (
-              <Line type="monotone" dataKey="gyro" yAxisId="primary" stroke={theme.colors.chart.gyro}
-                strokeWidth={2} dot={false} name="Gyro" isAnimationActive={false} />
+              <Line type="monotone" dataKey={(f: LogFrame) => f.gyroADC[uiStore.selectedAxis]} yAxisId="primary" stroke={theme.colors.chart.gyro}
+                strokeWidth={2} dot={false} activeDot={isDraggingObs || tooltipSuppressed ? false : undefined} name="Gyro" isAnimationActive={false} />
             )}
             {uiStore.showSetpoint && (
-              <Line type="monotone" dataKey="setpoint" yAxisId="primary" stroke={theme.colors.chart.setpoint}
-                strokeWidth={2} dot={false} name="Setpoint" isAnimationActive={false} strokeDasharray="5 5" />
+              <Line type="monotone" dataKey={(f: LogFrame) => f.setpoint[uiStore.selectedAxis]} yAxisId="primary" stroke={theme.colors.chart.setpoint}
+                strokeWidth={2} dot={false} activeDot={isDraggingObs || tooltipSuppressed ? false : undefined} name="Setpoint" isAnimationActive={false} strokeDasharray="5 5" />
             )}
             {uiStore.showPidP && (
-              <Line type="monotone" dataKey="pidP" yAxisId="pid" stroke={theme.colors.chart.pidP}
-                strokeWidth={1.5} dot={false} name="P-term" isAnimationActive={false} />
+              <Line type="monotone" dataKey={(f: LogFrame) => f.pidP[uiStore.selectedAxis]} yAxisId="pid" stroke={theme.colors.chart.pidP}
+                strokeWidth={1.5} dot={false} activeDot={isDraggingObs || tooltipSuppressed ? false : undefined} name="P-term" isAnimationActive={false} />
             )}
             {uiStore.showPidI && (
-              <Line type="monotone" dataKey="pidI" yAxisId="pid" stroke={theme.colors.chart.pidI}
-                strokeWidth={1.5} dot={false} name="I-term" isAnimationActive={false} />
+              <Line type="monotone" dataKey={(f: LogFrame) => f.pidI[uiStore.selectedAxis]} yAxisId="pid" stroke={theme.colors.chart.pidI}
+                strokeWidth={1.5} dot={false} activeDot={isDraggingObs || tooltipSuppressed ? false : undefined} name="I-term" isAnimationActive={false} />
             )}
             {uiStore.showPidD && (
-              <Line type="monotone" dataKey="pidD" yAxisId="pid" stroke={theme.colors.chart.pidD}
-                strokeWidth={1.5} dot={false} name="D-term" isAnimationActive={false} />
+              <Line type="monotone" dataKey={(f: LogFrame) => f.pidD[uiStore.selectedAxis]} yAxisId="pid" stroke={theme.colors.chart.pidD}
+                strokeWidth={1.5} dot={false} activeDot={isDraggingObs || tooltipSuppressed ? false : undefined} name="D-term" isAnimationActive={false} />
             )}
             {uiStore.showPidSum && (
-              <Line type="monotone" dataKey="pidSum" yAxisId="pid" stroke={theme.colors.chart.pidSum}
-                strokeWidth={1.5} dot={false} name="PID Sum" isAnimationActive={false} />
+              <Line type="monotone" dataKey={(f: LogFrame) => f.pidSum[uiStore.selectedAxis]} yAxisId="pid" stroke={theme.colors.chart.pidSum}
+                strokeWidth={1.5} dot={false} activeDot={isDraggingObs || tooltipSuppressed ? false : undefined} name="PID Sum" isAnimationActive={false} />
             )}
             {uiStore.showMotors && (
               <>
-                <Line type="monotone" dataKey="motor1" yAxisId="motor" stroke={theme.colors.chart.motor1}
-                  strokeWidth={1} dot={false} name="M1" isAnimationActive={false} strokeOpacity={0.6} />
-                <Line type="monotone" dataKey="motor2" yAxisId="motor" stroke={theme.colors.chart.motor2}
-                  strokeWidth={1} dot={false} name="M2" isAnimationActive={false} strokeOpacity={0.6} />
-                <Line type="monotone" dataKey="motor3" yAxisId="motor" stroke={theme.colors.chart.motor3}
-                  strokeWidth={1} dot={false} name="M3" isAnimationActive={false} strokeOpacity={0.6} />
-                <Line type="monotone" dataKey="motor4" yAxisId="motor" stroke={theme.colors.chart.motor4}
-                  strokeWidth={1} dot={false} name="M4" isAnimationActive={false} strokeOpacity={0.6} />
+                <Line type="monotone" dataKey={(f: LogFrame) => f.motor[0]} yAxisId="motor" stroke={theme.colors.chart.motor1}
+                  strokeWidth={1} dot={false} activeDot={isDraggingObs || tooltipSuppressed ? false : undefined} name="M1" isAnimationActive={false} strokeOpacity={0.6} />
+                <Line type="monotone" dataKey={(f: LogFrame) => f.motor[1]} yAxisId="motor" stroke={theme.colors.chart.motor2}
+                  strokeWidth={1} dot={false} activeDot={isDraggingObs || tooltipSuppressed ? false : undefined} name="M2" isAnimationActive={false} strokeOpacity={0.6} />
+                <Line type="monotone" dataKey={(f: LogFrame) => f.motor[2]} yAxisId="motor" stroke={theme.colors.chart.motor3}
+                  strokeWidth={1} dot={false} activeDot={isDraggingObs || tooltipSuppressed ? false : undefined} name="M3" isAnimationActive={false} strokeOpacity={0.6} />
+                <Line type="monotone" dataKey={(f: LogFrame) => f.motor[3]} yAxisId="motor" stroke={theme.colors.chart.motor4}
+                  strokeWidth={1} dot={false} activeDot={isDraggingObs || tooltipSuppressed ? false : undefined} name="M4" isAnimationActive={false} strokeOpacity={0.6} />
               </>
             )}
             {uiStore.showThrottle && (
               <Line type="monotone" dataKey="throttle" yAxisId="motor" stroke={theme.colors.chart.throttle}
-                strokeWidth={1.5} dot={false} name="Throttle" isAnimationActive={false} strokeOpacity={0.7} />
+                strokeWidth={1.5} dot={false} activeDot={isDraggingObs || tooltipSuppressed ? false : undefined} name="Throttle" isAnimationActive={false} strokeOpacity={0.7} />
             )}
           </LineChart>
         </ResponsiveContainer>
@@ -363,20 +430,20 @@ export const LogChart = observer(() => {
               <ChartLabel
                 key={label.key}
                 data-testid="chart-label"
-                style={{ left: `${label.pxLeft}px`, color: label.color, fontSize: `${label.fontSize}px`, fontWeight: label.fontWeight, opacity: label.onAxis ? undefined : 0.3 }}
+                style={{ left: `${label.pxLeft}px`, color: label.color, fontSize: `${label.fontSize}px`, fontWeight: label.fontWeight, opacity: label.onAxis ? undefined : 0.3, zIndex: label.fontWeight === 'bold' ? 2 : 1 }}
                 onClick={() => {
-                  const occs = label.issueOccurrences
-                  const currentIdx = occs.findIndex(o => o.issue.id === analysisStore.selectedIssueId)
-                  const pick = currentIdx < 0 ? occs[0] : occs[(currentIdx + 1) % occs.length]
+                  const pick = label.issueOccurrences[0]
                   analysisStore.selectIssue(pick.issue.id, pick.occIdx)
                   uiStore.setActiveRightTab('issues')
                   if (!uiStore.rightPanelOpen) uiStore.toggleRightPanel()
                 }}
                 onMouseEnter={(e) => {
+                  if (isDraggingObs || performance.now() < popoverCooldownUntil.current) return
                   const sevRank: Record<string, number> = { high: 0, medium: 1, low: 2 }
                   const sorted = [...label.issues].sort((a, b) => (sevRank[a.severity] ?? 2) - (sevRank[b.severity] ?? 2))
                   if (forcedPopoverTimer.current) { clearTimeout(forcedPopoverTimer.current); forcedPopoverTimer.current = null }
                   updateHoverPopover({ issues: sorted, x: e.clientX, y: e.clientY })
+                  resolveTooltipCollision(dataTooltipRef.current, popoverRef.current, e.clientX, e.clientY)
                 }}
                 onMouseLeave={() => updateHoverPopover(null)}
               >
@@ -387,10 +454,16 @@ export const LogChart = observer(() => {
         )}
 
         <HoverPopover ref={popoverRef} data-testid="issue-popover" style={{ display: 'none' }} />
+        <DataTooltip ref={dataTooltipRef} style={{ display: 'none' }} />
 
         {uiStore.axisHighlight && (
           <AxisSwitchToast key={uiStore.axisHighlightKey} data-testid="axis-switch-toast">
             Switched to {uiStore.axisHighlight} axis
+          </AxisSwitchToast>
+        )}
+        {zoomHintMessage && (
+          <AxisSwitchToast key={`zoom-hint-${zoomHintKeyRef.current}`}>
+            {zoomHintMessage}
           </AxisSwitchToast>
         )}
       </ChartContainer>
@@ -453,10 +526,14 @@ export const LogChart = observer(() => {
           <RangeSlider
             start={uiStore.zoomStart} end={uiStore.zoomEnd} onChange={handleRangeChange}
             onDragStart={() => setIsDraggingObs(true)} onDragEnd={() => setIsDraggingObs(false)}
+            onEdgeHit={() => triggerZoomHint("You've reached the edge of the log")}
+            onFullZoomAttempt={() => triggerZoomHint('Fully zoomed out — use mouse wheel or slider to zoom in')}
+            onMaxZoomAttempt={() => triggerZoomHint('Maximum zoom reached')}
             minWindow={minZoomWindow}
           />
         )}
       </ZoomControls>
+      <ToggleChipTooltip ref={chipTooltipRef} style={{ display: 'none' }}>Analyzing flight data...</ToggleChipTooltip>
     </ChartWrapper>
   )
 })

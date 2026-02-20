@@ -2,7 +2,6 @@ import { useUIStore, useAnalysisStore } from '../../stores/RootStore'
 import { useComputed } from '../../lib/mobx-reactivity'
 import type { LogFrame } from '../../domain/types/LogFrame'
 import type { DetectedIssue } from '../../domain/types/Analysis'
-import type { ChartDataPoint } from './useChartData'
 
 export const CHART_MARGIN_LEFT = 5 + 50 // margin.left + YAxis width
 export const CHART_MARGIN_RIGHT = 5     // margin.right
@@ -15,6 +14,8 @@ export interface LabelOccurrence {
 export interface LabelEntry {
   key: string
   pxLeft: number
+  /** Time in seconds of the primary (displayed) occurrence. */
+  timeSec: number
   text: string
   color: string
   fontSize: number
@@ -24,14 +25,23 @@ export interface LabelEntry {
   onAxis: boolean
 }
 
+export interface ReferenceLineEntry {
+  key: string
+  /** Time in seconds for recharts x-axis. */
+  x: number
+  issue: DetectedIssue
+  occIdx: number
+  isSelected: boolean
+}
+
 interface IssueLabelsResult {
   visibleIssues: DetectedIssue[]
   visibleLabels: LabelEntry[]
+  visibleReferenceLines: ReferenceLineEntry[]
 }
 
 export function useIssueLabels(
   visibleFrames: LogFrame[],
-  chartData: ChartDataPoint[],
   containerWidth: number,
   severityColor: (severity: string) => string,
 ): IssueLabelsResult {
@@ -57,19 +67,19 @@ export function useIssueLabels(
     })
   })
 
-  const visibleLabels: LabelEntry[] = useComputed(() => {
-    if (visibleIssues.length === 0 || containerWidth === 0 || chartData.length < 2) return []
+  const { visibleLabels, visibleReferenceLines } = useComputed((): { visibleLabels: LabelEntry[]; visibleReferenceLines: ReferenceLineEntry[] } => {
+    if (visibleIssues.length === 0 || containerWidth === 0 || visibleFrames.length < 2) return { visibleLabels: [], visibleReferenceLines: [] }
 
     const MIN_GAP = 60
-    const timeStart = chartData[0].time
-    const timeEnd = chartData[chartData.length - 1].time
+    const timeStart = visibleFrames[0].time / 1e6
+    const timeEnd = visibleFrames[visibleFrames.length - 1].time / 1e6
     const timeSpan = timeEnd - timeStart
-    if (timeSpan <= 0) return []
+    if (timeSpan <= 0) return { visibleLabels: [], visibleReferenceLines: [] }
 
     const plotWidth = containerWidth - CHART_MARGIN_LEFT - CHART_MARGIN_RIGHT
     const sevOrder: Record<string, number> = { high: 0, medium: 1, low: 2 }
 
-    const entries: { key: string; px: number; isSelected: boolean; sev: number; issue: DetectedIssue; occIdx: number }[] = []
+    const entries: { key: string; px: number; timeSec: number; isSelected: boolean; sev: number; issue: DetectedIssue; occIdx: number }[] = []
     for (const issue of visibleIssues) {
       if (!uiStore.showIssues && issue.id !== analysisStore.selectedIssueId) continue
       const times = issue.occurrences ?? [issue.timeRange]
@@ -79,24 +89,35 @@ export function useIssueLabels(
         if (t < timeStart || t > timeEnd) continue
         const px = CHART_MARGIN_LEFT + ((t - timeStart) / timeSpan) * plotWidth
         const isThisOcc = isIssueSelected && analysisStore.selectedOccurrenceIdx === idx
-        entries.push({ key: `${issue.id}-${idx}`, px, isSelected: isThisOcc, sev: sevOrder[issue.severity] ?? 2, issue, occIdx: idx })
+        entries.push({ key: `${issue.id}-${idx}`, px, timeSec: t, isSelected: isThisOcc, sev: sevOrder[issue.severity] ?? 2, issue, occIdx: idx })
       }
     }
 
     entries.sort((a, b) => a.px - b.px || a.sev - b.sev || (a.isSelected ? -1 : b.isSelected ? 1 : 0))
 
-    // Greedy selection with stacking
-    const result: LabelEntry[] = []
+    // Greedy label selection with stacking
+    const labels: LabelEntry[] = []
     let lastPx = -Infinity
     let current: { entry: typeof entries[0]; issues: DetectedIssue[]; occurrences: LabelOccurrence[]; anySelected: boolean } | null = null
 
     const flush = (): void => {
       if (!current) return
       const { entry, issues, occurrences, anySelected } = current
+      // Move the promoted entry's occurrence to the front so clicking
+      // the label selects the issue whose name is displayed, not a
+      // lower-priority neighbour that happens to be earlier in time.
+      const primaryIdx = occurrences.findIndex(
+        o => o.issue.id === entry.issue.id && o.occIdx === entry.occIdx
+      )
+      if (primaryIdx > 0) {
+        const [primary] = occurrences.splice(primaryIdx, 1)
+        occurrences.unshift(primary)
+      }
       const stackCount = issues.length - 1
-      result.push({
+      labels.push({
         key: entry.key,
         pxLeft: entry.px,
+        timeSec: entry.timeSec,
         text: stackCount > 0 ? `${shortLabel(entry.issue)} +${stackCount}` : shortLabel(entry.issue),
         color: severityColor(entry.issue.severity),
         fontSize: anySelected ? 11 : 9,
@@ -125,10 +146,29 @@ export function useIssueLabels(
     }
     flush()
 
-    return result
+    // Derive one reference line per label from its primary occurrence
+    const lines: ReferenceLineEntry[] = labels.map(label => {
+      const primary = label.issueOccurrences[0]
+      return {
+        key: label.key,
+        x: label.timeSec,
+        issue: primary.issue,
+        occIdx: primary.occIdx,
+        isSelected: label.fontWeight === 'bold',
+      }
+    })
+
+    // Render order: low severity back, selected front
+    lines.sort((a, b) => {
+      const aSev = sevOrder[a.issue.severity] ?? 2
+      const bSev = sevOrder[b.issue.severity] ?? 2
+      return bSev - aSev || (a.isSelected ? 1 : b.isSelected ? -1 : 0)
+    })
+
+    return { visibleLabels: labels, visibleReferenceLines: lines }
   })
 
-  return { visibleIssues, visibleLabels }
+  return { visibleIssues, visibleLabels, visibleReferenceLines }
 }
 
 /** Extract a short label from the issue description prefix (before the colon). */

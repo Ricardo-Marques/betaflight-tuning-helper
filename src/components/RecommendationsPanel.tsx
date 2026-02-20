@@ -59,6 +59,36 @@ const EmptyPanel = styled.div`
   color: ${p => p.theme.colors.text.muted};
 `
 
+const AnalyzingPanel = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+`
+
+const AnalyzingText = styled.span`
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: ${p => p.theme.colors.text.primary};
+`
+
+const AnalyzingTrack = styled.div`
+  width: 10rem;
+  background-color: ${p => p.theme.colors.border.main};
+  border-radius: 9999px;
+  height: 0.25rem;
+`
+
+const AnalyzingFill = styled.div<{ width: number }>`
+  background-color: ${p => p.theme.colors.button.primary};
+  height: 0.25rem;
+  border-radius: 9999px;
+  transition: width 0.3s;
+  width: ${p => p.width}%;
+`
+
 const CliBar = styled.div`
   flex-shrink: 0;
   border-bottom: 1px solid ${p => p.theme.colors.border.main};
@@ -353,12 +383,13 @@ const CliActionButton = styled.button<{ variant: 'import' | 'accept' }>`
   border-radius: 0.375rem;
   cursor: pointer;
   transition: background-color 0.15s, box-shadow 0.15s, opacity 0.15s;
-  border: ${p => p.variant === 'import'
-    ? `1.5px solid ${p.theme.colors.accent.indigo}`
+  border: none;
+  box-shadow: ${p => p.variant === 'import'
+    ? '0 1px 3px rgb(0 0 0 / 0.12), 0 0 0 1px rgb(0 0 0 / 0.04)'
     : 'none'};
   background-color: ${p => p.variant === 'accept'
     ? p.theme.colors.accent.green
-    : 'transparent'};
+    : p.theme.colors.accent.indigoBg};
   color: ${p => p.variant === 'accept'
     ? '#fff'
     : p.theme.colors.accent.indigo};
@@ -967,6 +998,20 @@ export const RecommendationsPanel = observer(() => {
   })
 
   if (!analysisStore.isComplete) {
+    if (analysisStore.analysisStatus === 'analyzing') {
+      return (
+        <PanelWrapper>
+          <AnalyzingPanel>
+            <AnalyzingText>
+              {analysisStore.analysisMessage || 'Detecting issues...'}
+            </AnalyzingText>
+            <AnalyzingTrack>
+              <AnalyzingFill width={analysisStore.analysisProgress} />
+            </AnalyzingTrack>
+          </AnalyzingPanel>
+        </PanelWrapper>
+      )
+    }
     return (
       <EmptyPanel data-testid="recommendations-empty">
         <p>Run analysis to see recommendations</p>
