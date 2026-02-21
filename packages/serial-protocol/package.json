@@ -1,0 +1,11 @@
+{
+  "name": "@bf-tuner/serial-protocol",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Shared serial protocol logic: MSP v2, Betaflight CLI, dataflash reader",
+  "main": "index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./*": "../../src/serial/*.ts"
+  }
+}

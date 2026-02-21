@@ -1,0 +1,11 @@
+{
+  "name": "@bf-tuner/domain",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Shared pure-TypeScript domain layer: BBL parser, rule engine, types, utils",
+  "main": "index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./*": "../../src/domain/*.ts"
+  }
+}
