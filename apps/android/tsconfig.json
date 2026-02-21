@@ -1,0 +1,22 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "baseUrl": ".",
+    "paths": {
+      "@bf-tuner/domain": ["../../src/domain/types/index"],
+      "@bf-tuner/domain/*": ["../../src/domain/*"],
+      "@bf-tuner/serial-protocol": ["../../src/serial/index"],
+      "@bf-tuner/serial-protocol/*": ["../../src/serial/*"]
+    }
+  },
+  "include": [
+    "src/**/*",
+    "index.js",
+    "App.js"
+  ]
+}
